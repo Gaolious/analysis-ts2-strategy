@@ -1,0 +1,48 @@
+# local.py
+
+# vim swap
+*.swp
+.*.swp
+#[0-9]*.py
+## Directory-based project format:
+.idea/
+
+# Distribution / packaging
+work
+log
+.cache
+
+
+### Python template
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+## SQLite
+db.sqlite3
+
+### Sass template
+.sass-cache
+*.css.map
+
+## autoenv
+.env
+
+# ads log path
+
+# ignore for pytest cache, pytest-cov
+.pytest_cache
+.coverage
+htmlcov
+
+# docker data volume
+/dev/docker/.data
+
+.DS_Store
+fabfile.py
+local.py
+test_buildingmgr_api/input/
+
+test_buildingmgr_api/bin/
+
+test_buildingmgr_api/pkg/

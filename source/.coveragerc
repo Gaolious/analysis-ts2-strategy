@@ -1,0 +1,26 @@
+[paths]
+source =
+   ts
+
+[run]
+;branch = true
+;parallel = true
+source =
+    ts
+
+omit =
+    **/conf/settings/*
+
+[report]
+show_missing = true
+precision = 2
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+    pass
