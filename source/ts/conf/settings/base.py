@@ -26,7 +26,7 @@ import pytz as pytz
 DJANGO_PATH = Path(__file__).resolve().parent.parent.parent
 SOURCE_PATH = DJANGO_PATH.parent
 SITE_PATH = SOURCE_PATH.parent
-
+CACHE_PATH = SITE_PATH / 'cache'
 
 ###########################################################
 # gunicorn Header 의 version 정보 삭제
@@ -72,6 +72,59 @@ DEBUG = False
 ALLOWED_HOSTS = []
 
 
+#############################################################
+# Critical settings - Logging
+# https://docs.djangoproject.com/en/4.1/ref/settings/#std:setting-LOGGING
+#############################################################
+
+LOG_PATH = SOURCE_PATH / 'log'
+LOG_PATH.mkdir(0o755, True, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[%(levelname)s] [%(asctime)s] %(message)s',
+            'datefmt': "%Y-%m-%d %H:%M:%S"
+        },
+        'simple': {
+            'format': '[%(asctime)s] %(message)s',
+            'datefmt': "%Y-%m-%d %H:%M:%S"
+        },
+        'json': {
+            'format': '%(levelname)s %(asctime)s %(message)s',
+        },
+    },
+    'handlers': {
+        # RotatingFilterHandler 절대 사용 금지. 버그 존재.
+        # FileHandler + logrotate 하는 것을 권장.
+        'default': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': LOG_PATH / 'default.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'default': {
+            'handlers': ['default'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # 'django': {
+        #     'handlers': ['default'],
+        #     'level': 'INFO',
+        #     'propagate': False,
+        # },
+        # 'error': {
+        #     'handlers': ['error'],
+        #     'level': 'INFO',
+        #     'propagate': False,
+        # }
+    },
+}
+
 
 #############################################################
 # Installed Apps
@@ -89,6 +142,7 @@ DJANGO_APPS = [
 
 DATA_APPS = [
     'core',
+    'app_root.users',
 ]
 
 ADMIN_APPS = [
@@ -96,7 +150,7 @@ ADMIN_APPS = [
 
 API_APPS = [
 ]
-INSTALLED_APPS = []
+INSTALLED_APPS = DJANGO_APPS + DATA_APPS
 
 
 #############################################################
@@ -232,3 +286,11 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+AUTH_USER_MODEL = 'users.User'
+
+###########################################################
+# Client Information
+###########################################################
+CLIENT_INFORMATION_STORE = 'google_play'
+CLIENT_INFORMATION_VERSION = '2.6.2.4023'
+CLIENT_INFORMATION_LANGUAGE = 'en'

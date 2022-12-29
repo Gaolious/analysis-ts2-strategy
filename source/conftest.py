@@ -122,13 +122,6 @@ def chrome_header():
 
 
 @pytest.fixture(scope='function', autouse=True)
-def celery_app_trap():
-    with patch('celery.app.task.Task.delay') as mock:
-        mock.side_effect = Exception('You should be mock the async task.')
-        yield mock
-
-
-@pytest.fixture(scope='function', autouse=True)
 def http_connection_pool():
     with patch('urllib3.connectionpool.HTTPConnectionPool.urlopen') as mock:
         mock.side_effect = Exception('You should be mock the async task.')
