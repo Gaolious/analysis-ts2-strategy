@@ -6,7 +6,7 @@ from typing import Union, Optional, List, Dict
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bot.models import Definition, Article, Factory, Product, Train
+from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location
 from app_root.bot.utils_request import CrawlingHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
 from core.utils import disk_cache, Logger, download_file
@@ -135,18 +135,15 @@ class DefinitionHelper(BaseBotHelper):
         self.trains = {}
 
     def download_data(self):
-        ret = 0
-
         if self.instance:
             download_filename = Path(self.instance.download_path)
 
             if self.instance.url and not download_filename.exists():
-                ret = download_file(url=self.instance.url, download_filename=download_filename)
+                download_file(url=self.instance.url, download_filename=download_filename)
 
-        return ret > 0
+            return download_filename.lstat().st_size
 
-
-    def get_data(self, url, user: User, server_time: ServerTimeHelper) -> str:
+    def get_data(self, url) -> str:
         """
 
         :param url:
@@ -156,13 +153,13 @@ class DefinitionHelper(BaseBotHelper):
         """
         return get_definition(
             url=url,
-            android_id=user.android_id,
-            sent_at=server_time.get_curr_time(),
-            game_access_token=user.game_access_token,
-            player_id=user.player_id,
+            android_id=self.user.android_id,
+            sent_at=self.server_time.get_curr_time(),
+            game_access_token=self.user.game_access_token,
+            player_id=self.user.player_id,
         )
 
-    def parse_data(self, data, user: User) -> str:
+    def parse_data(self, data) -> str:
         """
 
         :param user:
@@ -190,22 +187,22 @@ class DefinitionHelper(BaseBotHelper):
             if version and checksum and url:
                 self.instance = Definition.objects.order_by('-pk').first()
 
-                try:
-                    if not self.instance or self.instance.version != version:
-                        self.instance = Definition.objects.create(
-                            version=version,
-                            checksum=checksum,
-                            url=url,
-                            download_path=self.BASE_PATH / f'{version}.sqlite'
-                        )
+                # try:
+                if not self.instance or self.instance.version != version:
+                    self.instance = Definition.objects.create(
+                        version=version,
+                        checksum=checksum,
+                        url=url,
+                        download_path=self.BASE_PATH / f'{version}.sqlite'
+                    )
 
-                        if self.download_data():
-                            self.read_sqlite()
+                    if self.download_data():
+                        self.read_sqlite()
 
-                except Exception as e:
-                    if self.instance:
-                        self.instance.delete()
-                    raise e
+                # except Exception as e:
+                #     if self.instance:
+                #         self.instance.delete()
+                #     raise e
 
         return server_time
 
@@ -229,7 +226,7 @@ class DefinitionHelper(BaseBotHelper):
             bulk_list.append(obj)
 
         if bulk_list:
-            model.objects.bulk_create(bulk_list)
+            model.objects.bulk_create(bulk_list, 100)
 
     def _read_article(self, cur):
         model = Article
@@ -267,7 +264,7 @@ class DefinitionHelper(BaseBotHelper):
         remote_table_name = 'product'
         mapping = {  # local DB field : remote db field
             'factory_id': 'factory_id',
-            'article_id': 'article_id',
+            'article_id': 'article_id',  # replace article id to id
             'article_amount': 'article_amount',
             'craft_time': 'craft_time',
             'article_ids': 'article_ids',
@@ -292,6 +289,49 @@ class DefinitionHelper(BaseBotHelper):
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
+    def _read_region(self, cur):
+        model = Region
+        remote_table_name = 'region'
+        mapping = {  # local DB field : remote db field
+            'id': 'id',
+            'level_from': 'level_from',
+            'content_category': 'content_category',
+            'asset_name': 'asset_name',
+            'gold_amount_coefficient': 'gold_amount_coefficient',
+            'train_upgrade_price_coefficient': 'train_upgrade_price_coefficient',
+            'city_currency_coefficient': 'city_currency_coefficient',
+            'ordering': 'ordering',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
+    def _read_location(self, cur):
+        model = Location
+        remote_table_name = 'location'
+        mapping = {  # local DB field : remote db field
+            'id': 'id',
+            'region': 'region',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
+    def _read_destination(self, cur):
+        model = Destination
+        remote_table_name = 'destination'
+        mapping = {  # local DB field : remote db field
+            'id': 'id',
+            'location_id': 'location_id',
+            'article_id': 'article_id',
+            'region_id': 'region_id',
+            'sprite': 'sprite_id',
+            'time': 'time',
+            'travel_duration': 'travel_duration',
+            'multiplier': 'multiplier',
+            'refresh_time': 'refresh_time',
+            'train_limit': 'train_limit',
+            'capacity': 'capacity',
+            'requirements': 'requirements',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
     def read_sqlite(self):
         if self.instance:
             con = sqlite3.connect(self.instance.download_path)
@@ -300,4 +340,7 @@ class DefinitionHelper(BaseBotHelper):
             self._read_factory(cur=cur)
             self._read_product(cur=cur)
             self._read_train(cur=cur)
+            self._read_region(cur=cur)
+            self._read_location(cur=cur)
+            self._read_destination(cur=cur)
             con.close()

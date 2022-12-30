@@ -3,6 +3,7 @@ from unittest import mock
 import pytest
 from django.conf import settings
 
+from app_root.bot.models import RunVersion
 from app_root.bot.utils_init_data import InitdataHelper
 from app_root.bot.utils_login import LoginHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
@@ -36,13 +37,15 @@ def test_utils_login_helper(multidb, filename, remember_me_token, fixture_crawli
     ###########################################################################
     # prepare
     user = User.objects.create_user(username='test', android_id='test', remember_me_token=remember_me_token)
+    version = RunVersion.objects.create(user_id=user.id)
+
     server_time = ServerTimeHelper()
     fixture_crawling_post.return_value = FakeResp()
 
     bot = LoginHelper()
     ###########################################################################
     # call function
-    bot.run(url='url', user=user, server_time=server_time)
+    bot.run(url='url', user=user, server_time=server_time, run_version=version)
 
     ###########################################################################
     # assert

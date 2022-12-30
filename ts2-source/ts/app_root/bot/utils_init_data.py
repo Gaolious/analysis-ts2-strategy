@@ -1,7 +1,12 @@
 import uuid
 from hashlib import md5
-from django.conf import settings
+from typing import Dict, Callable
 
+from dateutil import parser
+from django.conf import settings
+from django.utils import timezone
+
+from app_root.bot.models import PlayerBuilding, PlayerDestination
 from app_root.bot.utils_request import CrawlingHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
 from core.utils import disk_cache, Logger
@@ -101,7 +106,7 @@ def get_init_data(*, url: str, android_id, sent_at: str, game_access_token: str,
 
 class InitdataHelper(BaseBotHelper):
 
-    def get_data(self, url, user: User, server_time: ServerTimeHelper) -> str:
+    def get_data(self, url) -> str:
         """
 
         :param url:
@@ -111,24 +116,25 @@ class InitdataHelper(BaseBotHelper):
         """
         return get_init_data(
             url=url,
-            android_id=user.android_id,
-            sent_at=server_time.get_curr_time(),
-            game_access_token=user.game_access_token,
-            player_id=user.player_id,
+            android_id=self.user.android_id,
+            sent_at=self.server_time.get_curr_time(),
+            game_access_token=self.user.game_access_token,
+            player_id=self.user.player_id,
         )
 
-    def parse_data(self, data, user: User) -> str:
+    def parse_data(self, data) -> str:
         """
 
         :param data:
         :param user:
         :return:
         """
-        mapping = {
+        mapping: Dict[str, Callable] = {
             'competitions': self._parse_init_competitions,
             'city_loop': self._parse_init_city_loop,
             'event': self._parse_init_event,
             'events': self._parse_init_events,
+            'destinations': self._parse_init_destinations,
             'factories': self._parse_init_factories,
             'jobs': self._parse_init_jobs,
             'player': self._parse_init_player,
@@ -136,7 +142,7 @@ class InitdataHelper(BaseBotHelper):
             'trains': self._parse_init_trains,
             'warehouse': self._parse_init_warehouse,
             'whistles': self._parse_init_whistles,
-            'ship_offers': self
+            'ship_offers': self._parse_init_ship_offers,
 
         }
         json_data = json.loads(data, strict=False)
@@ -154,18 +160,6 @@ class InitdataHelper(BaseBotHelper):
                 mapping[row_type](data=row_data)
         return server_time
 
-    def _parse_init_city_loop(self, data):
-        """
-
-        :param data:
-        :return:
-        """
-        """
-        Sample:
-            => population upgrade task, 및 population 수량. 확인.
-        """
-        pass
-
     def _parse_init_competitions(self, data):
         """
             :param data:
@@ -179,7 +173,61 @@ class InitdataHelper(BaseBotHelper):
                  2 = {dict: 12} {'Type': 'prestige', 'LevelFrom': 899, 'MaxAttendees': 15, 'CompetitionId': 'e65a0ecf-7e72-462c-ae02-6c58ed2fceab', 'ContentCategory': 4, 'Rewards': [{'Items': [{'Id': 8, 'Value': 9, 'Amount': 11}]}, {'Items': [{'Id': 8, 'Value': 9, 'Amount': 7}]}, {'Items': [{'Id': 8, 'Value': 9, 'Amount': 5}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 20}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 18}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 16}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 14}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 12}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 10}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 9}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 8}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 7}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 5}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 3}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 1}]}], 'StartsAt': '2022-12-26T12:00:00Z', 'EnrolmentAvailableTo': '2023-01-01T12:00:00Z', 'FinishesAt': '2023-01-...
                  3 = {dict: 12} {'Type': 'default', 'LevelFrom': 12, 'MaxAttendees': 25, 'CompetitionId': '16b00d3f-e2b1-464b-8c9f-e218cfca0008', 'ContentCategory': 1, 'Rewards': [{'Items': [{'Id': 8, 'Value': 35001, 'Amount': 350}, {'Id': 6, 'Value': 100130}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 250}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 200}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 180}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 160}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 120}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 100}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 90}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 80}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 70}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 60}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 50}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 50}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 40}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 40}]}, {'Items...
         """
+        # 뭐해야 하지?..;
         pass
+
+    def _parse_init_city_loop(self, data):
+        """
+            - population
+            - population buildings
+
+        :param data:
+        :return:
+        """
+        """
+        Sample:
+            => population upgrade task, 및 population 수량. 확인.
+        """
+        # Population
+        population = data.get('Population')
+        if population:
+            """
+                'LastCalculatedCount' = {int} 33066
+                'LastCalculatedAt' = {str} '2022-12-30T06:22:24Z'
+            """
+            self.run_version.population = population.get('LastCalculatedCount') or 0
+            self.run_version.save(update_fields=['population'])
+
+        # Buildings
+        buildings = data.get('Buildings')
+        if buildings:
+
+            bulk_list = []
+            now = timezone.now()
+
+            for bld in buildings:
+                # {'InstanceId': 1, 'DefinitionId': 1, 'Rotation': 270, 'Level': 11}
+                # {'InstanceId': 8, 'DefinitionId': 4, 'ParcelNumber': 14, 'Rotation': 270, 'Level': 150}
+                # {'UpgradeTask': {'AvailableFrom': '2022-12-30T07:17:06Z', 'RequiredArticles': [{'Id': 10, 'Amount': 8}, {'Id': 12, 'Amount': 9}, {'Id': 109, 'Amount': 68}]}, 'InstanceId': 25, 'DefinitionId': 9, 'ParcelNumber': 1, 'Rotation': 90, 'Level': 70}
+                instance_id = bld.get('InstanceId')
+                definition_id = bld.get('DefinitionId')
+                rotation = bld.get('Rotation')
+                level = bld.get('Level')
+                upgrade_task = bld.get('UpgradeTask')
+
+                bulk_list.append(
+                    PlayerBuilding(
+                        version_id=self.run_version.id,
+                        instance_id=instance_id or 0,
+                        definition_id=definition_id or 0,
+                        rotation=rotation or 0,
+                        level=level or 0,
+                        upgrade_task=json.dumps(upgrade_task, separators=(',', ':')) if upgrade_task else '',
+                        created=now, modified=now,
+                    )
+                )
+            if bulk_list:
+                PlayerBuilding.objects.bulk_create(bulk_list, 100)
 
     def _parse_init_event(self, data):
         """
@@ -225,6 +273,56 @@ class InitdataHelper(BaseBotHelper):
                  1 = {dict: 7} {'UniqueId': '9ed5fc51-dff6-43e3-a701-919cd43d589b', 'EventId': 35, 'ActivatesAt': '2022-12-12T12:00:00Z', 'StartsAt': '2022-12-13T12:00:00Z', 'EndsAt': '2023-01-02T12:00:00Z', 'ExpiresAt': '2023-01-04T12:00:00Z', 'Shop': []}
         """
         pass
+
+    def _parse_init_destinations(self, data):
+        """
+            Gold 수집 목적지.
+        :param data:
+        :return:
+        """
+
+        """
+        Sample :
+            0 = {dict: 6} {
+                'LocationId': 152, 
+                'DefinitionId': 152, 
+                'TrainLimitCount': 0, 
+                'TrainLimitRefreshTime': '2022-12-30T08:59:01Z', 
+                'TrainLimitRefreshesAt': '2022-12-30T08:59:01Z', 
+                'Multiplier': 0
+            }
+            1 = {dict: 6} {'LocationId': 230, 'DefinitionId': 230, 'TrainLimitCount': 0, 'TrainLimitRefreshTime': '2022-12-30T09:01:58Z', 'TrainLimitRefreshesAt': '2022-12-30T09:01:58Z', 'Multiplier': 0}
+            2 = {dict: 6} {'LocationId': 329, 'DefinitionId': 304, 'TrainLimitCount': 0, 'TrainLimitRefreshTime': '2022-12-30T09:01:53Z', 'TrainLimitRefreshesAt': '2022-12-30T09:01:53Z', 'Multiplier': 0}
+            3 = {dict: 6} {'LocationId': 406, 'DefinitionId': 406, 'TrainLimitCount': 0, 'TrainLimitRefreshTime': '2022-12-30T09:01:46Z', 'TrainLimitRefreshesAt': '2022-12-30T09:01:46Z', 'Multiplier': 0}        
+        """
+        destination = data.get('Destinations')
+        if destination:
+            bulk_list = []
+            now = timezone.now()
+
+            for row in destination:
+                location_id = row.get('LocationId')
+                definition_id = row.get('DefinitionId')
+                train_limit_count = row.get('TrainLimitCount')
+                train_limit_refresh_time = row.get('TrainLimitRefreshTime')
+                train_limit_refresh_at = row.get('TrainLimitRefreshesAt')
+                multiplier = row.get('Multiplier')
+
+                bulk_list.append(
+                    PlayerDestination(
+                        version_id=self.run_version.id,
+                        location_id=location_id or 0,
+                        definition_id=definition_id or 0,
+                        train_limit_count=train_limit_count or 0,
+                        train_limit_refresh_time=parser.parse(train_limit_refresh_time) if train_limit_refresh_time else None,
+                        train_limit_refresh_at=parser.parse(train_limit_refresh_at) if train_limit_refresh_at else None,
+                        multiplier=multiplier or 0,
+                        created=now, modified=now,
+                    )
+                )
+
+            if bulk_list:
+                PlayerDestination.objects.bulk_create(bulk_list, 100)
 
     def _parse_init_factories(self, data):
         """
@@ -301,7 +399,54 @@ class InitdataHelper(BaseBotHelper):
              3 = {dict: 13} {'Id': 'fee4f465-e72b-444e-bc42-f39006c40cab', 'JobLocationId': 162, 'JobLevel': 1, 'Sequence': 0, 'JobType': 8, 'Duration': 30, 'ConditionMultiplier': 1, 'RewardMultiplier': 1, 'RequiredArticle': {'Id': 100, 'Amount': 30}, 'CurrentArticleAmount': 0, 'Reward': {'Items': [{'Id': 8, 'Value': 4, 'Amount': 25}, {'Id': 8, 'Value': 1, 'Amount': 10}]}, 'Bonus': {'Reward': {'Items': []}}, 'Requirements': [{'Type': 'region', 'Value': 1}]}
              __len__ = {int} 4
             'NextReplaceAt' = {str} '2022-12-29T11:35:02Z'
-            'NextVideoReplaceAt' = {str} '2022-12-29T11:35:02Z'        
+            'NextVideoReplaceAt' = {str} '2022-12-29T11:35:02Z'       
+        Sample 2:
+
+          {
+            "Id": "6ea8ce07-6d49-487a-b6fd-ce737a2a6fc2",
+            "JobLocationId": 100007,
+            "JobLevel": 9,
+            "JobType": 45,
+            "Duration": 3600,
+            "ConditionMultiplier": 1,
+            "RewardMultiplier": 1,
+            "RequiredArticle": {
+              "Id": 100004,
+              "Amount": 8300
+            },
+            "CurrentArticleAmount": 3016,
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 100000,
+                  "Amount": 3350
+                },
+                {
+                  "Id": 8,
+                  "Value": 100003,
+                  "Amount": 1750
+                }
+              ]
+            },
+            "Bonus": {
+              "Reward": {
+                "Items": []
+              }
+            },
+            "Requirements": [
+              {
+                "Type": "region",
+                "Value": 4
+              },
+              {
+                "Type": "content_category",
+                "Value": 3
+              }
+            ],
+            "UnlocksAt": "2022-12-05T12:00:00Z",
+            "ExpiresAt": "2023-03-03T12:00:00Z"
+          },         
         """
         pass
 
@@ -356,13 +501,64 @@ class InitdataHelper(BaseBotHelper):
         """
         Sample
             'Trains' = {list: 5} [{'InstanceId': 1, 'DefinitionId': 3, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:47Z', 'ArrivalTime': '2022-12-27T10:05:17Z'}}, {'InstanceId': 2, 'DefinitionId': 5, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:45Z', 'ArrivalTime': '2022-12-27T10:05:15Z'}}, {'InstanceId': 3, 'DefinitionId': 4, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:46Z', 'ArrivalTime': '2022-12-27T10:05:16Z'}}, {'InstanceId': 4, 'DefinitionId': 2, 'Level': 1}, {'InstanceId': 5, 'DefinitionId': 1, 'Level': 1}]
-             0 = {dict: 4} {'InstanceId': 1, 'DefinitionId': 3, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:47Z', 'ArrivalTime': '2022-12-27T10:05:17Z'}}
-             1 = {dict: 4} {'InstanceId': 2, 'DefinitionId': 5, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:45Z', 'ArrivalTime': '2022-12-27T10:05:15Z'}}
-             2 = {dict: 4} {'InstanceId': 3, 'DefinitionId': 4, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:46Z', 'ArrivalTime': '2022-12-27T10:05:16Z'}}
-             3 = {dict: 3} {'InstanceId': 4, 'DefinitionId': 2, 'Level': 1}
-             4 = {dict: 3} {'InstanceId': 5, 'DefinitionId': 1, 'Level': 1}
-             __len__ = {int} 5
-            'ReturnAsArray' = {bool} False        
+                 0 = {dict: 4} {'InstanceId': 1, 'DefinitionId': 3, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:47Z', 'ArrivalTime': '2022-12-27T10:05:17Z'}}
+                 1 = {dict: 4} {'InstanceId': 2, 'DefinitionId': 5, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:45Z', 'ArrivalTime': '2022-12-27T10:05:15Z'}}
+                 2 = {dict: 4} {'InstanceId': 3, 'DefinitionId': 4, 'Level': 1, 'Route': {'RouteType': 'destination', 'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:46Z', 'ArrivalTime': '2022-12-27T10:05:16Z'}}
+                 3 = {dict: 3} {'InstanceId': 4, 'DefinitionId': 2, 'Level': 1}
+                 4 = {dict: 3} {'InstanceId': 5, 'DefinitionId': 1, 'Level': 1}
+            'ReturnAsArray' = {bool} False
+            
+        Sample 2:
+            "Trains": [
+                  {
+                    "InstanceId": 1,
+                    "DefinitionId": 3,
+                    "Level": 17,
+                    "Route": {
+                      "RouteType": "destination",
+                      "DefinitionId": 150,
+                      "DepartureTime": "2022-12-30T00:44:24Z",
+                      "ArrivalTime": "2022-12-30T00:44:54Z"
+                    }
+                  },
+                  {
+                    "InstanceId": 19,
+                    "DefinitionId": 15,
+                    "Level": 41,
+                    "Route": {
+                      "RouteType": "destination",
+                      "DefinitionId": 231,
+                      "DepartureTime": "2022-12-30T06:23:13Z",
+                      "ArrivalTime": "2022-12-30T06:28:13Z"
+                    },
+                    "TrainLoad": {
+                      "Id": 103,
+                      "Amount": 60
+                    }
+                  },
+                {
+                "InstanceId": 14,
+                "DefinitionId": 10,
+                "Level": 17,
+                "Route": {
+                  "RouteType": "job",
+                  "DefinitionId": 34002,
+                  "DepartureTime": "2022-12-08T06:41:34Z",
+                  "ArrivalTime": "2022-12-08T07:41:34Z"
+                }
+              },
+          {
+            "InstanceId": 159,
+            "DefinitionId": 35000,
+            "Region": 4,
+            "Level": 29,
+            "Route": {
+              "RouteType": "destination",
+              "DefinitionId": 403,
+              "DepartureTime": "2022-12-29T13:37:32Z",
+              "ArrivalTime": "2022-12-29T13:42:32Z"
+            }
+          }              
         """
         pass
 
@@ -418,3 +614,7 @@ class InitdataHelper(BaseBotHelper):
                  3 = {dict: 6} {'Category': 1, 'Position': 2, 'SpawnTime': '2022-12-29T10:32:06Z', 'CollectableFrom': '2022-12-29T10:32:06Z', 'Reward': {'Items': [{'Id': 8, 'Value': 104, 'Amount': 1}]}, 'IsForVideoReward': False}        
         """
         pass
+
+"""
+UniqueId":"ccc3589e-16c2-40d4-986d-0b21ae13dc7b"
+"""
