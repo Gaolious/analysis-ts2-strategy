@@ -1,10 +1,29 @@
+import json
 from decimal import Decimal
+from functools import cached_property
 
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
+
+
+class AbstractContentCategory(models.Model):
+
+    content_category = models.IntegerField(_('content category'), null=False, blank=False, default=0)
+    class Meta:
+        abstract = True
+
+
+def str_content_category(content_category: int):
+    content_category = int(content_category)
+    mapping = {
+        1: '기본',
+        2: '이벤트',
+        3: '길드',
+    }
+    return mapping.get(content_category, 'Unknown')
 
 
 class Definition(BaseModelMixin, TimeStampedMixin):
@@ -45,6 +64,9 @@ class Article(BaseModelMixin, TimeStampedMixin):
         verbose_name = 'Article'
         verbose_name_plural = 'Articles'
 
+    def __str__(self):
+        return f'[{self.sprite}/{str_content_category(self.content_category)}]'  #/type:{self.type}/event:{self.event}]'
+
 
 class Factory(BaseModelMixin, TimeStampedMixin):
     """
@@ -78,6 +100,9 @@ class Factory(BaseModelMixin, TimeStampedMixin):
     class Meta:
         verbose_name = 'Factory'
         verbose_name_plural = 'Factories'
+
+    def __str__(self):
+        return f'[{self.sprite}/{str_content_category(self.content_category)}]'
 
 
 class Product(BaseModelMixin, TimeStampedMixin):
@@ -197,6 +222,9 @@ class Location(BaseModelMixin, TimeStampedMixin):
         verbose_name = 'Location'
         verbose_name_plural = 'Locations'
 
+    def __str__(self):
+        return f'[region:{self.region}]'
+
 
 class Destination(BaseModelMixin, TimeStampedMixin):
     """
@@ -267,7 +295,7 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
     level = models.IntegerField(_('level'), null=False, blank=False, default=0)
     population = models.IntegerField(_('population'), null=False, blank=False, default=0)
     warehouse = models.IntegerField(_('warehouse'), null=False, blank=False, default=0)
-
+    warehouse_level = models.IntegerField(_('warehouse_level'), null=False, blank=False, default=0)
 
     train_parts_common = models.IntegerField(_('train_common'), null=False, blank=False, default=0)
     train_parts_rare = models.IntegerField(_('train_rare'), null=False, blank=False, default=0)
@@ -285,6 +313,10 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
     guild_dispatchers = models.IntegerField(_('guild_dispatchers'), null=False, blank=False, default=0)
 
     next_event_datetime = models.DateTimeField(_('next event datetime'), null=True, blank=False, default=None)
+
+    init_data_request_datetime = models.DateTimeField(_('init_data_request_datetime'), null=True, blank=False, default=None)
+    init_data_response_datetime = models.DateTimeField(_('init_data_response_datetime'), null=True, blank=False, default=None)
+    init_data_server_datetime = models.DateTimeField(_('init_data_server_datetime'), null=True, blank=False, default=None)
 
     class Meta:
         verbose_name = 'Version'
@@ -317,7 +349,7 @@ class PlayerDestination(BaseModelMixin, TimeStampedMixin):
     train_limit_count = models.IntegerField(_('train_limit_count'), null=True, blank=False)
     train_limit_refresh_time = models.DateTimeField(_('train_limit_refresh_time'), null=True, blank=False)
     train_limit_refresh_at = models.DateTimeField(_('train_limit_refresh_at'), null=True, blank=False)
-    multiplier = models.IntegerField(_('multiplier'), max_length=255, null=True, blank=False, default='')
+    multiplier = models.IntegerField(_('multiplier'), null=True, blank=False, default='')
 
     class Meta:
         verbose_name = 'Building'
@@ -367,6 +399,7 @@ class PlayerFactoryProductOrder(BaseModelMixin, TimeStampedMixin):
         to='bot.Article',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
+    index = models.IntegerField(_('index'), null=False, blank=False, default=0)
     amount = models.IntegerField(_('amount'), null=False, blank=False, default=0)
     craft_time = models.IntegerField(_('CraftTime'), null=False, blank=False, default=0)
     finish_time = models.DateTimeField(_('FinishTime'), null=True, blank=False, default=None)
@@ -383,67 +416,118 @@ class PlayerJob(BaseModelMixin, TimeStampedMixin):
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
     job_id = models.CharField(_('job id'), max_length=100, null=False, blank=False)
+
+    location = models.ForeignKey(
+        to='bot.Location',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+
     job_level = models.IntegerField(_('CraftTime'), null=False, blank=False, default=0)
-    sequence = models.IntegerField(_('Sequence'), null=False, blank=False, default=0)
+    sequence = models.IntegerField(_('Sequence'), null=True, blank=False, default=0)
     job_type = models.IntegerField(_('JobType'), null=False, blank=False, default=0)
     duration = models.IntegerField(_('Duration'), null=False, blank=False, default=0)
     condition_multiplier = models.IntegerField(_('ConditionMultiplier'), null=False, blank=False, default=0)
     reward_multiplier = models.IntegerField(_('RewardMultiplier'), null=False, blank=False, default=0)
+
+    required_article = models.ForeignKey(
+        to='bot.Article',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    required_amount = models.IntegerField(_('required_amount'), null=False, blank=False, default=0)
     current_article_amount = models.IntegerField(_('CurrentArticleAmount'), null=False, blank=False, default=0)
+
+    reward = models.CharField(_('reward'), max_length=255, null=False, blank=False, default='')
+    bonus = models.CharField(_('reward'), max_length=255, null=False, blank=False, default='')
+
+    requirements = models.CharField(_('reward'), max_length=255, null=False, blank=False, default='')
     unlock_at = models.DateTimeField(_('UnlocksAt'), null=True, blank=False, default=None)
 
     class Meta:
         verbose_name = 'Player Job'
         verbose_name_plural = 'Player Jobs'
 
+    @cached_property
+    def str_rewards(self):
+        """
+            {"Items": [{"Id": 8, "Value": 4, "Amount": 6}, {"Id": 8, "Value": 1, "Amount": 140}]}
+        :return:
+        """
+        if self.reward:
+            json_data = json.loads(self.reward)
+            items = json_data.get('Items')
+            ret = []
+            if items:
+                for item in items:
+                    _id = item.get('Id')
+                    _value = item.get('Value')
+                    _amount = item.get('Amount')
+                    article = Article.objects.filter(id=_value).first()
+                    if article:
+                        ret.append(f'{article}-{_amount}개')
+            return ' '.join(ret)
+        return ''
 
-class PlayerJobRequirements(BaseModelMixin, TimeStampedMixin):
-    """
-      {
-        "Type": "region",
-        "Value": 1
-      },
-      {
-        "Type": "rarity",
-        "Value": 2
-      },
-      {
-        "Type": "power",
-        "Value": 30
-      }
-      {
-        "Type": "era",
-        "Value": 1
-      }
+    @cached_property
+    def str_requirements(self):
+        rarity = {
+            1: 'common',
+            2: 'rare',
+            3: 'epic',
+            4: 'legendary',
+        }
+        era = {
+            1: 'STEAM',
+            2: 'DIESEL',
+            3: 'ELECTRON',
+        }
+        if self.requirements:
+            json_data = json.loads(self.requirements)
+            ret = []
+            for cond in json_data:
+                _type = cond.get('Type')
+                _value = cond.get('Value')
 
-    - "region" / 1, "rarity" / 2, "power" / 30
-        지역 1, 레어기차, 30칸 이상
-    - "region" / 2, "rarity" / 4
-        지역 2 / legendary
-    - "region" / 4, "era" / 1
-        지역 4 / steam
-    - "region" / 4, "era" / 3
-        지역 4 / electronic
-    - "region" / 4, "content_category" / 3
-        지역 4 / union 기차.
+                if _type == 'region':
+                    ret.append(f'{_value} 지역')
+                elif _type == 'rarity':
+                    ret.append(f'{rarity.get(_value, "unknown")}')
+                elif _type == 'power':
+                    ret.append(f'{_value}칸 이상')
+                elif _type == 'era':
+                    ret.append(f'{era.get(_value, "unknown")}')
+                elif _type == 'content_category':
+                    ret.append(f'길드기차')
+                else:
+                    ret.append(f'unknown: type={_type}, value={_value}')
+            return ' & '.join(ret)
+        return ''
 
-    DIESEL : era=2 ?
-    """
-    job = models.ForeignKey(
-        to='bot.PlayerJob',
+class PlayerTrain(BaseModelMixin, TimeStampedMixin):
+    version = models.ForeignKey(
+        to='bot.RunVersion',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
-    type = models.CharField(_('requirement type'), max_length=50, null=False, blank=False)
-    value = models.IntegerField(_('requirement value'), null=False, blank=False)
+    instance_id = models.IntegerField(_('instance_id'), null=False, blank=False, default=0)
+    definition_id = models.IntegerField(_('definition_id'), null=False, blank=False, default=0)
+    level = models.IntegerField(_('level'), null=False, blank=False, default=0)
 
+    has_route = models.BooleanField(_('has route'), null=False, blank=True, default=False)
+    route_type = models.CharField(_('route_type'), max_length=20, null=True, blank=True, default=None)
+    route_definition_id = models.IntegerField(_('route_definition_id'), null=True, blank=True, default=None)
+    route_departure_time = models.DateTimeField(_('route_departure_time'), null=True, blank=True, default=None)
+    route_arrival_time = models.DateTimeField(_('route_arrival_time'), null=True, blank=True, default=None)
+    """
+'Route': {'RouteType': 'destination', 
+'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:46Z', 'ArrivalTime': '2022-12-27T10:05:16Z'}}
+    """
     class Meta:
-        verbose_name = 'Player Job Requirement'
-        verbose_name_plural = 'Player Job Requirements'
+        verbose_name = 'Player Train'
+        verbose_name_plural = 'Player Trains'
 
 
-class PlayerJobRequiredArticle(BaseModelMixin, TimeStampedMixin):
-    job = models.ForeignKey(
-        to='bot.PlayerJob',
+class PlayerWarehouse(BaseModelMixin, TimeStampedMixin):
+    version = models.ForeignKey(
+        to='bot.RunVersion',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
     article = models.ForeignKey(
@@ -453,13 +537,51 @@ class PlayerJobRequiredArticle(BaseModelMixin, TimeStampedMixin):
     amount = models.IntegerField(_('amount'), null=False, blank=False, default=0)
 
     class Meta:
-        verbose_name = 'Player Job Required Article'
-        verbose_name_plural = 'Player Job Required Articles'
+        verbose_name = 'Player Warehouse'
+        verbose_name_plural = 'Player Warehouses'
+
+    def __str__(self):
+        return f'[{self.article} - {self.amount}개]'
 
 
-class PlayerJobReward(BaseModelMixin, TimeStampedMixin):
-    job = models.ForeignKey(
-        to='bot.PlayerJob',
+class PlayerWhistle(BaseModelMixin, TimeStampedMixin):
+    """
+        'Category': 1,
+        'Position': 3,
+        'SpawnTime': '2022-12-29T10:32:46Z',
+        'CollectableFrom': '2022-12-29T10:32:46Z',
+        'Reward': {
+            'Items': [
+                {'Id': 8, 'Value': 2, 'Amount': 1}
+            ]
+        },
+        'IsForVideoReward': True,
+        'ExpiresAt': '2999-12-31T00:00:00Z'
+    """
+    version = models.ForeignKey(
+        to='bot.RunVersion',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    category = models.IntegerField(_('category'), null=False, blank=False, default=0)
+    position = models.IntegerField(_('position'), null=False, blank=False, default=0)
+    spawn_time = models.DateTimeField(_('SpawnTime'), null=True, blank=True, default=None)
+    collectable_from = models.DateTimeField(_('CollectableFrom'), null=True, blank=True, default=None)
+
+    is_for_video_reward = models.BooleanField(_('IsForVideoReward'), null=True, blank=True, default=None)
+    expires_at = models.DateTimeField(_('ExpiresAt'), null=True, blank=True, default=None)
+
+    class Meta:
+        verbose_name = 'Player Whistle'
+        verbose_name_plural = 'Player Whistles'
+
+
+class PlayerWhistleItem(BaseModelMixin, TimeStampedMixin):
+    version = models.ForeignKey(
+        to='bot.RunVersion',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    player_whistle = models.ForeignKey(
+        to='bot.PlayerWhistle',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
     article = models.ForeignKey(
@@ -470,8 +592,5 @@ class PlayerJobReward(BaseModelMixin, TimeStampedMixin):
     amount = models.IntegerField(_('amount'), null=False, blank=False, default=0)
 
     class Meta:
-        verbose_name = 'Player Job Reward'
-        verbose_name_plural = 'Player Job Rewards'
-#
-# class PlayerTrain(BaseModelMixin, TimeStampedMixin):
-#     pass
+        verbose_name = 'Player Whistle Item'
+        verbose_name_plural = 'Player Whistle Items'

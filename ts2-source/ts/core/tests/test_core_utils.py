@@ -10,7 +10,7 @@ import pytest
 
 from core.utils import Logger, retry, hash10, download_file, YearMonthHelper, extract_hangul, \
     convert_number_as_int, convert_number_as_string, convert_money, convert_date, convert_trim, create_datetime, \
-    human_days, download_file_with_post_data, download_file_with_get_param
+    human_days, download_file_with_post_data, download_file_with_get_param, convert_time
 
 
 @pytest.mark.parametrize(
@@ -360,3 +360,17 @@ def test_convert_money(in_data, unit, default, expected):
 )
 def test_human_days(seconds, expected):
     assert human_days(seconds) == expected
+
+
+@pytest.mark.parametrize(
+    'text, expected', [
+        ('00:00:00', 0),
+        ('00:00:01', 1),
+        ('00:01:01', 61),
+        ('01:01:01', 3661),
+        ('', None),
+        ('01:01:01:123', None),
+    ]
+)
+def test_convert_time(text, expected):
+    assert convert_time(text) == expected

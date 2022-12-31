@@ -14,7 +14,7 @@ from app_root.users.models import User
 LOGGING_MENU = 'utils.login'
 
 
-@disk_cache(prefix='login_with_remember_token', smt='{android_id}.json')
+@disk_cache(prefix='login_with_remember_token', smt='{android_id}_{sent_at}.json')
 def login_with_remember_token(*, url: str, android_id: str, remember_me_token: str, sent_at: str):
     """
     Header :
@@ -114,7 +114,7 @@ def login_with_remember_token(*, url: str, android_id: str, remember_me_token: s
     return resp_body
 
 
-@disk_cache(prefix='login_with_device_id', smt='{android_id}.json')
+@disk_cache(prefix='login_with_device_id', smt='{android_id}_{sent_at}.json')
 def login_with_device_id(*, url: str, android_id: str, sent_at: str):
     """
     header :
@@ -231,9 +231,7 @@ class LoginHelper(BaseBotHelper):
         :return:
         """
         json_data = json.loads(data, strict=False)
-
-        success = json_data.get('Success')
-        assert success
+        self.check_response(json_data=json_data)
 
         server_time = json_data.get('Time')
         server_data = json_data.get('Data', {})

@@ -489,6 +489,31 @@ def convert_date(text: str, default=None) -> datetime.date:
     return text
 
 
+def convert_time(text: str, default=None) -> int:
+    """
+
+    Args:
+        text:
+        default:
+
+    Returns:
+
+    """
+
+    try:
+        text = trim_chars_pattern.sub('', text)
+        text = convert_trim(text, default)
+        try:
+            ret = text.split(':')
+            h, m, s = tuple(map(int, ret))
+            return ((h * 60) + m) * 60 + s
+        except:
+            pass
+
+    except Exception as e:
+        pass
+
+
 def convert_number_as_string(text: str, default=None):
     """
         숫자로 구성된 문자열

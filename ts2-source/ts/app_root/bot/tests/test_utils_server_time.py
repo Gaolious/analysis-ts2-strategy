@@ -24,7 +24,8 @@ from core.utils import create_datetime as dt
 def test_utils_server_time_helper(ret_time, now, diff, expected_curr_time):
     helper = ServerTimeHelper()
 
-    helper.adjust_time(ret_time=ret_time, now=now)
+    server_resp_datetime = helper.convert_strtime_to_datetime(ret_time)
+    helper.adjust_time(server_datetime=server_resp_datetime, now=now)
 
     with mock.patch('django.utils.timezone.now') as p:
         p.return_value = now

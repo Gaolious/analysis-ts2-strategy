@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import pytz
 from dateutil import parser
@@ -18,13 +18,16 @@ class ServerTimeHelper:
         self.endpoints = {}
         self.init_data_urls = []
 
-    def adjust_time(self, ret_time: str, now):
-        srv_time = parser.parse(ret_time)
-        if not srv_time.tzinfo:
-            srv_time = srv_time.replace(tzinfo=pytz.utc)
+    def convert_strtime_to_datetime(self, str_datetime):
 
-        if srv_time.year >= 2022:
-            diff = (srv_time - now).total_seconds()
+        server_resp_datetime = parser.parse(timestr=str_datetime)
+        if not server_resp_datetime.tzinfo:
+            server_resp_datetime = server_resp_datetime.replace(tzinfo=pytz.utc)
+        return server_resp_datetime
+    
+    def adjust_time(self, server_datetime: datetime, now):
+        if server_datetime.year >= 2022:
+            diff = (server_datetime - now).total_seconds()
 
             if abs(self.offset_ms) < 0.1**6 or abs(self.offset_ms) > abs(diff):
                 self.offset_ms = diff

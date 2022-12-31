@@ -5,6 +5,8 @@ REQUEST_TIMEOUT = 10
 
 LOGGING_MENU = 'bot.utils'
 
+import urllib3
+urllib3.disable_warnings()
 
 class CrawlingHelper(object):
 

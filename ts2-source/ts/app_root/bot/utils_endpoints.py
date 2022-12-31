@@ -14,7 +14,7 @@ from core.utils import disk_cache, Logger
 LOGGING_MENU = 'utils.endpoints'
 
 
-@disk_cache(prefix='get_endpoints', smt='{android_id}.json')
+# @disk_cache(prefix='get_endpoints', smt='{android_id}.json')
 def get_endpoints(*, url: str, android_id: str) -> str:
     client_info = {
         "Store": str(settings.CLIENT_INFORMATION_STORE),
@@ -63,6 +63,11 @@ class EndpointHelper(BaseBotHelper):
     endpoints: Dict[str, str] = {}
     init_data_urls: List[str] = []
 
+    def __init__(self):
+        super(EndpointHelper, self).__init__()
+        self.endpoints = {}
+        self.init_data_urls = []
+
     def get_data(self, url) -> str:
         """
 
@@ -81,9 +86,7 @@ class EndpointHelper(BaseBotHelper):
         :return:
         """
         json_data = json.loads(data, strict=False)
-
-        success = json_data.get('Success')
-        assert success
+        self.check_response(json_data=json_data)
 
         server_time = json_data.get('Time')
         for ep in json_data.get('Data', {}).get('Endpoints', []):

@@ -6,10 +6,12 @@ from dateutil import parser
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bot.models import PlayerBuilding, PlayerDestination
+from app_root.bot.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerJob, \
+    PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem
 from app_root.bot.utils_request import CrawlingHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
-from core.utils import disk_cache, Logger
+from core.tests.test_core_utils import test_convert_time
+from core.utils import disk_cache, Logger, convert_time, convert_date
 
 import json
 
@@ -122,6 +124,23 @@ class InitdataHelper(BaseBotHelper):
             player_id=self.user.player_id,
         )
 
+    def _update_server_time(self, request_datetime, response_datetime, server_datetime):
+        super(InitdataHelper, self)._update_server_time(
+            request_datetime=request_datetime,
+            response_datetime=response_datetime,
+            server_datetime=server_datetime,
+        )
+        self.run_version.init_data_request_datetime = request_datetime
+        self.run_version.init_data_response_datetime = response_datetime
+        self.run_version.init_data_server_datetime = server_datetime
+        self.run_version.save(
+            update_fields=[
+                'init_data_request_datetime',
+                'init_data_response_datetime',
+                'init_data_server_datetime',
+            ]
+        )
+
     def parse_data(self, data) -> str:
         """
 
@@ -146,9 +165,7 @@ class InitdataHelper(BaseBotHelper):
 
         }
         json_data = json.loads(data, strict=False)
-
-        success = json_data.get('Success')
-        assert success
+        self.check_response(json_data=json_data)
 
         server_time = json_data.get('Time')
         server_data = json_data.get('Data', [])
@@ -359,15 +376,41 @@ class InitdataHelper(BaseBotHelper):
         """
 
         if data:
+            now = timezone.now()
+            bulk_list = []
+
             factories = data.get('Factories', [])
             for factory in factories:
                 definition_id = factory.get('DefinitionId')
                 slot_count = factory.get('SlotCount')
+                player_factory = PlayerFactory.objects.create(
+                    version_id=self.run_version.id,
+                    factory_id=definition_id,
+                    slot_count=slot_count
+                )
+                idx = 0
                 for order in factory.get('ProductOrders', []):
                     product_id = order.get('Product', {}).get('Id')
                     product_amount = order.get('Product', {}).get('Amount')
-                    product_amount = order.get('CraftTime', {})
-        pass
+                    craft_time = order.get('CraftTime', {})
+                    finish_time = order.get('FinishTime')
+                    finishes_at = order.get('FinishesAt')
+                    idx += 1
+                    bulk_list.append(
+                        PlayerFactoryProductOrder(
+                            version_id=self.run_version.id,
+                            player_factory_id=player_factory.id,
+                            article_id=product_id,
+                            index=idx,
+                            amount=product_amount,
+                            craft_time=convert_time(craft_time),
+                            finish_time=parser.parse(finish_time) if finish_time else None,
+                            finishes_at=parser.parse(finishes_at) if finishes_at else None,
+                            created=now, modified=now
+                        )
+                    )
+            if bulk_list:
+                PlayerFactoryProductOrder.objects.bulk_create(bulk_list, 100)
 
     def _parse_init_jobs(self, data):
         """
@@ -375,6 +418,7 @@ class InitdataHelper(BaseBotHelper):
         :param data:
         :return:
         """
+
         """
         Sample : 
             'Jobs' = {list: 4} [{'Id': '3b4581c4-b51f-445b-9a57-07f3c6c0f591', 'JobLocationId': 152, 'JobLevel': 2, 'Sequence': 0, 'JobType': 8, 'Duration': 20, 'ConditionMultiplier': 1, 'RewardMultiplier': 1, 'RequiredArticle': {'Id': 100, 'Amount': 30}, 'CurrentArticleAmount': 15, 'Reward': {'Items': [{'Id': 8, 'Value': 4, 'Amount': 40}, {'Id': 8, 'Value': 1, 'Amount': 15}, {'Id': 8, 'Value': 3, 'Amount': 40}]}, 'Bonus': {'Reward': {'Items': []}}, 'Requirements': [{'Type': 'region', 'Value': 1}], 'UnlocksAt': '2022-08-27T06:01:41Z'}, {'Id': 'f1a6673b-343d-4c13-8cb1-af7cf994742d', 'JobLocationId': 158, 'JobLevel': 1, 'Sequence': 0, 'JobType': 5, 'Duration': 1800, 'ConditionMultiplier': 1, 'RewardMultiplier': 1, 'RequiredArticle': {'Id': 104, 'Amount': 12}, 'CurrentArticleAmount': 0, 'Reward': {'Items': [{'Id': 8, 'Value': 4, 'Amount': 25}, {'Id': 8, 'Value': 1, 'Amount': 10}, {'Id': 8, 'Value': 3, 'Amount': 30}]}, 'Bonus': {'Reward': {'Items': []}}, 'Requirements': [{'Type': 'region', 'Value': 1}, {'Type': 'rarity'...
@@ -448,7 +492,51 @@ class InitdataHelper(BaseBotHelper):
             "ExpiresAt": "2023-03-03T12:00:00Z"
           },         
         """
-        pass
+
+        jobs = data.get('Jobs')
+        if jobs:
+            now = timezone.now()
+            bulk_list = []
+
+            for job in jobs:
+                job_id = job.get('Id')
+                location_id = job.get('JobLocationId')
+                job_level = job.get('JobLevel')
+                sequence = job.get('Sequence')
+                job_type = job.get('JobType')
+                duration = job.get('Duration')
+                condition_multiplier = job.get('ConditionMultiplier')
+                reward_multiplier = job.get('RewardMultiplier')
+                required_article = job.get('RequiredArticle')
+                current_article_amount = job.get('CurrentArticleAmount')
+                reward = job.get('Reward')
+                bonus = job.get('Bonus')
+                requirements = job.get('Requirements')
+                unlock_at = job.get('UnlocksAt')
+
+                bulk_list.append(
+                    PlayerJob(
+                        version_id=self.run_version.id,
+                        job_id=job_id,
+                        location_id=location_id,
+                        job_level=job_level,
+                        sequence=sequence,
+                        job_type=job_type,
+                        duration=duration,
+                        condition_multiplier=condition_multiplier,
+                        reward_multiplier=reward_multiplier,
+                        required_article_id=required_article.get('Id'),
+                        required_amount=required_article.get('Amount'),
+                        current_article_amount=current_article_amount,
+                        reward=json.dumps(reward, separators=(',', ':')) if reward else '',
+                        requirements=json.dumps(requirements, separators=(',', ':')) if requirements else '',
+                        bonus=json.dumps(bonus, separators=(',', ':')) if bonus else '',
+                        unlock_at=unlock_at,
+                        created=now, modified=now,
+                    )
+                )
+            if bulk_list:
+                PlayerJob.objects.bulk_create(bulk_list, 100)
 
     def _parse_init_player(self, data):
         """
@@ -507,7 +595,8 @@ class InitdataHelper(BaseBotHelper):
                  3 = {dict: 3} {'InstanceId': 4, 'DefinitionId': 2, 'Level': 1}
                  4 = {dict: 3} {'InstanceId': 5, 'DefinitionId': 1, 'Level': 1}
             'ReturnAsArray' = {bool} False
-            
+        """
+        """
         Sample 2:
             "Trains": [
                   {
@@ -560,7 +649,38 @@ class InitdataHelper(BaseBotHelper):
             }
           }              
         """
-        pass
+
+        trains = data.get('Trains')
+        if trains:
+            now = timezone.now()
+            bulk_list = []
+
+            for train in trains:
+                instance_id = train.get('InstanceId')
+                definition_id = train.get('DefinitionId')
+                level = train.get('Level')
+                route = train.get('Route')
+                route_type = route.get('RouteType') if route else None
+                route_definition_id = route.get('DefinitionId') if route else None
+                route_departure_time = route.get('DepartureTime') if route else None
+                route_arrival_time = route.get('ArrivalTime') if route else None
+
+                bulk_list.append(
+                    PlayerTrain(
+                        version_id=self.run_version.id,
+                        instance_id=instance_id,
+                        definition_id=definition_id,
+                        level=level,
+                        has_route=True if route else False,
+                        route_type=route_type,
+                        route_definition_id=route_definition_id,
+                        route_departure_time=parser.parse(route_departure_time) if route_departure_time else None,
+                        route_arrival_time=parser.parse(route_arrival_time) if route_arrival_time else None,
+                        created=now, modified=now,
+                    )
+                )
+            if bulk_list:
+                PlayerTrain.objects.bulk_create(bulk_list, 100)
 
     def _parse_init_warehouse(self, data):
         """
@@ -581,7 +701,28 @@ class InitdataHelper(BaseBotHelper):
                  7 = {dict: 2} {'Id': 101, 'Amount': 23}
                  8 = {dict: 2} {'Id': 104, 'Amount': 49}        
         """
-        pass
+        if data:
+            level = data.get('Level')
+            self.run_version.warehouse_level = level
+            self.run_version.save(update_fields=['warehouse_level'])
+
+            articles = data.get('Articles')
+            if articles:
+                now = timezone.now()
+                bulk_list = []
+
+                for article in articles:
+                    bulk_list.append(
+                        PlayerWarehouse(
+                            version_id=self.run_version.id,
+                            article_id=article.get('Id'),
+                            amount=article.get('Amount'),
+                            created=now, modified=now
+                        )
+                    )
+
+                if bulk_list:
+                    PlayerWarehouse.objects.bulk_create(bulk_list, 100)
 
     def _parse_init_whistles(self, data):
         """
@@ -596,7 +737,49 @@ class InitdataHelper(BaseBotHelper):
                  2 = {dict: 6} {'Category': 1, 'Position': 1, 'SpawnTime': '2022-12-29T10:31:46Z', 'CollectableFrom': '2022-12-29T10:31:46Z', 'Reward': {'Items': [{'Id': 8, 'Value': 6, 'Amount': 1}]}, 'IsForVideoReward': False}
                  3 = {dict: 6} {'Category': 1, 'Position': 2, 'SpawnTime': '2022-12-29T10:32:06Z', 'CollectableFrom': '2022-12-29T10:32:06Z', 'Reward': {'Items': [{'Id': 8, 'Value': 104, 'Amount': 1}]}, 'IsForVideoReward': False}        
         """
-        pass
+        whistles = data.get('Whistles')
+        if whistles:
+            now = timezone.now()
+            bulk_list = []
+
+            for whistle in whistles:
+                category = whistle.get('Category')
+                position = whistle.get('Position')
+                spawn_time = whistle.get('SpawnTime')
+                collectable_from = whistle.get('CollectableFrom')
+                reward = whistle.get('Reward')
+                is_for_video_reward = whistle.get('IsForVideoReward')
+                expires_at = whistle.get('ExpiresAt')
+
+                player_whistle = PlayerWhistle.objects.create(
+                    version_id=self.run_version.id,
+                    category=category,
+                    position=position,
+                    spawn_time=parser.parse(spawn_time) if spawn_time else None,
+                    collectable_from=parser.parse(collectable_from) if collectable_from else None,
+                    is_for_video_reward=is_for_video_reward,
+                    expires_at=parser.parse(expires_at) if expires_at else None,
+                )
+                if reward:
+                    items = reward.get('Items') or []
+                    for item in items:
+                        item_id = item.get('Id')
+                        value = item.get('Value')
+                        amount = item.get('Amount')
+                        bulk_list.append(
+                            PlayerWhistleItem(
+                                version_id=self.run_version.id,
+                                player_whistle_id=player_whistle.id,
+                                article_id=item_id,
+                                value=value,
+                                amount=amount,
+                                created=now, modified=now,
+                            )
+                        )
+
+            if bulk_list:
+                PlayerWhistleItem.objects.bulk_create(bulk_list, 100)
+
 
     def _parse_init_ship_offers(self, data):
         """
@@ -605,16 +788,6 @@ class InitdataHelper(BaseBotHelper):
         :return:
         """
 
-        """
-        Sample:
-            'Whistles' = {list: 4} [{'Category': 1, 'Position': 3, 'SpawnTime': '2022-12-29T10:32:46Z', 'CollectableFrom': '2022-12-29T10:32:46Z', 'Reward': {'Items': [{'Id': 8, 'Value': 2, 'Amount': 1}]}, 'IsForVideoReward': True, 'ExpiresAt': '2999-12-31T00:00:00Z'}, {'Category': 1, 'Position': 4, 'SpawnTime': '2022-12-29T10:33:46Z', 'CollectableFrom': '2022-12-29T10:33:46Z', 'Reward': {'Items': [{'Id': 8, 'Value': 8, 'Amount': 1}]}, 'IsForVideoReward': False}, {'Category': 1, 'Position': 1, 'SpawnTime': '2022-12-29T10:31:46Z', 'CollectableFrom': '2022-12-29T10:31:46Z', 'Reward': {'Items': [{'Id': 8, 'Value': 6, 'Amount': 1}]}, 'IsForVideoReward': False}, {'Category': 1, 'Position': 2, 'SpawnTime': '2022-12-29T10:32:06Z', 'CollectableFrom': '2022-12-29T10:32:06Z', 'Reward': {'Items': [{'Id': 8, 'Value': 104, 'Amount': 1}]}, 'IsForVideoReward': False}]
-                 0 = {dict: 7} {'Category': 1, 'Position': 3, 'SpawnTime': '2022-12-29T10:32:46Z', 'CollectableFrom': '2022-12-29T10:32:46Z', 'Reward': {'Items': [{'Id': 8, 'Value': 2, 'Amount': 1}]}, 'IsForVideoReward': True, 'ExpiresAt': '2999-12-31T00:00:00Z'}
-                 1 = {dict: 6} {'Category': 1, 'Position': 4, 'SpawnTime': '2022-12-29T10:33:46Z', 'CollectableFrom': '2022-12-29T10:33:46Z', 'Reward': {'Items': [{'Id': 8, 'Value': 8, 'Amount': 1}]}, 'IsForVideoReward': False}
-                 2 = {dict: 6} {'Category': 1, 'Position': 1, 'SpawnTime': '2022-12-29T10:31:46Z', 'CollectableFrom': '2022-12-29T10:31:46Z', 'Reward': {'Items': [{'Id': 8, 'Value': 6, 'Amount': 1}]}, 'IsForVideoReward': False}
-                 3 = {dict: 6} {'Category': 1, 'Position': 2, 'SpawnTime': '2022-12-29T10:32:06Z', 'CollectableFrom': '2022-12-29T10:32:06Z', 'Reward': {'Items': [{'Id': 8, 'Value': 104, 'Amount': 1}]}, 'IsForVideoReward': False}        
+        """       
         """
         pass
-
-"""
-UniqueId":"ccc3589e-16c2-40d4-986d-0b21ae13dc7b"
-"""

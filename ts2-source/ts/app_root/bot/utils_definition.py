@@ -129,10 +129,8 @@ class DefinitionHelper(BaseBotHelper):
     BASE_PATH = settings.SITE_PATH / 'download' / 'definition'
 
     def __init__(self):
+        super(DefinitionHelper, self).__init__()
         self.instance = None
-        self.articles = {}
-        self.factories = {}
-        self.trains = {}
 
     def download_data(self):
         if self.instance:
@@ -167,9 +165,7 @@ class DefinitionHelper(BaseBotHelper):
         :return:
         """
         json_data = json.loads(data, strict=False)
-
-        success = json_data.get('Success')
-        assert success
+        self.check_response(json_data=json_data)
 
         server_time = json_data.get('Time')
         server_data = json_data.get('Data', {})

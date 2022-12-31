@@ -40,12 +40,14 @@ class Bot():
         return User.objects.filter(id=self.user_id).first()
 
     def start_version(self):
+        print(f"[Step #0] Start Version : #{self.user_id} - {self.user.username} ({self.user.android_id})")
         self.version = RunVersion.objects.create(user_id=self.user_id)
 
     ###########################################################################
     # Step 1. Get Endpoints.
     ###########################################################################
     def run_endpoints(self):
+        print(f"[Step #1] Get Endpoints : #{self.user_id} - {self.user.username} ({self.user.android_id})")
         url = 'https://game.trainstation2.com/get-endpoints'
         self.endpoints.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
 
@@ -53,13 +55,15 @@ class Bot():
     # Step 2. Login
     ###########################################################################
     def run_login(self):
+        print(f"[Step #2] Login : #{self.user_id} - {self.user.username} ({self.user.android_id})")
         url = self.endpoints.get_login_url()
         self.login.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
 
     ###########################################################################
-    # Step 3. Definition
+    # Step 3. Get Definition
     ###########################################################################
     def run_definition(self):
+        print(f"[Step #3] Get Definition : #{self.user_id} - {self.user.username} ({self.user.android_id})")
         url = self.endpoints.get_definition_url()
         self.definition.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
 
@@ -69,9 +73,8 @@ class Bot():
     def run_init_data(self):
         urls = self.endpoints.get_init_urls()
         for url in urls:
+            print(f"[Step #4] load Init Data : #{self.user_id} - {self.user.username} ({self.user.android_id}) ({url})")
             self.init_data.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
-
-
 
     """
 Definition.

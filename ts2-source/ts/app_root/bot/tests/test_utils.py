@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 from django.conf import settings
 
-from app_root.bot.utils import Bot
+from app_root.bot.utils_bot import Bot
 from app_root.users.models import User
 
 #
