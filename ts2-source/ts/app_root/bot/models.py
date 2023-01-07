@@ -25,6 +25,24 @@ def str_content_category(content_category: int):
     }
     return mapping.get(content_category, 'Unknown')
 
+def str_rarity(rarity: int):
+    mapping = {
+        1: 'common',
+        2: 'rare',
+        3: 'epic',
+        4: 'legendary',
+    }
+    return mapping.get(int(rarity), 'unknown')
+
+def str_era(era: int):
+
+    mapping = {
+        1: 'STEAM',
+        2: 'DIESEL',
+        3: 'ELECTRON',
+    }
+    return mapping.get(int(era), 'unknown')
+
 
 class Definition(BaseModelMixin, TimeStampedMixin):
     version = models.CharField(_('version'), max_length=20, null=False, blank=False)
@@ -173,6 +191,8 @@ class Train(BaseModelMixin, TimeStampedMixin):
         verbose_name = 'Train'
         verbose_name_plural = 'Trains'
 
+    def __str__(self):
+        return f'''content:{self.content_category}/rewared:{self.reward}/region:{self.region}/rarity:{self.rarity}/max_level:{self.max_level}/era:{self.era}/asset:{self.asset_name}'''
 
 class Region(BaseModelMixin, TimeStampedMixin):
     """
@@ -333,10 +353,15 @@ class PlayerBuilding(BaseModelMixin, TimeStampedMixin):
     rotation = models.IntegerField(_('instance id'), null=True, blank=False)
     level = models.IntegerField(_('instance id'), null=True, blank=False)
     upgrade_task = models.CharField(_('upgrade task'), max_length=255, null=True, blank=False, default='')
+    parcel_number = models.IntegerField(_('parcel_number'), null=True, blank=False, default=None)
 
     class Meta:
         verbose_name = 'Building'
         verbose_name_plural = 'Buildings'
+
+    @property
+    def is_placed(self):
+        return True if self.parcel_number else False
 
 
 class PlayerDestination(BaseModelMixin, TimeStampedMixin):
@@ -508,21 +533,54 @@ class PlayerTrain(BaseModelMixin, TimeStampedMixin):
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
     instance_id = models.IntegerField(_('instance_id'), null=False, blank=False, default=0)
-    definition_id = models.IntegerField(_('definition_id'), null=False, blank=False, default=0)
+    train = models.ForeignKey(
+        to='bot.Train',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
     level = models.IntegerField(_('level'), null=False, blank=False, default=0)
+    region = models.IntegerField(_('region'), null=True, blank=True, default=None)
 
     has_route = models.BooleanField(_('has route'), null=False, blank=True, default=False)
     route_type = models.CharField(_('route_type'), max_length=20, null=True, blank=True, default=None)
     route_definition_id = models.IntegerField(_('route_definition_id'), null=True, blank=True, default=None)
     route_departure_time = models.DateTimeField(_('route_departure_time'), null=True, blank=True, default=None)
     route_arrival_time = models.DateTimeField(_('route_arrival_time'), null=True, blank=True, default=None)
+
+    has_load = models.BooleanField(_('has load'), null=False, blank=True, default=False)
+    load = models.ForeignKey(
+        to='bot.Article',
+        on_delete=models.DO_NOTHING, related_name='+', null=True, blank=False, db_constraint=False, default=None
+    )
+    load_amount = models.IntegerField(_('load amount'), null=False, blank=False, default=0)
+
     """
-'Route': {'RouteType': 'destination', 
-'DefinitionId': 151, 'DepartureTime': '2022-12-27T10:04:46Z', 'ArrivalTime': '2022-12-27T10:05:16Z'}}
+            "Route": {
+              "RouteType": "destination",
+              "DefinitionId": 403,
+              "DepartureTime": "2022-12-30T06:28:33Z",
+              "ArrivalTime": "2022-12-30T06:33:33Z"
+            },
+            "TrainLoad": {
+              "Id": 122,
+              "Amount": 79
+            }
     """
     class Meta:
         verbose_name = 'Player Train'
         verbose_name_plural = 'Player Trains'
+
+    def get_region(self):
+        return self.region or self.train.region
+
+    def str_dump(self):
+        ret = []
+        ret.append(f'#{self.instance_id:3d}')
+        ret.append(f'Lv.{self.level:2d}/{self.train.max_level:2d}')
+        ret.append(f'{str_era(self.train.era):10s}')
+        ret.append(f'{str_rarity(self.train.rarity):10s}')
+        ret.append(f'{self.train.asset_name:25s}')
+
+        return ' '.join(ret)
 
 
 class PlayerWarehouse(BaseModelMixin, TimeStampedMixin):
@@ -541,7 +599,7 @@ class PlayerWarehouse(BaseModelMixin, TimeStampedMixin):
         verbose_name_plural = 'Player Warehouses'
 
     def __str__(self):
-        return f'[{self.article} - {self.amount}개]'
+        return f'#{self.article_id} {self.article} - {self.amount}개'
 
 
 class PlayerWhistle(BaseModelMixin, TimeStampedMixin):

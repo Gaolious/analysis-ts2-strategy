@@ -141,6 +141,37 @@ class InitdataHelper(BaseBotHelper):
             ]
         )
 
+    def update_player_info(self):
+        xp = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=1).first()
+        gem = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=2).first()
+        gold = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=3).first()
+        key = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=4).first()
+
+        self.run_version.xp = xp.amount if xp else 0
+        self.run_version.gem = gem.amount if gem else 0
+        self.run_version.gold = gold.amount if gold else 0
+        self.run_version.key = key.amount if key else 0
+
+        common_parts = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=6).first()
+        rare_parts = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=7).first()
+        epic_parts = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=8).first()
+        legendary_parts = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=9).first()
+
+        self.run_version.train_parts_common = common_parts.amount if common_parts else 0
+        self.run_version.train_parts_rare = rare_parts.amount if rare_parts else 0
+        self.run_version.train_parts_epic = epic_parts.amount if epic_parts else 0
+        self.run_version.train_parts_legendary = legendary_parts.amount if legendary_parts else 0
+
+        blue = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=10).first()
+        yellow = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=11).first()
+        red = PlayerWarehouse.objects.filter(version_id=self.run_version.id, article_id=12).first()
+
+        self.run_version.blue_city_plans = blue.amount if blue else 0
+        self.run_version.yellow_city_plans = yellow.amount if yellow else 0
+        self.run_version.red_city_plans = red.amount if red else 0
+
+        self.run_version.save()
+
     def parse_data(self, data) -> str:
         """
 
@@ -175,6 +206,9 @@ class InitdataHelper(BaseBotHelper):
             row_data = row.get('Data')
             if row_type and row_data and row_type in mapping:
                 mapping[row_type](data=row_data)
+
+        self.update_player_info()
+
         return server_time
 
     def _parse_init_competitions(self, data):
@@ -231,7 +265,7 @@ class InitdataHelper(BaseBotHelper):
                 rotation = bld.get('Rotation')
                 level = bld.get('Level')
                 upgrade_task = bld.get('UpgradeTask')
-
+                parcel_number = bld.get('ParcelNumber')
                 bulk_list.append(
                     PlayerBuilding(
                         version_id=self.run_version.id,
@@ -239,6 +273,7 @@ class InitdataHelper(BaseBotHelper):
                         definition_id=definition_id or 0,
                         rotation=rotation or 0,
                         level=level or 0,
+                        parcel_number = parcel_number or 0,
                         upgrade_task=json.dumps(upgrade_task, separators=(',', ':')) if upgrade_task else '',
                         created=now, modified=now,
                     )
@@ -660,22 +695,32 @@ class InitdataHelper(BaseBotHelper):
                 definition_id = train.get('DefinitionId')
                 level = train.get('Level')
                 route = train.get('Route')
+                region = train.get('Region')
+                load = train.get('TrainLoad')
+
                 route_type = route.get('RouteType') if route else None
                 route_definition_id = route.get('DefinitionId') if route else None
                 route_departure_time = route.get('DepartureTime') if route else None
                 route_arrival_time = route.get('ArrivalTime') if route else None
 
+                load_id = load.get('Id') if load else None
+                load_amount = load.get('Amount') if load else 0
+
                 bulk_list.append(
                     PlayerTrain(
                         version_id=self.run_version.id,
                         instance_id=instance_id,
-                        definition_id=definition_id,
+                        train_id=definition_id,
                         level=level,
+                        region=region,
                         has_route=True if route else False,
                         route_type=route_type,
                         route_definition_id=route_definition_id,
                         route_departure_time=parser.parse(route_departure_time) if route_departure_time else None,
                         route_arrival_time=parser.parse(route_arrival_time) if route_arrival_time else None,
+                        has_load=True if load else False,
+                        load_id=load_id,
+                        load_amount=load_amount,
                         created=now, modified=now,
                     )
                 )

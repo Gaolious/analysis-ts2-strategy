@@ -1,7 +1,12 @@
 from functools import cached_property
 
+from dateutil import parser
+from django.conf import settings
+from django.utils import timezone
+
 from app_root.bot.models import RunVersion, PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, \
-    PlayerJob, PlayerWarehouse
+    PlayerJob, PlayerWarehouse, PlayerTrain
+from core.utils import human_days
 
 
 class RunVersionDump():
@@ -31,19 +36,23 @@ class RunVersionDump():
     def _dump_player_building(self):
         print('######################################################')
         for building in PlayerBuilding.objects.filter(version_id=self.run_version_id).order_by('instance_id').all():
-            s = f"""    -  Player Building # {building.id} : #{building.instance_id} / #{building.definition_id} . Lv {building.level} / {building.upgrade_task}"""
-            print(s)
+            if building.is_placed:
+                s = f"""    -  Player Building # {building.id} : #{building.instance_id} / #{building.definition_id} . Lv {building.level} / {building.upgrade_task}"""
+                print(s)
+
+    def str_time(self, event_time):
+        diff = self.version.init_data_request_datetime - self.version.init_data_server_datetime
+        next_event = (event_time + diff).astimezone(settings.KST)
+        remain = next_event - timezone.now()
+        return f'NextEvent:{next_event}|Remain:{remain}'
 
     def _dump_destination(self):
         print('######################################################')
         print('# Destination')
         s = []
         for destination in PlayerDestination.objects.filter(version_id=self.run_version_id).order_by('location_id').all():
-            s.append(f"""    -  location_id : {destination.location_id}""")
-            s.append(f"""    -  definition_id : {destination.definition_id}""")
-            s.append(f"""    -  train_limit_count : {destination.train_limit_count}""")
-            s.append(f"""    -  train_limit_refresh_time : {destination.train_limit_refresh_time}""")
-            s.append(f"""    -  train_limit_refresh_at : {destination.train_limit_refresh_at}""")
+            next_event = self.str_time(destination.train_limit_refresh_at)
+            s.append(f"""    -  location_id : {destination.location_id} / definition_id : {destination.definition_id} / {next_event}""")
 
         print('\n'.join(s))
 
@@ -82,10 +91,52 @@ class RunVersionDump():
     def _dump_warehouse(self):
 
         print('######################################################')
-        print('# Job')
+        print('# Warehouse')
         s = []
         for wh in PlayerWarehouse.objects.filter(version_id=self.run_version_id).order_by('id').all():
-            s.append(f"""    -  #{wh}""")
+            s.append(f"""    -  {wh}""")
+
+        print('\n'.join(s))
+
+    def _dump_train(self):
+        print('######################################################')
+        print('# Train')
+
+        s = []
+        regional_trains = {}
+
+        for train in PlayerTrain.objects.filter(version_id=self.run_version_id).order_by('id').all():
+            key = train.get_region()
+
+            if key not in regional_trains:
+                regional_trains.update({key: []})
+
+            regional_trains[key].append(train)
+
+        for region in regional_trains:
+            trains = sorted(regional_trains[region], key=lambda x: (x.level), reverse=True)
+
+            s.append(f"""    -  Region #{region}""")
+
+            for train in trains:
+                route = ''
+                load = ''
+                if train.has_route:
+                    # departure_time = parser.parse(train.route_departure_time)
+                    # arrival_time = parser.parse(train.route_arrival_time)
+                    if train.route_arrival_time < self.version.init_data_server_datetime: # 완료
+                        route = ''
+                    else:
+                        next_event = self.str_time(train.route_arrival_time)
+
+                        route = f'Route: {train.route_type} -> #{train.route_definition_id} | {next_event}'
+                if train.has_load:
+                    load = f'Load : {train.load} - {train.load_amount}'
+
+                # tmp_str = f'#{train.instance_id}/Lv.{train.level}/region:{train.region} - {train.train} / {route} / {load}'
+                tmp_str = f'{train.str_dump()} {route} {load}'
+
+                s.append(f"""        -  {tmp_str}""")
 
         print('\n'.join(s))
 
@@ -98,3 +149,4 @@ class RunVersionDump():
         self._dump_factory()
         self._dump_job()
         self._dump_warehouse()
+        self._dump_train()
