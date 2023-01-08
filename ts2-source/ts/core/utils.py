@@ -642,6 +642,15 @@ def create_datetime(y=0, m=0, d=0, h=0, i=0, s=0, ms=0):
 #         num /= 1024.0
 #     return f"{num:.1f} Yi{suffix}"
 
+def short_name(msg, msg_len):
+    msg = str(msg) if msg else ''
+    if len(msg) > msg_len:
+        if msg_len > 3:
+            msg = msg[:msg_len-3] + '...'
+        else:
+            msg = msg[:msg_len]
+    format = '{' + ':' + str(msg_len) + 's}'
+    return format.format(msg)
 
 def human_days(seconds):
     if seconds <= 0:

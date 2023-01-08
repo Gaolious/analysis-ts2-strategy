@@ -6,7 +6,7 @@ from typing import Union, Optional, List, Dict
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location
+from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, JobLocation
 from app_root.bot.utils_request import CrawlingHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
 from core.utils import disk_cache, Logger, download_file
@@ -95,7 +95,7 @@ def get_definition(*, url: str, android_id, sent_at: str, game_access_token: str
         'PXFD-Retry-No': '0',
         'PXFD-Sent-At': str(sent_at),
         'PXFD-Client-Information': json.dumps(client_info, separators=(',', ':')),
-        'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_LANGUAGE),
+        'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_VERSION),
         'PXFD-Device-Token': device_id,
         'PXFD-Game-Access-Token': game_access_token,
         'PXFD-Player-Id': player_id,
@@ -328,6 +328,19 @@ class DefinitionHelper(BaseBotHelper):
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
+    def _read_job_location(self, cur):
+        model = JobLocation
+        remote_table_name = 'job_location_v2'
+        mapping = {  # local DB field : remote db field
+            'id': 'job_location_id',
+            'location_id': 'location_id',
+            'region_id': 'region_id',
+            'local_key': 'loca_key',
+            'name_local_key': 'name_loca_key',
+            'contractor_id': 'contractor_id',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
     def read_sqlite(self):
         if self.instance:
             con = sqlite3.connect(self.instance.download_path)
@@ -339,4 +352,5 @@ class DefinitionHelper(BaseBotHelper):
             self._read_region(cur=cur)
             self._read_location(cur=cur)
             self._read_destination(cur=cur)
+            self._read_job_location(cur=cur)
             con.close()

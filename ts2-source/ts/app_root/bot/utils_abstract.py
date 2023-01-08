@@ -1,7 +1,5 @@
 from typing import Optional
 
-import pytz
-from dateutil import parser
 from django.utils import timezone
 
 from app_root.bot.models import RunVersion
@@ -38,16 +36,16 @@ class BaseBotHelper:
         request_datetime = timezone.now()
         data = self.get_data(url=url)
         response_datetime = timezone.now()
+        if data:
+            ret_time = self.parse_data(data=data)
 
-        ret_time = self.parse_data(data=data)
+            server_resp_datetime = self.server_time.convert_strtime_to_datetime(ret_time)
 
-        server_resp_datetime = self.server_time.convert_strtime_to_datetime(ret_time)
-
-        self._update_server_time(
-            request_datetime=request_datetime,
-            response_datetime=response_datetime,
-            server_datetime=server_resp_datetime,
-        )
+            self._update_server_time(
+                request_datetime=request_datetime,
+                response_datetime=response_datetime,
+                server_datetime=server_resp_datetime,
+            )
 
     def parse_data(self, data) -> str:
         raise NotImplementedError

@@ -75,7 +75,7 @@ def get_init_data(*, url: str, android_id, sent_at: str, game_access_token: str,
         'PXFD-Retry-No': '0',
         'PXFD-Sent-At': str(sent_at),
         'PXFD-Client-Information': json.dumps(client_info, separators=(',', ':')),
-        'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_LANGUAGE),
+        'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_VERSION),
         'PXFD-Device-Token': device_id,
         'PXFD-Game-Access-Token': game_access_token,
         'PXFD-Player-Id': player_id,
@@ -193,7 +193,40 @@ class InitdataHelper(BaseBotHelper):
             'warehouse': self._parse_init_warehouse,
             'whistles': self._parse_init_whistles,
             'ship_offers': self._parse_init_ship_offers,
+            'contracts': self._parse_init_contracts,
+            'dispatcher': self._parse_init_dispatcher,
 
+            'ab_test': self._parse_init_not_yet_implemented,
+            'achievements': self._parse_init_not_yet_implemented,
+            'maps': self._parse_init_not_yet_implemented,
+            'locations': self._parse_init_not_yet_implemented,
+            'login_profile': self._parse_init_not_yet_implemented,
+            'game_features': self._parse_init_not_yet_implemented,
+            'daily_reward': self._parse_init_not_yet_implemented,
+            'unlocked_contents': self._parse_init_not_yet_implemented,
+            'shop': self._parse_init_not_yet_implemented,
+            'reminders': self._parse_init_not_yet_implemented,
+            'seasons': self._parse_init_not_yet_implemented,
+            'milestones': self._parse_init_not_yet_implemented,
+            'markets': self._parse_init_not_yet_implemented,
+            'guild': self._parse_init_not_yet_implemented,
+            'game': self._parse_init_not_yet_implemented,
+            'gifts': self._parse_init_not_yet_implemented,
+            'placements': self._parse_init_not_yet_implemented,
+            'player_feature': self._parse_init_not_yet_implemented,
+            'prestige': self._parse_init_not_yet_implemented,
+            'ship_loop': self._parse_init_not_yet_implemented,
+            'tutorial': self._parse_init_not_yet_implemented,
+            'tickets': self._parse_init_not_yet_implemented,
+            'task_lists': self._parse_init_not_yet_implemented,
+            'offer_wall': self._parse_init_not_yet_implemented,
+            'containers': self._parse_init_not_yet_implemented,
+            'communities': self._parse_init_not_yet_implemented,
+            'commodities': self._parse_init_not_yet_implemented,
+            'city_building_shop': self._parse_init_not_yet_implemented,
+            'calendars': self._parse_init_not_yet_implemented,
+            'boosts': self._parse_init_not_yet_implemented,
+            'vouchers': self._parse_init_not_yet_implemented,
         }
         json_data = json.loads(data, strict=False)
         self.check_response(json_data=json_data)
@@ -204,12 +237,17 @@ class InitdataHelper(BaseBotHelper):
         for row in server_data:
             row_type = row.get('Type')
             row_data = row.get('Data')
-            if row_type and row_data and row_type in mapping:
+            if row_type in mapping:
                 mapping[row_type](data=row_data)
+            else:
+                print('unknown', row)
 
         self.update_player_info()
 
         return server_time
+
+    def _parse_init_not_yet_implemented(self, data):
+        pass
 
     def _parse_init_competitions(self, data):
         """
@@ -414,10 +452,12 @@ class InitdataHelper(BaseBotHelper):
             now = timezone.now()
             bulk_list = []
 
+            video = data.pop('NextVideoSpeedUpAt', None)
             factories = data.get('Factories', [])
             for factory in factories:
-                definition_id = factory.get('DefinitionId')
-                slot_count = factory.get('SlotCount')
+                definition_id = factory.pop('DefinitionId', None)
+                slot_count = factory.pop('SlotCount', None)
+
                 player_factory = PlayerFactory.objects.create(
                     version_id=self.run_version.id,
                     factory_id=definition_id,
@@ -425,11 +465,11 @@ class InitdataHelper(BaseBotHelper):
                 )
                 idx = 0
                 for order in factory.get('ProductOrders', []):
-                    product_id = order.get('Product', {}).get('Id')
-                    product_amount = order.get('Product', {}).get('Amount')
-                    craft_time = order.get('CraftTime', {})
-                    finish_time = order.get('FinishTime')
-                    finishes_at = order.get('FinishesAt')
+                    product_id = order.get('Product', {}).pop('Id', None)
+                    product_amount = order.get('Product', {}).pop('Amount', None)
+                    craft_time = order.pop('CraftTime', {})
+                    finish_time = order.pop('FinishTime', None)
+                    finishes_at = order.pop('FinishesAt', None)
                     idx += 1
                     bulk_list.append(
                         PlayerFactoryProductOrder(
@@ -446,6 +486,8 @@ class InitdataHelper(BaseBotHelper):
                     )
             if bulk_list:
                 PlayerFactoryProductOrder.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_factories', data)
 
     def _parse_init_jobs(self, data):
         """
@@ -528,32 +570,35 @@ class InitdataHelper(BaseBotHelper):
           },         
         """
 
+        _ = data.pop('NextReplaceAt', None)
+        _ = data.pop('NextVideoReplaceAt', None)
         jobs = data.get('Jobs')
         if jobs:
             now = timezone.now()
             bulk_list = []
 
             for job in jobs:
-                job_id = job.get('Id')
-                location_id = job.get('JobLocationId')
-                job_level = job.get('JobLevel')
-                sequence = job.get('Sequence')
-                job_type = job.get('JobType')
-                duration = job.get('Duration')
-                condition_multiplier = job.get('ConditionMultiplier')
-                reward_multiplier = job.get('RewardMultiplier')
-                required_article = job.get('RequiredArticle')
-                current_article_amount = job.get('CurrentArticleAmount')
-                reward = job.get('Reward')
-                bonus = job.get('Bonus')
-                requirements = job.get('Requirements')
-                unlock_at = job.get('UnlocksAt')
+                job_id = job.pop('Id', None)
+                job_location_id = job.pop('JobLocationId', None)
+                job_level = job.pop('JobLevel', None)
+                sequence = job.pop('Sequence', None)
+                job_type = job.pop('JobType', None)
+                duration = job.pop('Duration', None)
+                condition_multiplier = job.pop('ConditionMultiplier', None)
+                reward_multiplier = job.pop('RewardMultiplier', None)
+                required_article = job.pop('RequiredArticle', None)
+                current_article_amount = job.pop('CurrentArticleAmount', None)
+                reward = job.pop('Reward', None)
+                bonus = job.pop('Bonus', None)
+                requirements = job.pop('Requirements', None)
+                unlock_at = job.pop('UnlocksAt', None)
+                expires_at = job.pop('ExpiresAt', None)
 
                 bulk_list.append(
                     PlayerJob(
                         version_id=self.run_version.id,
                         job_id=job_id,
-                        location_id=location_id,
+                        job_location_id=job_location_id,
                         job_level=job_level,
                         sequence=sequence,
                         job_type=job_type,
@@ -572,6 +617,8 @@ class InitdataHelper(BaseBotHelper):
                 )
             if bulk_list:
                 PlayerJob.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_jobs', data)
 
     def _parse_init_player(self, data):
         """
@@ -691,20 +738,20 @@ class InitdataHelper(BaseBotHelper):
             bulk_list = []
 
             for train in trains:
-                instance_id = train.get('InstanceId')
-                definition_id = train.get('DefinitionId')
-                level = train.get('Level')
-                route = train.get('Route')
-                region = train.get('Region')
-                load = train.get('TrainLoad')
+                instance_id = train.pop('InstanceId', None)
+                definition_id = train.pop('DefinitionId', None)
+                level = train.pop('Level', None)
+                route = train.pop('Route', None)
+                region = train.pop('Region', None)
+                load = train.pop('TrainLoad', None)
 
-                route_type = route.get('RouteType') if route else None
-                route_definition_id = route.get('DefinitionId') if route else None
-                route_departure_time = route.get('DepartureTime') if route else None
-                route_arrival_time = route.get('ArrivalTime') if route else None
+                route_type = route.pop('RouteType', None) if route else None
+                route_definition_id = route.pop('DefinitionId', None) if route else None
+                route_departure_time = route.pop('DepartureTime', None) if route else None
+                route_arrival_time = route.pop('ArrivalTime', None) if route else None
 
-                load_id = load.get('Id') if load else None
-                load_amount = load.get('Amount') if load else 0
+                load_id = load.pop('Id', None) if load else None
+                load_amount = load.pop('Amount', None) if load else 0
 
                 bulk_list.append(
                     PlayerTrain(
@@ -724,8 +771,11 @@ class InitdataHelper(BaseBotHelper):
                         created=now, modified=now,
                     )
                 )
+
             if bulk_list:
                 PlayerTrain.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_trains', data)
 
     def _parse_init_warehouse(self, data):
         """
@@ -747,11 +797,11 @@ class InitdataHelper(BaseBotHelper):
                  8 = {dict: 2} {'Id': 104, 'Amount': 49}        
         """
         if data:
-            level = data.get('Level')
+            level = data.pop('Level', None)
             self.run_version.warehouse_level = level
             self.run_version.save(update_fields=['warehouse_level'])
 
-            articles = data.get('Articles')
+            articles = data.pop('Articles', None)
             if articles:
                 now = timezone.now()
                 bulk_list = []
@@ -760,11 +810,12 @@ class InitdataHelper(BaseBotHelper):
                     bulk_list.append(
                         PlayerWarehouse(
                             version_id=self.run_version.id,
-                            article_id=article.get('Id'),
-                            amount=article.get('Amount'),
+                            article_id=article.pop('Id', None),
+                            amount=article.pop('Amount', None),
                             created=now, modified=now
                         )
                     )
+                self.print_remain('_parse_init_warehouse', articles)
 
                 if bulk_list:
                     PlayerWarehouse.objects.bulk_create(bulk_list, 100)
@@ -788,13 +839,13 @@ class InitdataHelper(BaseBotHelper):
             bulk_list = []
 
             for whistle in whistles:
-                category = whistle.get('Category')
-                position = whistle.get('Position')
-                spawn_time = whistle.get('SpawnTime')
-                collectable_from = whistle.get('CollectableFrom')
-                reward = whistle.get('Reward')
-                is_for_video_reward = whistle.get('IsForVideoReward')
-                expires_at = whistle.get('ExpiresAt')
+                category = whistle.pop('Category', None)
+                position = whistle.pop('Position', None)
+                spawn_time = whistle.pop('SpawnTime', None)
+                collectable_from = whistle.pop('CollectableFrom', None)
+                reward = whistle.pop('Reward', None)
+                is_for_video_reward = whistle.pop('IsForVideoReward', None)
+                expires_at = whistle.pop('ExpiresAt', None)
 
                 player_whistle = PlayerWhistle.objects.create(
                     version_id=self.run_version.id,
@@ -825,6 +876,7 @@ class InitdataHelper(BaseBotHelper):
             if bulk_list:
                 PlayerWhistleItem.objects.bulk_create(bulk_list, 100)
 
+        self.print_remain('_parse_init_whistles', data)
 
     def _parse_init_ship_offers(self, data):
         """
@@ -836,3 +888,98 @@ class InitdataHelper(BaseBotHelper):
         """       
         """
         pass
+
+    def _parse_init_contracts(self, data):
+        """
+        {
+            'Contracts': [
+                {
+                    'Slot': 1,
+                    'ContractListId': 3,
+                    'Conditions': [{'Id': 112, 'Amount': 99}, {'Id': 125, 'Amount': 313}, {'Id': 115, 'Amount': 254}],
+                    'Reward': {
+                        'Items': [{'Id': 8, 'Value': 3, 'Amount': 320}, {'Id': 8, 'Value': 10, 'Amount': 14}, {'Id': 8, 'Value': 12, 'Amount': 6}, {'Id': 8, 'Value': 11, 'Amount': 10}]
+                    },
+                    'UsableFrom': '2023-01-08T07:44:58Z',
+                    'AvailableFrom': '1970-01-01T00:00:00Z',
+                    'AvailableTo': '2999-12-31T00:00:00Z'
+                },
+                {
+                'Slot': 1, 'ContractListId': 100001, 'Conditions': [{'Id': 111, 'Amount': 85}], 'Reward': {'Items': [{'Id': 8, 'Value': 100004, 'Amount': 40}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 2, 'ContractListId': 100001, 'Conditions': [{'Id': 109, 'Amount': 116}], 'Reward': {'Items': [{'Id': 8, 'Value': 100004, 'Amount': 80}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 3, 'ContractListId': 100001, 'Conditions': [{'Id': 115, 'Amount': 308}], 'Reward': {'Items': [{'Id': 8, 'Value': 100004, 'Amount': 160}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 4, 'ContractListId': 100001, 'Conditions': [{'Id': 111, 'Amount': 85}], 'Reward': {'Items': [{'Id': 8, 'Value': 100005, 'Amount': 37}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 5, 'ContractListId': 100001, 'Conditions': [{'Id': 104, 'Amount': 369}], 'Reward': {'Items': [{'Id': 8, 'Value': 100005, 'Amount': 75}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 6, 'ContractListId': 100001, 'Conditions': [{'Id': 124, 'Amount': 170}], 'Reward': {'Items': [{'Id': 8, 'Value': 100005, 'Amount': 150}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 7, 'ContractListId': 100001, 'Conditions': [{'Id': 124, 'Amount': 85}], 'Reward': {'Items': [{'Id': 8, 'Value': 100006, 'Amount': 35}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 8, 'ContractListId': 100001, 'Conditions': [{'Id': 119, 'Amount': 90}], 'Reward': {'Items': [{'Id': 8, 'Value': 100006, 'Amount': 70}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 9, 'ContractListId': 100001, 'Conditions': [{'Id': 118, 'Amount': 141}], 'Reward': {'Items': [{'Id': 8, 'Value': 100006, 'Amount': 140}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 10, 'ContractListId': 100001, 'Conditions': [{'Id': 111, 'Amount': 85}], 'Reward': {'Items': [{'Id': 8, 'Value': 100007, 'Amount': 32}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 11, 'ContractListId': 100001, 'Conditions': [{'Id': 115, 'Amount': 231}], 'Reward': {'Items': [{'Id': 8, 'Value': 100007, 'Amount': 65}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 12, 'ContractListId': 100001, 'Conditions': [{'Id': 232, 'Amount': 492}], 'Reward': {'Items': [{'Id': 8, 'Value': 100007, 'Amount': 130}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 13, 'ContractListId': 100001, 'Conditions': [{'Id': 106, 'Amount': 92}], 'Reward': {'Items': [{'Id': 8, 'Value': 100008, 'Amount': 30}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 14, 'ContractListId': 100001, 'Conditions': [{'Id': 117, 'Amount': 176}], 'Reward': {'Items': [{'Id': 8, 'Value': 100008, 'Amount': 60}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 15, 'ContractListId': 100001, 'Conditions': [{'Id': 119, 'Amount': 120}], 'Reward': {'Items': [{'Id': 8, 'Value': 100008, 'Amount': 120}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 16, 'ContractListId': 100001, 'Conditions': [{'Id': 119, 'Amount': 60}], 'Reward': {'Items': [{'Id': 8, 'Value': 100009, 'Amount': 27}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 17, 'ContractListId': 100001, 'Conditions': [{'Id': 117, 'Amount': 176}], 'Reward': {'Items': [{'Id': 8, 'Value': 100009, 'Amount': 55}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 18, 'ContractListId': 100001, 'Conditions': [{'Id': 115, 'Amount': 308}], 'Reward': {'Items': [{'Id': 8, 'Value': 100009, 'Amount': 110}]}, 'UsableFrom': '2023-01-08T02:52:17Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 19, 'ContractListId': 100001, 'Conditions': [{'Id': 224, 'Amount': 82}], 'Reward': {'Items': [{'Id': 8, 'Value': 100010, 'Amount': 25}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 20, 'ContractListId': 100001, 'Conditions': [{'Id': 105, 'Amount': 137}], 'Reward': {'Items': [{'Id': 8, 'Value': 100010, 'Amount': 50}]}, 'UsableFrom': '2023-01-08T01:44:04Z', 'ExpiresAt': '2023-02-27T12:00:00Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}, {'Slot': 21, 'ContractListId': 100001, 'Conditions': [{'Id': 119, 'Amount': 120}], 'Reward': {'Items': [{'Id': 8, 'Value': 100010, 'Amount': 100}]}, 'UsableFrom': '2023-01-08T02:52:11Z', 'AvailableFrom': '2022-12-05T12:00:00Z', 'AvailableTo': '2023-02-27T12:00:00Z'}], 'ContractLists': [{'ContractListId': 3, 'NextReplaceAt': '2023-01-08T03:07:59Z', 'NextVideoReplaceAt': '2023-01-08T03:07:59Z', 'NextVideoRentAt': '2023-01-08T03:07:59Z', 'NextVideoSpeedUpAt': '2023-01-08T03:07:59Z'}, {'ContractListId': 100001, 'AvailableTo': '2023-02-27T12:00:00Z', 'NextReplaceAt': '2023-01-08T03:07:59Z', 'NextVideoReplaceAt': '2023-01-08T03:07:59Z', 'NextVideoRentAt': '2023-01-08T03:07:59Z', 'NextVideoSpeedUpAt': '2023-01-07T17:23:23Z', 'ExpiresAt': '2023-01-08T09:44:04Z'}]}}
+        :param data:
+        :return:
+        """
+        pass
+
+    def _parse_init_dispatcher(self, data):
+        """
+        {
+            'PermanentLevel': 5,
+            'TemporaryDispatchers': [
+                {'DefinitionId': 3, 'ExpiredAt': '2022-12-15T05:07:42Z'},
+                {'DefinitionId': 4, 'ExpiredAt': '2023-01-02T14:15:02Z'}
+            ],
+            'VideoRewardAvailableAt': '2023-01-02T19:15:02Z',
+            'Dispatchers': [
+                {
+                    'TemporaryDispatchers': [
+                        {'DefinitionId': 3, 'ExpiredAt': '2022-12-15T05:07:42Z'},
+                        {'DefinitionId': 4, 'ExpiredAt': '2023-01-02T14:15:02Z'}
+                    ],
+                    'ContentCategory': 1,
+                    'PermanentLevel': 5,
+                    'VideoRewardAvailableAt': '2023-01-02T19:15:02Z'
+                },
+                {
+                    'TemporaryDispatchers': [
+                        {'DefinitionId': 34, 'ExpiredAt': '2023-01-07T13:28:26Z'}
+                    ],
+                    'ContentCategory': 3,
+                    'PermanentLevel': 5,
+                    'VideoRewardAvailableAt': '2023-01-07T16:28:26Z'
+                }
+            ]
+        }
+        :return:
+        """
+        _ = data.pop('PermanentLevel', None)
+        _ = data.pop('TemporaryDispatchers', None)
+        _ = data.pop('VideoRewardAvailableAt', None)
+        dispatchers = data.pop('Dispatchers', [])
+
+        for dispatcher in dispatchers:
+            dispatcher.pop('TemporaryDispatchers')
+
+            content_category = dispatcher.pop('ContentCategory', None)
+            permanent_level = dispatcher.pop('PermanentLevel', None)
+            video = dispatcher.pop('VideoRewardAvailableAt', None)
+            if content_category == 1:
+                self.run_version.dispatchers = permanent_level + 2
+            elif content_category == 3:
+                self.run_version.guild_dispatchers = permanent_level + 2
+
+        self.run_version.save()
+
+        self.print_remain('_parse_init_dispatcher', data)
+
+    def reduce(self, data):
+        if isinstance(data, list):
+            ret = []
+            for v in data:
+                v = self.reduce(v)
+                if v:
+                    ret.append(v)
+            return ret
+        if isinstance(data, dict):
+            ret = {}
+            for f, v in data.items():
+                v = self.reduce(v)
+                if v:
+                    ret.update({f: v})
+            return ret
+        return data
+
+    def print_remain(self, msg, data):
+        data = self.reduce(data=data)
+        if data:
+            print('[REMAIN]', msg, data)

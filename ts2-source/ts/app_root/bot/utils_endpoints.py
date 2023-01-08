@@ -27,7 +27,7 @@ def get_endpoints(*, url: str, android_id: str) -> str:
         'PXFD-Retry-No': '0',
         'PXFD-Sent-At': '0001-01-01T00:00:00.000',
         'PXFD-Client-Information': json.dumps(client_info, separators=(',', ':')),
-        'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_LANGUAGE),
+        'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_VERSION),
         'PXFD-Device-Token': md5(android_id.encode('utf-8')).hexdigest(),
         'Accept-Encoding': 'gzip, deflate',
     }
@@ -59,6 +59,7 @@ class EndpointHelper(BaseBotHelper):
 
     ENDPOINT_LOGIN = 'login'
     ENDPOINT_DEFINITION = 'definitions'
+    ENDPOINT_LEADER_BOARD = 'leaderboard'
 
     endpoints: Dict[str, str] = {}
     init_data_urls: List[str] = []
@@ -111,3 +112,6 @@ class EndpointHelper(BaseBotHelper):
 
     def get_definition_url(self) -> str:
         return self.endpoints.get(self.ENDPOINT_DEFINITION, '')
+
+    def get_leaderboard_url(self) -> str:
+        return self.endpoints.get(self.ENDPOINT_LEADER_BOARD, '')

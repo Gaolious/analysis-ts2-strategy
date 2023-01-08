@@ -5,8 +5,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from app_root.bot.models import RunVersion, PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, \
-    PlayerJob, PlayerWarehouse, PlayerTrain
-from core.utils import human_days
+    PlayerJob, PlayerWarehouse, PlayerTrain, PlayerLeaderBoardProgress
+from core.utils import human_days, short_name
 
 
 class RunVersionDump():
@@ -78,14 +78,16 @@ class RunVersionDump():
         print('######################################################')
         print('# Job')
         s = []
-        for job in PlayerJob.objects.filter(version_id=self.run_version_id).order_by('id').select_related('required_article', 'location').all():
+        for job in PlayerJob.objects.filter(version_id=self.run_version_id).order_by('id').select_related('required_article', 'job_location').all():
             s.append(f"""    -  #{job.job_id}""")
-            s.append(f"""       Location:{job.location}, level:{job.job_level}, sequence:{job.sequence}, job_type:{job.job_type}, duration:{job.duration}, condition_multiplier:{job.condition_multiplier}, reward_multiplier:{job.reward_multiplier}""")
-            s.append(f"""       재료 : {job.required_article} : {job.required_amount-job.current_article_amount}개 남음 (총 {job.required_amount}개)""")
+            s.append(f"""       Location:{job.job_location}, level:{job.job_level}, sequence:{job.sequence}, job_type:{job.job_type}, duration:{job.duration}, condition_multiplier:{job.condition_multiplier}, reward_multiplier:{job.reward_multiplier}""")
+            s.append(f"""       재료 : {job.required_article} : {job.required_amount-job.current_guild_amount}개 남음 (총 {job.required_amount}개)""")
             s.append(f"""       보상 : {job.str_rewards}""")
             # s.append(f"""       bonus {job.bonus}""")
             s.append(f"""       조건 : {job.str_requirements}""")
 
+            for progress in PlayerLeaderBoardProgress.objects.filter(player_job_id=job.id).order_by('position').all():
+                s.append(f"""              Rank #{progress.position:3d} : {short_name(progress.player_name, 10)}({progress.player_id:10d}) : {progress.progress}/{job.required_amount}""")
         print('\n'.join(s))
 
     def _dump_warehouse(self):

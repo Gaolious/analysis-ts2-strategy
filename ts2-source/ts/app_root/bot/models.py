@@ -34,6 +34,7 @@ def str_rarity(rarity: int):
     }
     return mapping.get(int(rarity), 'unknown')
 
+
 def str_era(era: int):
 
     mapping = {
@@ -226,6 +227,8 @@ class Region(BaseModelMixin, TimeStampedMixin):
         verbose_name = 'Region'
         verbose_name_plural = 'Regions'
 
+    def __str__(self):
+        return f'''{self.asset_name}'''
 
 class Location(BaseModelMixin, TimeStampedMixin):
     """
@@ -245,6 +248,44 @@ class Location(BaseModelMixin, TimeStampedMixin):
     def __str__(self):
         return f'[region:{self.region}]'
 
+
+class JobLocation(BaseModelMixin, TimeStampedMixin):
+    """
+    CREATE TABLE job_location_v2 (
+        job_location_id INTEGER NOT NULL,
+        location_id INTEGER NOT NULL,
+        region_id INTEGER NOT NULL,
+        loca_key VARCHAR(255) NOT NULL,
+        name_loca_key VARCHAR(255) DEFAULT NULL,
+        contractor_id INTEGER NOT NULL,
+        max_level INTEGER NOT NULL,
+        sequence_loca_key VARCHAR(255) DEFAULT NULL,
+        unlocked_by VARCHAR(255) DEFAULT NULL,
+        level_from INTEGER NOT NULL,
+        available_from DATETIME DEFAULT NULL --(DC2Type:datetime_immutable)
+        , available_to DATETIME DEFAULT NULL --(DC2Type:datetime_immutable)
+        , PRIMARY KEY(job_location_id)
+    )
+    """
+    # job_location_id = models.IntegerField(_('Job Location ID'), null=False, blank=False, default=0)
+    location = models.ForeignKey(
+        to='bot.Location',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    region = models.ForeignKey(
+        to='bot.Region',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    local_key = models.CharField(_('local key'), max_length=255, null=False, blank=False, default='')
+    name_local_key = models.CharField(_('local key'), max_length=255, null=True, blank=False, default='')
+    contractor_id = models.IntegerField(_('Contractor ID'), null=False, blank=False, default=0)
+
+    class Meta:
+        verbose_name = 'Job Location'
+        verbose_name_plural = 'Job Locations'
+
+    def __str__(self):
+        return f'[{self.region}:{self.name_local_key}]'
 
 class Destination(BaseModelMixin, TimeStampedMixin):
     """
@@ -278,7 +319,7 @@ class Destination(BaseModelMixin, TimeStampedMixin):
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
     region = models.ForeignKey(
-        to='bot.region',
+        to='bot.Region',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
     sprite = models.CharField(_('sprite id'), max_length=255, null=True, blank=False)
@@ -442,8 +483,8 @@ class PlayerJob(BaseModelMixin, TimeStampedMixin):
     )
     job_id = models.CharField(_('job id'), max_length=100, null=False, blank=False)
 
-    location = models.ForeignKey(
-        to='bot.Location',
+    job_location = models.ForeignKey(
+        to='bot.JobLocation',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
 
@@ -470,6 +511,10 @@ class PlayerJob(BaseModelMixin, TimeStampedMixin):
     class Meta:
         verbose_name = 'Player Job'
         verbose_name_plural = 'Player Jobs'
+
+    @cached_property
+    def current_guild_amount(self):
+        return sum(PlayerLeaderBoardProgress.objects.filter(player_job_id=self.id).values_list('progress', flat=True))
 
     @cached_property
     def str_rewards(self):
@@ -526,6 +571,58 @@ class PlayerJob(BaseModelMixin, TimeStampedMixin):
                     ret.append(f'unknown: type={_type}, value={_value}')
             return ' & '.join(ret)
         return ''
+
+
+class PlayerLeaderBoard(BaseModelMixin, TimeStampedMixin):
+    version = models.ForeignKey(
+        to='bot.RunVersion',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    player_job = models.ForeignKey(
+        to='bot.PlayerJob',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    leader_board_id = models.CharField(_('LeaderboardId'), max_length=50, blank=False, null=False, default='')
+    leader_board_group_id = models.CharField(_('LeaderboardGroupId'), max_length=50, blank=False, null=False, default='')
+
+    class Meta:
+        verbose_name = 'Player Leader Board'
+        verbose_name_plural = 'Player Leader Boards'
+
+
+class PlayerLeaderBoardProgress(BaseModelMixin, TimeStampedMixin):
+
+    version = models.ForeignKey(
+        to='bot.RunVersion',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    player_job = models.ForeignKey(
+        to='bot.PlayerJob',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+
+    leader_board = models.ForeignKey(
+        to='bot.PlayerLeaderBoard',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    player_id = models.IntegerField(_('PlayerId'), null=False, blank=False, default=0)
+    avata_id = models.IntegerField(_('AvatarId'), null=False, blank=False, default=0)
+    firebase_uid = models.CharField(_('FirebaseUid'), max_length=50, null=False, blank=False, default='')
+    player_name = models.CharField(_('player_name'), max_length=50, null=False, blank=False, default='')
+    progress = models.IntegerField(_('progress'), null=False, blank=False, default=0)
+    position = models.IntegerField(_('position'), null=False, blank=False, default=0)
+    last_updated_at = models.DateTimeField(_('LastUpdatedAt'), null=False, blank=False, default=0)
+    reward_claimed = models.BooleanField(_('RewardClaimed'), null=False, blank=False, default=False)
+
+    rewards = models.CharField(_('rewards'), max_length=255, null=False, blank=False, default='')
+    """
+    rewards:
+        [{'Id': 8, 'Value': 100000, 'Amount': 402}, {'Id': 8, 'Value': 100003, 'Amount': 240}]    
+    """
+    class Meta:
+        verbose_name = 'Player Leader Board Progress'
+        verbose_name_plural = 'Player Leader Board Progresses'
+
 
 class PlayerTrain(BaseModelMixin, TimeStampedMixin):
     version = models.ForeignKey(

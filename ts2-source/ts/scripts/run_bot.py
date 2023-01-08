@@ -12,4 +12,5 @@ def run():
         bot.run_login()
         bot.run_definition()
         bot.run_init_data()
+        bot.run_leader_board_status()
 

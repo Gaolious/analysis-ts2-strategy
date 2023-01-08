@@ -1,8 +1,9 @@
 from functools import cached_property
 
-from app_root.bot.models import RunVersion
+from app_root.bot.models import RunVersion, PlayerJob
 from app_root.bot.utils_definition import DefinitionHelper
 from app_root.bot.utils_endpoints import EndpointHelper
+from app_root.bot.utils_get_leader_board_table import LeaderBoardHelper
 from app_root.bot.utils_init_data import InitdataHelper
 from app_root.bot.utils_login import LoginHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
@@ -75,6 +76,26 @@ class Bot():
         for url in urls:
             print(f"[Step #4] load Init Data : #{self.user_id} - {self.user.username} ({self.user.android_id}) ({url})")
             self.init_data.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
+
+
+    ###########################################################################
+    # Step 5. Update Leader Board
+    ###########################################################################
+    def run_leader_board_status(self):
+        url_format = self.endpoints.get_leaderboard_url()
+
+        queryset = PlayerJob.objects.filter(
+            version_id=self.version.id,
+            job_type=45,
+            job_location__local_key__startswith='GLD',
+            job_location__region_id='100001',
+        ).all()
+
+        for job in queryset.all():
+            url = url_format.replace(':id:', job.job_id).replace(':category:', 'guild-job-contribution').replace(':bracket:', '1')
+            print(f"[Step #5. Update Leader Board : #{self.user_id} - {self.user.username} ({self.user.android_id}) ({url})")
+            helper = LeaderBoardHelper(player_job_id=job.id)
+            helper.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
 
     """
 Definition.

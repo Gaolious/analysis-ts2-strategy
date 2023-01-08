@@ -1,6 +1,6 @@
 import shutil
 from unittest import mock
-from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location
+from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, JobLocation
 
 import pytest
 from django.conf import settings
@@ -71,3 +71,4 @@ def test_utils_definition_helper(multidb, filename, sqlite_filename, fixture_cra
     assert Destination.objects.count() > 0
     assert Region.objects.count() > 0
     assert Location.objects.count() > 0
+    assert JobLocation.objects.count() > 0
