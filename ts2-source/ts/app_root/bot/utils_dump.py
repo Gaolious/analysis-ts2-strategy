@@ -142,6 +142,9 @@ class RunVersionDump():
 
         print('\n'.join(s))
 
+    def _dump_contracts(self):
+        pass
+
     def dump(self):
 
         self._dump_player_info()
@@ -150,5 +153,7 @@ class RunVersionDump():
         self._dump_destination()
         self._dump_factory()
         self._dump_job()
+        self._dump_contracts()
+
         self._dump_warehouse()
         self._dump_train()

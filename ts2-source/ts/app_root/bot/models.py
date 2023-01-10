@@ -573,6 +573,71 @@ class PlayerJob(BaseModelMixin, TimeStampedMixin):
         return ''
 
 
+class PlayerContractList(BaseModelMixin, TimeStampedMixin):
+    version = models.ForeignKey(
+        to='bot.RunVersion',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    contract_list_id = models.IntegerField(_('contract list id'), null=False, blank=False, default=0)
+    available_to = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+    next_replace_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+    next_video_replace_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+    next_video_rent_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+    next_video_speed_up_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+    expires_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+
+    class Meta:
+        verbose_name = 'Player Contract List'
+        verbose_name_plural = 'Player Contract Lists'
+
+
+class PlayerContract(BaseModelMixin, TimeStampedMixin):
+    version = models.ForeignKey(
+        to='bot.RunVersion',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    contract_list = models.ForeignKey(
+        to='bot.PlayerContractList',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    """
+'Slot' = {int} 18
+'ContractListId' = {int} 100001
+'Conditions' = {list: 1} [{'Id': 126, 'Amount': 547}]
+'Reward' = {dict: 1} {'Items': [{'Id': 8, 'Value': 100009, 'Amount': 110}]}
+'UsableFrom' = {str} '2023-01-09T05:25:44Z'
+'AvailableFrom' = {str} '2022-12-05T12:00:00Z'
+'AvailableTo' = {str} '2023-02-27T12:00:00Z'    
+    """
+    slot = models.IntegerField(_('slot'), null=False, blank=False, default=0)
+
+    conditions = models.CharField(_('conditions'), max_length=255, null=False, blank=False, default='')
+    reward = models.CharField(_('reward'), max_length=255, null=False, blank=False, default='')
+
+    usable_from = models.DateTimeField(_('UsableFrom'), null=True, blank=False, default=None)
+    available_from = models.DateTimeField(_('AvailableFrom'), null=True, blank=False, default=None)
+    available_to = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+    expires_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+
+    class Meta:
+        verbose_name = 'Player Contract'
+        verbose_name_plural = 'Player Contracts'
+
+
+class PlayerGift(BaseModelMixin, TimeStampedMixin):
+    version = models.ForeignKey(
+        to='bot.RunVersion',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    job_id = models.CharField(_('job id'), max_length=100, null=False, blank=False)
+    reward = models.CharField(_('reward'), max_length=255, null=False, blank=False, default='')
+    gift_type = models.IntegerField(_('gift_type'), null=False, blank=False, default=0)
+
+    class Meta:
+        verbose_name = 'Player Gift'
+        verbose_name_plural = 'Player Gifts'
+
+
 class PlayerLeaderBoard(BaseModelMixin, TimeStampedMixin):
     version = models.ForeignKey(
         to='bot.RunVersion',
@@ -615,6 +680,7 @@ class PlayerLeaderBoardProgress(BaseModelMixin, TimeStampedMixin):
     reward_claimed = models.BooleanField(_('RewardClaimed'), null=False, blank=False, default=False)
 
     rewards = models.CharField(_('rewards'), max_length=255, null=False, blank=False, default='')
+
     """
     rewards:
         [{'Id': 8, 'Value': 100000, 'Amount': 402}, {'Id': 8, 'Value': 100003, 'Amount': 240}]    

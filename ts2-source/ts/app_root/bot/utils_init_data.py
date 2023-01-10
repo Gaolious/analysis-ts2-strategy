@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from app_root.bot.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerJob, \
-    PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem
+    PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract
 from app_root.bot.utils_request import CrawlingHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
 from core.tests.test_core_utils import test_convert_time
@@ -195,6 +195,7 @@ class InitdataHelper(BaseBotHelper):
             'ship_offers': self._parse_init_ship_offers,
             'contracts': self._parse_init_contracts,
             'dispatcher': self._parse_init_dispatcher,
+            'gifts': self._parse_init_gifts,
 
             'ab_test': self._parse_init_not_yet_implemented,
             'achievements': self._parse_init_not_yet_implemented,
@@ -211,7 +212,6 @@ class InitdataHelper(BaseBotHelper):
             'markets': self._parse_init_not_yet_implemented,
             'guild': self._parse_init_not_yet_implemented,
             'game': self._parse_init_not_yet_implemented,
-            'gifts': self._parse_init_not_yet_implemented,
             'placements': self._parse_init_not_yet_implemented,
             'player_feature': self._parse_init_not_yet_implemented,
             'prestige': self._parse_init_not_yet_implemented,
@@ -248,6 +248,61 @@ class InitdataHelper(BaseBotHelper):
 
     def _parse_init_not_yet_implemented(self, data):
         pass
+
+    def _parse_init_gifts(self, data):
+        """
+    {
+      "Type": "gifts",
+      "Data": {
+        "Gifts": [
+          {
+            "Id": "8295a2de-d048-4228-ac02-e3d36c2d3b4a",
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 100000,
+                  "Amount": 1326
+                },
+                {
+                  "Id": 8,
+                  "Value": 100003,
+                  "Amount": 792
+                }
+              ]
+            },
+            "Type": 6
+          }
+        ]
+      }
+    },
+        :param data:
+        :return:
+        """
+        gifts = data.pop('Gifts', [])
+        # print("gifts : ", gifts)
+        if gifts:
+            now = timezone.now()
+            bulk_list = []
+
+            for gift in gifts:
+                _id = gift.pop('Id', None)
+                reward = gift.pop('Reward', [])
+                _type = gift.pop('Type', None)
+                if _id:
+                    bulk_list.append(
+                        PlayerGift(
+                            version_id=self.run_version.id,
+                            job_id=_id,
+                            reward=json.dumps(reward, separators=(',', ':')) if reward else '',
+                            gift_type=_type,
+                            created=now, modified=now
+                        )
+                    )
+            if bulk_list:
+                PlayerGift.objects.bulk_create(bulk_list)
+
+        self.print_remain('_parse_init_gifts', data)
 
     def _parse_init_competitions(self, data):
         """
@@ -909,7 +964,79 @@ class InitdataHelper(BaseBotHelper):
         :param data:
         :return:
         """
-        pass
+        contracts = data.get('Contracts', [])
+        contract_list = data.get('ContractLists', [])
+        now = timezone.now()
+
+        if contract_list:
+            bulk_list = []
+
+            for cl in contract_list:
+                contract_list_id = cl.pop('ContractListId', None)
+                available_to = cl.pop('AvailableTo', None)
+                next_replace_at = cl.pop('NextReplaceAt', None)
+                next_video_replace_at = cl.pop('NextVideoReplaceAt', None)
+                next_video_rent_at = cl.pop('NextVideoRentAt', None)
+                next_video_speed_up_at = cl.pop('NextVideoSpeedUpAt', None)
+                expires_at = cl.pop('ExpiresAt', None)
+
+                bulk_list.append(
+                    PlayerContractList(
+                        version_id=self.run_version.id,
+                        contract_list_id=contract_list_id,
+                        available_to=parser.parse(available_to) if available_to else None,
+                        next_replace_at=parser.parse(next_replace_at) if next_replace_at else None,
+                        next_video_replace_at=parser.parse(next_video_replace_at) if next_video_replace_at else None,
+                        next_video_rent_at=parser.parse(next_video_rent_at) if next_video_rent_at else None,
+                        next_video_speed_up_at=parser.parse(next_video_speed_up_at) if next_video_speed_up_at else None,
+                        expires_at=parser.parse(expires_at) if expires_at else None,
+                        created=now, modified=now,
+                    )
+                )
+            if bulk_list:
+                PlayerContractList.objects.bulk_create(bulk_list)
+
+        if contracts:
+            bulk_list = []
+            cl = {
+                o.contract_list_id: o for o in PlayerContractList.objects.filter(version_id=self.run_version.id).all()
+            }
+            for contract in contracts:
+                """
+                    'Slot' = {int} 18
+                    'ContractListId' = {int} 100001
+                    'Conditions' = {list: 1} [{'Id': 126, 'Amount': 547}]
+                    'Reward' = {dict: 1} {'Items': [{'Id': 8, 'Value': 100009, 'Amount': 110}]}
+                    'UsableFrom' = {str} '2023-01-09T05:25:44Z'
+                    'AvailableFrom' = {str} '2022-12-05T12:00:00Z'
+                    'AvailableTo' = {str} '2023-02-27T12:00:00Z'  
+                """
+                slot = contract.pop('Slot', None)
+                contract_list_id = contract.pop('ContractListId', None)
+                conditions = contract.pop('Conditions', [])
+                reward = contract.pop('Reward', {})
+                usable_from = contract.pop('UsableFrom', None)
+                available_from = contract.pop('AvailableFrom', None)
+                available_to = contract.pop('AvailableTo', None)
+                expires_at = contract.pop('ExpiresAt', None)
+                bulk_list.append(
+                    PlayerContract(
+                        version_id=self.run_version.id,
+                        contract_list_id=cl[contract_list_id].id,
+                        slot=slot,
+                        conditions=json.dumps(conditions, separators=(',', ':')) if conditions else '',
+                        reward=json.dumps(reward, separators=(',', ':')) if reward else '',
+                        usable_from=parser.parse(usable_from) if usable_from else None,
+                        available_from=parser.parse(available_from) if available_from else None,
+                        available_to=parser.parse(available_to) if available_to else None,
+                        expires_at=parser.parse(expires_at) if expires_at else None,
+                        created=now, modified=now,
+                    )
+                )
+            if bulk_list:
+                PlayerContract.objects.bulk_create(bulk_list)
+
+        self.print_remain('_parse_init_contracts', data)
 
     def _parse_init_dispatcher(self, data):
         """
