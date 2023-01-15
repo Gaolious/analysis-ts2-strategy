@@ -7,9 +7,7 @@ from django.conf import settings
 
 from app_root.bot.utils_abstract import BaseBotHelper
 from app_root.bot.utils_request import CrawlingHelper
-from app_root.bot.utils_server_time import ServerTimeHelper
-from app_root.users.models import User
-from core.utils import disk_cache, Logger
+from core.utils import Logger
 
 LOGGING_MENU = 'utils.endpoints'
 
@@ -60,6 +58,9 @@ class EndpointHelper(BaseBotHelper):
     ENDPOINT_LOGIN = 'login'
     ENDPOINT_DEFINITION = 'definitions'
     ENDPOINT_LEADER_BOARD = 'leaderboard'
+    ENDPOINT_COMMAND_PROCESSING = 'command_processing_collection'
+    ENDPOINT_START_GAME = 'start_game'
+    ENDPOINT_UPDATE_DEVICE_ID = 'update_device_id'
 
     endpoints: Dict[str, str] = {}
     init_data_urls: List[str] = []
@@ -115,3 +116,12 @@ class EndpointHelper(BaseBotHelper):
 
     def get_leaderboard_url(self) -> str:
         return self.endpoints.get(self.ENDPOINT_LEADER_BOARD, '')
+
+    def get_command_processing_url(self) -> str:
+        return self.endpoints.get(self.ENDPOINT_COMMAND_PROCESSING, '')
+
+    def get_start_game(self) -> str:
+        return self.endpoints.get(self.ENDPOINT_START_GAME, '')
+
+    def get_update_device_id(self) -> str:
+        return self.endpoints.get(self.ENDPOINT_UPDATE_DEVICE_ID, '')

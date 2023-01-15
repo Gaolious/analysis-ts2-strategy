@@ -1,12 +1,11 @@
 from functools import cached_property
 
-from dateutil import parser
 from django.conf import settings
 from django.utils import timezone
 
 from app_root.bot.models import RunVersion, PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, \
     PlayerJob, PlayerWarehouse, PlayerTrain, PlayerLeaderBoardProgress
-from core.utils import human_days, short_name
+from core.utils import short_name
 
 
 class RunVersionDump():
@@ -86,7 +85,7 @@ class RunVersionDump():
             # s.append(f"""       bonus {job.bonus}""")
             s.append(f"""       조건 : {job.str_requirements}""")
 
-            for progress in PlayerLeaderBoardProgress.objects.filter(player_job_id=job.id).order_by('position').all():
+            for progress in PlayerLeaderBoardProgress.objects.filter(leader_board__player_job_id=job.id).order_by('position').all():
                 s.append(f"""              Rank #{progress.position:3d} : {short_name(progress.player_name, 10)}({progress.player_id:10d}) : {progress.progress}/{job.required_amount}""")
         print('\n'.join(s))
 
@@ -116,17 +115,16 @@ class RunVersionDump():
             regional_trains[key].append(train)
 
         for region in regional_trains:
-            trains = sorted(regional_trains[region], key=lambda x: (x.level), reverse=True)
+            trains = sorted(regional_trains[region], key=lambda x: (x.capacity), reverse=True)
 
             s.append(f"""    -  Region #{region}""")
 
             for train in trains:
                 route = ''
                 load = ''
+
                 if train.has_route:
-                    # departure_time = parser.parse(train.route_departure_time)
-                    # arrival_time = parser.parse(train.route_arrival_time)
-                    if train.route_arrival_time < self.version.init_data_server_datetime: # 완료
+                    if not train.route_arrival_time or train.route_arrival_time < self.version.init_data_server_datetime: # 완료
                         route = ''
                     else:
                         next_event = self.str_time(train.route_arrival_time)

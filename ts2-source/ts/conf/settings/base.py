@@ -293,5 +293,5 @@ AUTH_USER_MODEL = 'users.User'
 # Client Information
 ###########################################################
 CLIENT_INFORMATION_STORE = 'google_play'
-CLIENT_INFORMATION_VERSION = '2.6.2.4023'
-CLIENT_INFORMATION_LANGUAGE = 'en'
+CLIENT_INFORMATION_VERSION = '2.6.3.4068'
+CLIENT_INFORMATION_LANGUAGE = 'ko'

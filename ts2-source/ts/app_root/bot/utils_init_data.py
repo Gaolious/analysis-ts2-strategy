@@ -1,3 +1,4 @@
+import json
 import uuid
 from hashlib import md5
 from typing import Dict, Callable
@@ -7,16 +8,11 @@ from django.conf import settings
 from django.utils import timezone
 
 from app_root.bot.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerJob, \
-    PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract
-from app_root.bot.utils_request import CrawlingHelper
-from app_root.bot.utils_server_time import ServerTimeHelper
-from core.tests.test_core_utils import test_convert_time
-from core.utils import disk_cache, Logger, convert_time, convert_date
-
-import json
-
+    PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
+    WarehouseLevel
 from app_root.bot.utils_abstract import BaseBotHelper
-from app_root.users.models import User
+from app_root.bot.utils_request import CrawlingHelper
+from core.utils import disk_cache, Logger
 
 LOGGING_MENU = 'utils.login'
 
@@ -125,6 +121,8 @@ class InitdataHelper(BaseBotHelper):
         )
 
     def _update_server_time(self, request_datetime, response_datetime, server_datetime):
+        self.update_player_info()
+
         super(InitdataHelper, self)._update_server_time(
             request_datetime=request_datetime,
             response_datetime=response_datetime,
@@ -242,8 +240,6 @@ class InitdataHelper(BaseBotHelper):
             else:
                 print('unknown', row)
 
-        self.update_player_info()
-
         return server_time
 
     def _parse_init_not_yet_implemented(self, data):
@@ -280,25 +276,8 @@ class InitdataHelper(BaseBotHelper):
         :return:
         """
         gifts = data.pop('Gifts', [])
-        # print("gifts : ", gifts)
         if gifts:
-            now = timezone.now()
-            bulk_list = []
-
-            for gift in gifts:
-                _id = gift.pop('Id', None)
-                reward = gift.pop('Reward', [])
-                _type = gift.pop('Type', None)
-                if _id:
-                    bulk_list.append(
-                        PlayerGift(
-                            version_id=self.run_version.id,
-                            job_id=_id,
-                            reward=json.dumps(reward, separators=(',', ':')) if reward else '',
-                            gift_type=_type,
-                            created=now, modified=now
-                        )
-                    )
+            bulk_list = PlayerGift.create_instance(data=gifts, version_id=self.run_version.id)
             if bulk_list:
                 PlayerGift.objects.bulk_create(bulk_list)
 
@@ -346,31 +325,8 @@ class InitdataHelper(BaseBotHelper):
         buildings = data.get('Buildings')
         if buildings:
 
-            bulk_list = []
-            now = timezone.now()
+            bulk_list = PlayerBuilding.create_instance(data=buildings, version_id=self.run_version.id)
 
-            for bld in buildings:
-                # {'InstanceId': 1, 'DefinitionId': 1, 'Rotation': 270, 'Level': 11}
-                # {'InstanceId': 8, 'DefinitionId': 4, 'ParcelNumber': 14, 'Rotation': 270, 'Level': 150}
-                # {'UpgradeTask': {'AvailableFrom': '2022-12-30T07:17:06Z', 'RequiredArticles': [{'Id': 10, 'Amount': 8}, {'Id': 12, 'Amount': 9}, {'Id': 109, 'Amount': 68}]}, 'InstanceId': 25, 'DefinitionId': 9, 'ParcelNumber': 1, 'Rotation': 90, 'Level': 70}
-                instance_id = bld.get('InstanceId')
-                definition_id = bld.get('DefinitionId')
-                rotation = bld.get('Rotation')
-                level = bld.get('Level')
-                upgrade_task = bld.get('UpgradeTask')
-                parcel_number = bld.get('ParcelNumber')
-                bulk_list.append(
-                    PlayerBuilding(
-                        version_id=self.run_version.id,
-                        instance_id=instance_id or 0,
-                        definition_id=definition_id or 0,
-                        rotation=rotation or 0,
-                        level=level or 0,
-                        parcel_number = parcel_number or 0,
-                        upgrade_task=json.dumps(upgrade_task, separators=(',', ':')) if upgrade_task else '',
-                        created=now, modified=now,
-                    )
-                )
             if bulk_list:
                 PlayerBuilding.objects.bulk_create(bulk_list, 100)
 
@@ -442,29 +398,7 @@ class InitdataHelper(BaseBotHelper):
         """
         destination = data.get('Destinations')
         if destination:
-            bulk_list = []
-            now = timezone.now()
-
-            for row in destination:
-                location_id = row.get('LocationId')
-                definition_id = row.get('DefinitionId')
-                train_limit_count = row.get('TrainLimitCount')
-                train_limit_refresh_time = row.get('TrainLimitRefreshTime')
-                train_limit_refresh_at = row.get('TrainLimitRefreshesAt')
-                multiplier = row.get('Multiplier')
-
-                bulk_list.append(
-                    PlayerDestination(
-                        version_id=self.run_version.id,
-                        location_id=location_id or 0,
-                        definition_id=definition_id or 0,
-                        train_limit_count=train_limit_count or 0,
-                        train_limit_refresh_time=parser.parse(train_limit_refresh_time) if train_limit_refresh_time else None,
-                        train_limit_refresh_at=parser.parse(train_limit_refresh_at) if train_limit_refresh_at else None,
-                        multiplier=multiplier or 0,
-                        created=now, modified=now,
-                    )
-                )
+            bulk_list = PlayerDestination.create_instance(data=destination, version_id=self.run_version.id)
 
             if bulk_list:
                 PlayerDestination.objects.bulk_create(bulk_list, 100)
@@ -504,43 +438,16 @@ class InitdataHelper(BaseBotHelper):
         """
 
         if data:
-            now = timezone.now()
-            bulk_list = []
-
             video = data.pop('NextVideoSpeedUpAt', None)
             factories = data.get('Factories', [])
-            for factory in factories:
-                definition_id = factory.pop('DefinitionId', None)
-                slot_count = factory.pop('SlotCount', None)
 
-                player_factory = PlayerFactory.objects.create(
-                    version_id=self.run_version.id,
-                    factory_id=definition_id,
-                    slot_count=slot_count
-                )
-                idx = 0
-                for order in factory.get('ProductOrders', []):
-                    product_id = order.get('Product', {}).pop('Id', None)
-                    product_amount = order.get('Product', {}).pop('Amount', None)
-                    craft_time = order.pop('CraftTime', {})
-                    finish_time = order.pop('FinishTime', None)
-                    finishes_at = order.pop('FinishesAt', None)
-                    idx += 1
-                    bulk_list.append(
-                        PlayerFactoryProductOrder(
-                            version_id=self.run_version.id,
-                            player_factory_id=player_factory.id,
-                            article_id=product_id,
-                            index=idx,
-                            amount=product_amount,
-                            craft_time=convert_time(craft_time),
-                            finish_time=parser.parse(finish_time) if finish_time else None,
-                            finishes_at=parser.parse(finishes_at) if finishes_at else None,
-                            created=now, modified=now
-                        )
-                    )
-            if bulk_list:
-                PlayerFactoryProductOrder.objects.bulk_create(bulk_list, 100)
+            factory_bulk_list, product_bulk_list = PlayerFactory.create_instance(data=factories, version_id=self.run_version.id)
+
+            if factory_bulk_list:
+                PlayerFactory.objects.bulk_create(factory_bulk_list, 100)
+
+            if product_bulk_list:
+                PlayerFactoryProductOrder.objects.bulk_create(product_bulk_list, 100)
 
         self.print_remain('_parse_init_factories', data)
 
@@ -629,47 +536,8 @@ class InitdataHelper(BaseBotHelper):
         _ = data.pop('NextVideoReplaceAt', None)
         jobs = data.get('Jobs')
         if jobs:
-            now = timezone.now()
-            bulk_list = []
+            bulk_list = PlayerJob.create_instance(data=jobs, version_id=self.run_version.id)
 
-            for job in jobs:
-                job_id = job.pop('Id', None)
-                job_location_id = job.pop('JobLocationId', None)
-                job_level = job.pop('JobLevel', None)
-                sequence = job.pop('Sequence', None)
-                job_type = job.pop('JobType', None)
-                duration = job.pop('Duration', None)
-                condition_multiplier = job.pop('ConditionMultiplier', None)
-                reward_multiplier = job.pop('RewardMultiplier', None)
-                required_article = job.pop('RequiredArticle', None)
-                current_article_amount = job.pop('CurrentArticleAmount', None)
-                reward = job.pop('Reward', None)
-                bonus = job.pop('Bonus', None)
-                requirements = job.pop('Requirements', None)
-                unlock_at = job.pop('UnlocksAt', None)
-                expires_at = job.pop('ExpiresAt', None)
-
-                bulk_list.append(
-                    PlayerJob(
-                        version_id=self.run_version.id,
-                        job_id=job_id,
-                        job_location_id=job_location_id,
-                        job_level=job_level,
-                        sequence=sequence,
-                        job_type=job_type,
-                        duration=duration,
-                        condition_multiplier=condition_multiplier,
-                        reward_multiplier=reward_multiplier,
-                        required_article_id=required_article.get('Id'),
-                        required_amount=required_article.get('Amount'),
-                        current_article_amount=current_article_amount,
-                        reward=json.dumps(reward, separators=(',', ':')) if reward else '',
-                        requirements=json.dumps(requirements, separators=(',', ':')) if requirements else '',
-                        bonus=json.dumps(bonus, separators=(',', ':')) if bonus else '',
-                        unlock_at=unlock_at,
-                        created=now, modified=now,
-                    )
-                )
             if bulk_list:
                 PlayerJob.objects.bulk_create(bulk_list, 100)
 
@@ -696,7 +564,18 @@ class InitdataHelper(BaseBotHelper):
                       2 = {dict: 2} {'Type': 'own_unique_trains', 'Progress': 500}
                       3 = {dict: 2} {'Type': 'population_max', 'Progress': 40}        
         """
-        pass
+        player_level = data.pop('PlayerLevel')
+        player_id = data.pop('PlayerId')
+        player_name = data.pop('PlayerName')
+        avatar_id = data.pop('AvatarId')
+        self.run_version.player_id = player_id or ''
+        self.run_version.player_name = player_name or ''
+        self.run_version.level = player_level or 0
+        self.run_version.save(update_fields=[
+            'player_id',
+            'player_name',
+            'level',
+        ])
 
     def _parse_init_regions(self, data):
         """
@@ -789,43 +668,7 @@ class InitdataHelper(BaseBotHelper):
 
         trains = data.get('Trains')
         if trains:
-            now = timezone.now()
-            bulk_list = []
-
-            for train in trains:
-                instance_id = train.pop('InstanceId', None)
-                definition_id = train.pop('DefinitionId', None)
-                level = train.pop('Level', None)
-                route = train.pop('Route', None)
-                region = train.pop('Region', None)
-                load = train.pop('TrainLoad', None)
-
-                route_type = route.pop('RouteType', None) if route else None
-                route_definition_id = route.pop('DefinitionId', None) if route else None
-                route_departure_time = route.pop('DepartureTime', None) if route else None
-                route_arrival_time = route.pop('ArrivalTime', None) if route else None
-
-                load_id = load.pop('Id', None) if load else None
-                load_amount = load.pop('Amount', None) if load else 0
-
-                bulk_list.append(
-                    PlayerTrain(
-                        version_id=self.run_version.id,
-                        instance_id=instance_id,
-                        train_id=definition_id,
-                        level=level,
-                        region=region,
-                        has_route=True if route else False,
-                        route_type=route_type,
-                        route_definition_id=route_definition_id,
-                        route_departure_time=parser.parse(route_departure_time) if route_departure_time else None,
-                        route_arrival_time=parser.parse(route_arrival_time) if route_arrival_time else None,
-                        has_load=True if load else False,
-                        load_id=load_id,
-                        load_amount=load_amount,
-                        created=now, modified=now,
-                    )
-                )
+            bulk_list = PlayerTrain.create_instance(data=trains, version_id=self.run_version.id)
 
             if bulk_list:
                 PlayerTrain.objects.bulk_create(bulk_list, 100)
@@ -853,23 +696,14 @@ class InitdataHelper(BaseBotHelper):
         """
         if data:
             level = data.pop('Level', None)
+            wl = WarehouseLevel.objects.filter(id=level).first()
             self.run_version.warehouse_level = level
+            self.run_version.warehouse = wl.capacity if wl else 0
             self.run_version.save(update_fields=['warehouse_level'])
 
             articles = data.pop('Articles', None)
             if articles:
-                now = timezone.now()
-                bulk_list = []
-
-                for article in articles:
-                    bulk_list.append(
-                        PlayerWarehouse(
-                            version_id=self.run_version.id,
-                            article_id=article.pop('Id', None),
-                            amount=article.pop('Amount', None),
-                            created=now, modified=now
-                        )
-                    )
+                bulk_list = PlayerWarehouse.create_instance(data=articles, version_id=self.run_version.id)
                 self.print_remain('_parse_init_warehouse', articles)
 
                 if bulk_list:
@@ -890,46 +724,13 @@ class InitdataHelper(BaseBotHelper):
         """
         whistles = data.get('Whistles')
         if whistles:
-            now = timezone.now()
-            bulk_list = []
-
-            for whistle in whistles:
-                category = whistle.pop('Category', None)
-                position = whistle.pop('Position', None)
-                spawn_time = whistle.pop('SpawnTime', None)
-                collectable_from = whistle.pop('CollectableFrom', None)
-                reward = whistle.pop('Reward', None)
-                is_for_video_reward = whistle.pop('IsForVideoReward', None)
-                expires_at = whistle.pop('ExpiresAt', None)
-
-                player_whistle = PlayerWhistle.objects.create(
-                    version_id=self.run_version.id,
-                    category=category,
-                    position=position,
-                    spawn_time=parser.parse(spawn_time) if spawn_time else None,
-                    collectable_from=parser.parse(collectable_from) if collectable_from else None,
-                    is_for_video_reward=is_for_video_reward,
-                    expires_at=parser.parse(expires_at) if expires_at else None,
-                )
-                if reward:
-                    items = reward.get('Items') or []
-                    for item in items:
-                        item_id = item.get('Id')
-                        value = item.get('Value')
-                        amount = item.get('Amount')
-                        bulk_list.append(
-                            PlayerWhistleItem(
-                                version_id=self.run_version.id,
-                                player_whistle_id=player_whistle.id,
-                                article_id=item_id,
-                                value=value,
-                                amount=amount,
-                                created=now, modified=now,
-                            )
-                        )
+            bulk_list, bulk_item_list = PlayerWhistle.create_instance(data=whistles, version_id=self.run_version.id)
 
             if bulk_list:
-                PlayerWhistleItem.objects.bulk_create(bulk_list, 100)
+                PlayerWhistle.objects.bulk_create(bulk_list, 100)
+
+            if bulk_item_list:
+                PlayerWhistleItem.objects.bulk_create(bulk_item_list, 100)
 
         self.print_remain('_parse_init_whistles', data)
 
@@ -969,70 +770,12 @@ class InitdataHelper(BaseBotHelper):
         now = timezone.now()
 
         if contract_list:
-            bulk_list = []
-
-            for cl in contract_list:
-                contract_list_id = cl.pop('ContractListId', None)
-                available_to = cl.pop('AvailableTo', None)
-                next_replace_at = cl.pop('NextReplaceAt', None)
-                next_video_replace_at = cl.pop('NextVideoReplaceAt', None)
-                next_video_rent_at = cl.pop('NextVideoRentAt', None)
-                next_video_speed_up_at = cl.pop('NextVideoSpeedUpAt', None)
-                expires_at = cl.pop('ExpiresAt', None)
-
-                bulk_list.append(
-                    PlayerContractList(
-                        version_id=self.run_version.id,
-                        contract_list_id=contract_list_id,
-                        available_to=parser.parse(available_to) if available_to else None,
-                        next_replace_at=parser.parse(next_replace_at) if next_replace_at else None,
-                        next_video_replace_at=parser.parse(next_video_replace_at) if next_video_replace_at else None,
-                        next_video_rent_at=parser.parse(next_video_rent_at) if next_video_rent_at else None,
-                        next_video_speed_up_at=parser.parse(next_video_speed_up_at) if next_video_speed_up_at else None,
-                        expires_at=parser.parse(expires_at) if expires_at else None,
-                        created=now, modified=now,
-                    )
-                )
+            bulk_list = PlayerContractList.create_instance(data=contract_list, version_id=self.run_version.id)
             if bulk_list:
                 PlayerContractList.objects.bulk_create(bulk_list)
 
         if contracts:
-            bulk_list = []
-            cl = {
-                o.contract_list_id: o for o in PlayerContractList.objects.filter(version_id=self.run_version.id).all()
-            }
-            for contract in contracts:
-                """
-                    'Slot' = {int} 18
-                    'ContractListId' = {int} 100001
-                    'Conditions' = {list: 1} [{'Id': 126, 'Amount': 547}]
-                    'Reward' = {dict: 1} {'Items': [{'Id': 8, 'Value': 100009, 'Amount': 110}]}
-                    'UsableFrom' = {str} '2023-01-09T05:25:44Z'
-                    'AvailableFrom' = {str} '2022-12-05T12:00:00Z'
-                    'AvailableTo' = {str} '2023-02-27T12:00:00Z'  
-                """
-                slot = contract.pop('Slot', None)
-                contract_list_id = contract.pop('ContractListId', None)
-                conditions = contract.pop('Conditions', [])
-                reward = contract.pop('Reward', {})
-                usable_from = contract.pop('UsableFrom', None)
-                available_from = contract.pop('AvailableFrom', None)
-                available_to = contract.pop('AvailableTo', None)
-                expires_at = contract.pop('ExpiresAt', None)
-                bulk_list.append(
-                    PlayerContract(
-                        version_id=self.run_version.id,
-                        contract_list_id=cl[contract_list_id].id,
-                        slot=slot,
-                        conditions=json.dumps(conditions, separators=(',', ':')) if conditions else '',
-                        reward=json.dumps(reward, separators=(',', ':')) if reward else '',
-                        usable_from=parser.parse(usable_from) if usable_from else None,
-                        available_from=parser.parse(available_from) if available_from else None,
-                        available_to=parser.parse(available_to) if available_to else None,
-                        expires_at=parser.parse(expires_at) if expires_at else None,
-                        created=now, modified=now,
-                    )
-                )
+            bulk_list = PlayerContract.create_instance(data=contracts, version_id=self.run_version.id)
             if bulk_list:
                 PlayerContract.objects.bulk_create(bulk_list)
 

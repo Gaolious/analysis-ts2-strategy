@@ -1,10 +1,10 @@
 import shutil
 from unittest import mock
-from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, JobLocation
 
 import pytest
 from django.conf import settings
 
+from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, JobLocation
 from app_root.bot.models import RunVersion
 from app_root.bot.utils_definition import DefinitionHelper
 from app_root.bot.utils_server_time import ServerTimeHelper

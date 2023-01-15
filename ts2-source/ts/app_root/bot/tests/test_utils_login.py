@@ -4,7 +4,6 @@ import pytest
 from django.conf import settings
 
 from app_root.bot.models import RunVersion
-from app_root.bot.utils_init_data import InitdataHelper
 from app_root.bot.utils_login import LoginHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
 from app_root.users.models import User

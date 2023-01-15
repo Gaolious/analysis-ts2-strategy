@@ -1,24 +1,16 @@
+import json
 import uuid
 from hashlib import md5
 from pathlib import Path
-from typing import Union, Optional, List, Dict
+from typing import Optional
 
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, \
-    JobLocation, PlayerLeaderBoard, PlayerJob, PlayerLeaderBoardProgress
-from app_root.bot.utils_request import CrawlingHelper
-from app_root.bot.utils_server_time import ServerTimeHelper
-from core.utils import disk_cache, Logger, download_file
-
-import json
-
+from app_root.bot.models import Definition, PlayerLeaderBoard, PlayerJob, PlayerLeaderBoardProgress
 from app_root.bot.utils_abstract import BaseBotHelper
-from app_root.users.models import User
-
-import sqlite3
-
+from app_root.bot.utils_request import CrawlingHelper
+from core.utils import disk_cache, Logger, download_file
 
 LOGGING_MENU = 'utils.get_leader_board_table'
 
@@ -119,7 +111,7 @@ class LeaderBoardHelper(BaseBotHelper):
         :return:
         """
         job = PlayerJob.objects.filter(id=self.player_job_id).first()
-        if job and job.job_type == 45:
+        if job and job.job_location.region.is_union:
             return get_leader_board_table(
                 url=url,
                 android_id=self.user.android_id,
@@ -147,52 +139,15 @@ class LeaderBoardHelper(BaseBotHelper):
                 'LeaderboardId' = {str} '015bf3d8-d688-4cd0-b2c3-57b61f4e3373'
                 'LeaderboardGroupId' = {str} '3a3dfa63-2e0f-4a40-b36c-08d252db9c2b'            
             """
-
-            leader_board_id = server_data.pop('LeaderboardId', '')
-            leader_board_group_id = server_data.pop('LeaderboardGroupId', '')
-            progresses = server_data.pop('Progresses', [])
-            rewards = server_data.pop('Rewards', [])
-
-            leader_board = PlayerLeaderBoard.objects.create(
+            bulk_leader_board_list, bulk_leader_board_progress_list = PlayerLeaderBoard.create_instance(
+                data=server_data,
                 version_id=self.run_version.id,
                 player_job_id=self.player_job_id,
-                leader_board_id=leader_board_id,
-                leader_board_group_id=leader_board_group_id,
             )
 
-            if leader_board and progresses and rewards:
-                bulk_list = []
-                now = timezone.now()
-
-                for progress, reward in zip(progresses, rewards):
-                    player_id = progress.pop('PlayerId', None)
-                    avata_id = progress.pop('AvatarId', None)
-                    firebase_uid = progress.pop('FirebaseUid', None)
-                    _ = progress.pop('LeaderboardGroupId', None)
-                    player_name = progress.pop('PlayerName', None)
-                    progress_val = progress.pop('Progress', None)
-                    position = progress.pop('Position', None)
-                    last_updated_at = progress.pop('LastUpdatedAt', None)
-                    reward_claimed = progress.pop('RewardClaimed', None)
-                    bulk_list.append(
-                        PlayerLeaderBoardProgress(
-                            version_id=self.run_version.id,
-                            player_job_id=self.player_job_id,
-                            leader_board_id=leader_board.id,
-                            player_id=player_id,
-                            avata_id=avata_id,
-                            firebase_uid=firebase_uid,
-                            player_name=player_name,
-                            progress=progress_val,
-                            position=position,
-                            last_updated_at=last_updated_at,
-                            reward_claimed=reward_claimed,
-                            rewards=json.dumps(reward, separators=(',', ':')) if reward else '',
-                            created=now, modified=now,
-                        )
-                    )
-
-                if bulk_list:
-                    PlayerLeaderBoardProgress.objects.bulk_create(bulk_list, 100)
+            if bulk_leader_board_list:
+                PlayerLeaderBoard.objects.bulk_create(bulk_leader_board_list, 100)
+            if bulk_leader_board_list:
+                PlayerLeaderBoardProgress.objects.bulk_create(bulk_leader_board_progress_list, 100)
 
         return server_time

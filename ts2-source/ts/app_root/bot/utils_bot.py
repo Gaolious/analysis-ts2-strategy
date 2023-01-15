@@ -1,4 +1,7 @@
+import random
 from functools import cached_property
+
+from django.conf import settings
 
 from app_root.bot.models import RunVersion, PlayerJob
 from app_root.bot.utils_definition import DefinitionHelper
@@ -6,9 +9,9 @@ from app_root.bot.utils_endpoints import EndpointHelper
 from app_root.bot.utils_get_leader_board_table import LeaderBoardHelper
 from app_root.bot.utils_init_data import InitdataHelper
 from app_root.bot.utils_login import LoginHelper
+from app_root.bot.utils_run_command import CommandHelper
 from app_root.bot.utils_server_time import ServerTimeHelper
 from app_root.users.models import User
-
 
 LOGGING_MENU = 'bot.utils'
 
@@ -77,7 +80,6 @@ class Bot():
             print(f"[Step #4] load Init Data : #{self.user_id} - {self.user.username} ({self.user.android_id}) ({url})")
             self.init_data.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
 
-
     ###########################################################################
     # Step 5. Update Leader Board
     ###########################################################################
@@ -92,10 +94,30 @@ class Bot():
         ).all()
 
         for job in queryset.all():
-            url = url_format.replace(':id:', job.job_id).replace(':category:', 'guild-job-contribution').replace(':bracket:', '1')
-            print(f"[Step #5. Update Leader Board : #{self.user_id} - {self.user.username} ({self.user.android_id}) ({url})")
+            url = url_format.replace(':id:', job.job_id).replace(':category:', 'guild-job-contribution').replace(
+                ':bracket:', '1')
+            print(
+                f"[Step #5. Update Leader Board : #{self.user_id} - {self.user.username} ({self.user.android_id}) ({url})")
             helper = LeaderBoardHelper(player_job_id=job.id)
             helper.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
+
+    ###########################################################################
+    # Step 5. Collect
+    ###########################################################################
+    def run_command(self):
+        """
+            수집 command
+        :return:
+            True : Do Run Next command
+            False : Do [Not] Run Next Command
+        """
+        url = self.endpoints.get_command_processing_url()
+
+        helper = CommandHelper(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
+
+        # reset command ID to 1
+        helper.start_game(start_url=self.endpoints.get_start_game())
+        helper.run()
 
     """
 Definition.
@@ -106,6 +128,7 @@ Definition.
 
 https://cdn.trainstation2.com/client-resources/client-data-206.009.sqlite                                                  
     """
+
 
 """
 기차보내기

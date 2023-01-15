@@ -1,23 +1,18 @@
+import json
+import sqlite3
 import uuid
 from hashlib import md5
 from pathlib import Path
-from typing import Union, Optional, List, Dict
+from typing import Optional
 
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, JobLocation
-from app_root.bot.utils_request import CrawlingHelper
-from app_root.bot.utils_server_time import ServerTimeHelper
-from core.utils import disk_cache, Logger, download_file
-
-import json
-
+from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, \
+    JobLocation, TrainLevel, UserLevel, WarehouseLevel
 from app_root.bot.utils_abstract import BaseBotHelper
-from app_root.users.models import User
-
-import sqlite3
-
+from app_root.bot.utils_request import CrawlingHelper
+from core.utils import disk_cache, Logger, download_file
 
 LOGGING_MENU = 'utils.login'
 
@@ -238,6 +233,27 @@ class DefinitionHelper(BaseBotHelper):
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
+    def _read_user_level(self, cur):
+        model = UserLevel
+        remote_table_name = 'player_level'
+        mapping = {  # local DB field : remote db field
+            'id': 'level',
+            'xp': 'xp',
+            'rewards': 'rewards',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
+    def _read_warehouse_level(self, cur):
+        model = WarehouseLevel
+        remote_table_name = 'warehouse_level'
+        mapping = {  # local DB field : remote db field
+            'id': 'level',
+            'capacity': 'capacity',
+            'upgrade_article_ids': 'upgrade_article_ids',
+            'upgrade_article_amounts': 'upgrade_article_amounts',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
     def _read_factory(self, cur):
 
         model = Factory
@@ -282,6 +298,15 @@ class DefinitionHelper(BaseBotHelper):
             'max_level': 'max_level',
             'era': 'era_id',
             'asset_name': 'asset_name',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
+    def _read_train_level(self, cur):
+        model = TrainLevel
+        remote_table_name = 'train_level'
+        mapping = {  # local DB field : remote db field
+            'train_level': 'train_level',
+            'power': 'power',
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
@@ -346,9 +371,12 @@ class DefinitionHelper(BaseBotHelper):
             con = sqlite3.connect(self.instance.download_path)
             cur = con.cursor()
             self._read_article(cur=cur)
+            self._read_user_level(cur=cur)
+            self._read_warehouse_level(cur=cur)
             self._read_factory(cur=cur)
             self._read_product(cur=cur)
             self._read_train(cur=cur)
+            self._read_train_level(cur=cur)
             self._read_region(cur=cur)
             self._read_location(cur=cur)
             self._read_destination(cur=cur)

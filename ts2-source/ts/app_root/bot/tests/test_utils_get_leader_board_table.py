@@ -1,10 +1,10 @@
 from unittest import mock
-from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, PlayerJob, \
-    PlayerLeaderBoardProgress, PlayerLeaderBoard
 
 import pytest
 from django.conf import settings
 
+from app_root.bot.models import PlayerJob, \
+    PlayerLeaderBoardProgress, PlayerLeaderBoard
 from app_root.bot.models import RunVersion
 from app_root.bot.utils_get_leader_board_table import LeaderBoardHelper
 from app_root.bot.utils_server_time import ServerTimeHelper

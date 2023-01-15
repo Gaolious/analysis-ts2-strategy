@@ -12,13 +12,13 @@ from core.tests.factory import AbstractFakeResp
 
 @pytest.fixture(scope='function')
 def fixture_crawling_get():
-    with mock.patch('app_root.bot.utils_endpoints.CrawlingHelper.get') as p:
+    with mock.patch('app_root.bot.utils_init_data.CrawlingHelper.get') as p:
         yield p
 
 
 @pytest.fixture(scope='function')
 def fixture_crawling_post():
-    with mock.patch('app_root.bot.utils_endpoints.CrawlingHelper.post') as p:
+    with mock.patch('app_root.bot.utils_init_data.CrawlingHelper.post') as p:
         yield p
 
 
@@ -134,6 +134,62 @@ def test_utils_init_data_gifts(multidb, filename, fixture_crawling_get, fixture_
     'gaolious_2023.01.09_contract.json',  # legacy - ship 관련 정보.
 ])
 def test_utils_init_data_contract(multidb, filename, fixture_crawling_get, fixture_crawling_post):
+    class FakeResp(AbstractFakeResp):
+        text = (settings.DJANGO_PATH / 'fixtures' / 'init_data' / filename).read_text('utf-8')
+
+    ###########################################################################
+    # prepare
+    user = User.objects.create_user(username='test', android_id='test')
+    version = RunVersion.objects.create(user_id=user.id)
+
+    server_time = ServerTimeHelper()
+    fixture_crawling_get.return_value = FakeResp()
+
+    bot = InitdataHelper()
+
+    ###########################################################################
+    # call function
+    bot.run(url='url', user=user, server_time=server_time, run_version=version)
+
+    ###########################################################################
+    # assert
+    user.refresh_from_db()
+    version.refresh_from_db()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('filename', [
+    'gaolious_2023.01.11_jobs.json',  # legacy - ship 관련 정보.
+])
+def test_utils_init_data_contract(multidb, filename, fixture_crawling_get, fixture_crawling_post):
+    class FakeResp(AbstractFakeResp):
+        text = (settings.DJANGO_PATH / 'fixtures' / 'init_data' / filename).read_text('utf-8')
+
+    ###########################################################################
+    # prepare
+    user = User.objects.create_user(username='test', android_id='test')
+    version = RunVersion.objects.create(user_id=user.id)
+
+    server_time = ServerTimeHelper()
+    fixture_crawling_get.return_value = FakeResp()
+
+    bot = InitdataHelper()
+
+    ###########################################################################
+    # call function
+    bot.run(url='url', user=user, server_time=server_time, run_version=version)
+
+    ###########################################################################
+    # assert
+    user.refresh_from_db()
+    version.refresh_from_db()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('filename', [
+    'levelup.json',  # legacy - ship 관련 정보.
+])
+def test_utils_init_data_levelup(multidb, filename, fixture_crawling_get, fixture_crawling_post):
     class FakeResp(AbstractFakeResp):
         text = (settings.DJANGO_PATH / 'fixtures' / 'init_data' / filename).read_text('utf-8')
 

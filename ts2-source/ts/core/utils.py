@@ -25,6 +25,8 @@ import requests
 from django.conf import settings
 from django.utils import timezone
 import zipfile
+import pytz
+from dateutil import parser
 
 trim_chars_pattern = re.compile(r'(\s*)')
 date_pattern = re.compile(r'\d{1,4}-\d{1,2}-\d{1,2}')
@@ -489,6 +491,19 @@ def convert_date(text: str, default=None) -> datetime.date:
     return text
 
 
+def convert_datetime(str_datetime: str, default=None):
+    try:
+        server_resp_datetime = parser.parse(timestr=str_datetime)
+
+        if not server_resp_datetime.tzinfo:
+            server_resp_datetime = server_resp_datetime.replace(tzinfo=pytz.utc)
+
+        return server_resp_datetime
+    except:
+        pass
+
+    return default
+
 def convert_time(text: str, default=None) -> int:
     """
 
@@ -503,15 +518,15 @@ def convert_time(text: str, default=None) -> int:
     try:
         text = trim_chars_pattern.sub('', text)
         text = convert_trim(text, default)
-        try:
-            ret = text.split(':')
-            h, m, s = tuple(map(int, ret))
-            return ((h * 60) + m) * 60 + s
-        except:
-            pass
+
+        ret = text.split(':')
+        h, m, s = tuple(map(int, ret))
+        return ((h * 60) + m) * 60 + s
 
     except Exception as e:
         pass
+
+    return default
 
 
 def convert_number_as_string(text: str, default=None):

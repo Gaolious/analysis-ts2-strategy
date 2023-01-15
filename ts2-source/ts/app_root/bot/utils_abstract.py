@@ -8,6 +8,9 @@ from app_root.users.models import User
 from core.utils import Logger
 
 
+#######################################################
+# Base Bot Helper
+#######################################################
 class BaseBotHelper:
     """
         Bot Helper
@@ -83,3 +86,5 @@ class BaseBotHelper:
                     ])
 
             raise Exception('Login Error - Retry !')
+
+

@@ -1,15 +1,12 @@
+import json
 import uuid
 from hashlib import md5
+
 from django.conf import settings
 
-from app_root.bot.utils_request import CrawlingHelper
-from app_root.bot.utils_server_time import ServerTimeHelper
-from core.utils import disk_cache, Logger
-
-import json
-
 from app_root.bot.utils_abstract import BaseBotHelper
-from app_root.users.models import User
+from app_root.bot.utils_request import CrawlingHelper
+from core.utils import disk_cache, Logger
 
 LOGGING_MENU = 'utils.login'
 

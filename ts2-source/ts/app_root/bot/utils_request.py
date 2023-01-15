@@ -1,6 +1,7 @@
 from typing import Dict, Union
 
 import requests
+
 REQUEST_TIMEOUT = 10
 
 LOGGING_MENU = 'bot.utils'
