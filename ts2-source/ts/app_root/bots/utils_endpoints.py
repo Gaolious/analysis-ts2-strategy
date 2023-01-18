@@ -5,8 +5,8 @@ from typing import List, Dict
 
 from django.conf import settings
 
-from app_root.bot.utils_abstract import BaseBotHelper
-from app_root.bot.utils_request import CrawlingHelper
+from app_root.bots.utils_abstract import BaseBotHelper
+from app_root.bots.utils_request import CrawlingHelper
 from core.utils import Logger
 
 LOGGING_MENU = 'utils.endpoints'

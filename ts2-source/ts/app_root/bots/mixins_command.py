@@ -1,14 +1,15 @@
 #######################################################
 # Base Command
 #######################################################
+from collections import OrderedDict
 from datetime import datetime, timedelta
 import random
 from time import sleep
-from typing import List, Iterator, Dict, Set
+from typing import List, Iterator, Dict, Set, Type, Union
 
-from app_root.bot.models import RunVersion, PlayerTrain, PlayerGift, PlayerDestination, PlayerJob, Destination, \
-    PlayerWarehouse, PlayerWhistle
-from app_root.bot.utils_server_time import ServerTimeHelper
+from app_root.bots.models import RunVersion, PlayerTrain, PlayerGift, PlayerDestination, PlayerJob, Destination, \
+    PlayerWarehouse, PlayerWhistle, Article, PlayerFactory, PlayerFactoryProductOrder, Product
+from app_root.bots.utils_server_time import ServerTimeHelper
 from app_root.users.models import User
 
 
@@ -22,17 +23,21 @@ class BaseCommandHelper(object):
     server_time: ServerTimeHelper
     url: str
 
-    _trains: Dict[int, PlayerTrain] = []  # [train.instance_id : PlayerTrain]
-    _jobs: Dict[str, PlayerJob] = []  # [job.job_id : PlayerJob]
-    _gold_destinations: Dict[int, PlayerDestination] = []  # [dest.definition_id : PlayerDestination]
-    _destinations: Dict[int, Destination] = []  # [dest.id : Destination]  # definition_id = destination.id
-    _warehouse: Dict[int, int]  # [article.id : amount]
-    _gift: Dict[int, PlayerGift]  # [gift_id : PlayerGift]
-    _whistle: Dict[int, PlayerWhistle]  # [whistle_id : PlayerWhistle]
-    _working_basic_dispatchers: int
-    _working_union_dispatchers: int
+    _product: Dict[int, Product] = {}
+    _factory: Dict[int, PlayerFactory] = {}
+    _factory_item: Dict[int, List[PlayerFactoryProductOrder]] = {}
+    _trains: Dict[int, PlayerTrain] = {}  # [train.instance_id : PlayerTrain]
+    _jobs: Dict[str, PlayerJob] = {}  # [job.job_id : PlayerJob]
+    _gold_destinations: Dict[int, PlayerDestination] = {}  # [dest.definition_id : PlayerDestination]
+    _destinations: Dict[int, Destination] = {}  # [dest.id : Destination]  # definition_id = destination.id
+    _warehouse: Dict[int, int] = {}  # [article.id : amount]
+    _gift: Dict[int, PlayerGift] = {}  # [gift_id : PlayerGift]
+    _whistle: Dict[int, PlayerWhistle] = {}  # [whistle_id : PlayerWhistle]
+    _working_basic_dispatchers: int = 0
+    _working_union_dispatchers: int = 0
 
-    _reserved_train_instance_id_set: Set[int]
+    _reserved_train_instance_id_set: Set[int] = set([])
+    _capacity_warehouse: int = 0
 
     def __init__(self, run_version, url, user: User, server_time: ServerTimeHelper):
         super().__init__()
@@ -47,34 +52,47 @@ class BaseCommandHelper(object):
         self._init_setup()
 
     def _init_setup(self):
-        self._trains = {
+        self._trains = OrderedDict({
             train.instance_id: train
             for train in PlayerTrain.objects.filter(version_id=self.run_version.id).all()
-        }
-        self._jobs = {
+        })
+        self._jobs = OrderedDict({
             job.job_id: job
             for job in PlayerJob.objects.filter(version_id=self.run_version.id).all()
-        }
-        self._gold_destinations = {
+        })
+        self._gold_destinations = OrderedDict({
             dest.definition_id: dest
             for dest in PlayerDestination.objects.filter(version_id=self.run_version.id).all()
-        }
-        self._destinations = {
+        })
+        self._destinations = OrderedDict({
             dest.id: dest
             for dest in Destination.objects.all()
-        }
-        self._warehouse = {
+        })
+        self._warehouse = OrderedDict({
             w.article_id: w.amount
             for w in PlayerWarehouse.objects.filter(version_id=self.run_version.id).all()
-        }
-        self._gift = {
+        })
+        self._gift = OrderedDict({
             g.id: g
             for g in PlayerGift.objects.filter(version_id=self.run_version.id).order_by('id').all()
-        }
-        self._whistle = {
+        })
+        self._whistle = OrderedDict({
             w.id: w
-            for w in PlayerWhistle.objects.filter(version_id=self.run_version.id).all()
-        }
+            for w in PlayerWhistle.objects.filter(version_id=self.run_version.id).order_by('category', 'position').all()
+        })
+        self._factory = OrderedDict({
+            factory.factory_id: factory for factory in PlayerFactory.objects.filter(version_id=self.run_version.id).order_by('factory_id').all()
+        })
+        self._factory_item = OrderedDict({
+            factory.id : [
+                o for o in PlayerFactoryProductOrder.objects.filter(player_factory_id=factory.id).order_by('index').all()
+            ] for factory in PlayerFactory.objects.filter(version_id=self.run_version.id).order_by('factory_id').all()
+        })
+        self._product = OrderedDict({
+            p.id: p for p in Product.objects.order_by('id').all()
+        })
+
+        self._capacity_warehouse = self.run_version.warehouse
 
         self._working_union_dispatchers = 0
         self._working_basic_dispatchers = 0
@@ -83,28 +101,18 @@ class BaseCommandHelper(object):
             if train.has_load or train.is_working(init_data_server_datetime=self.run_version.init_data_server_datetime):
 
                 is_union = False
-                is_basic = False
 
                 if train.is_job_route:
                     job = self.find_jobs_with_job_location_id(train.route_definition_id)
-
-                    assert job
-                    if job.job_location.region.is_union:
-                        is_union = True
-                    elif job.job_location.region.is_basic:
-                        is_basic = True
+                    is_union = job.job_location.region.is_union
 
                 elif train.is_destination_route:
                     destination = self.find_destination_with_destination_id(train.route_definition_id)
-                    assert destination
-                    if destination.region.is_union:
-                        is_union = True
-                    else:
-                        is_basic = True
+                    is_union = destination.region.is_union
 
                 if is_union:
                     self._working_union_dispatchers += 1
-                elif is_basic:
+                else:
                     self._working_basic_dispatchers += 1
 
     @property
@@ -274,6 +282,9 @@ class BaseCommandHelper(object):
     def add_job(self, job: PlayerJob):
         self._jobs.update({job.job_id: job})
 
+    def find_job_with_job_id(self, job_id: str) -> PlayerJob:
+        return self._jobs.get(job_id)
+
     def find_jobs(self,
                   event_jobs: bool = None,
                   union_jobs: bool = None,
@@ -331,6 +342,38 @@ class BaseCommandHelper(object):
     def remove_whistle(self, whistle: PlayerWhistle):
         self._whistle.pop(whistle.id, '')
 
+    ####################################################################################
+    # warehouse
+    ####################################################################################
+    def warehouse_capacity(self) -> int:
+        return self._capacity_warehouse
+
+    def warehouse_used(self) -> int :
+        ret = 0
+        for article in Article.objects.all():
+            if article.type != 1:
+                ret += self._warehouse.get(article.id, 0)
+
+        return ret
+
+    def add_warehouse(self, article_id: Union[Type[int], int], amount: int):
+        if article_id not in self._warehouse:
+            self._warehouse.update({
+                article_id: 0
+            })
+
+        self._warehouse[article_id] += amount
+        assert 0 <= self._warehouse[article_id]
+
+    def warehouse_count(self, article_id: Union[Type[int], int]) -> int:
+        return self._warehouse.get(article_id, 0)
+
+    ####################################################################################
+    # factory
+    ####################################################################################
+    def find_factory_with_article_id(self, article_id: Union[Type[int], int]) -> PlayerFactory:
+        for product_id, product in self._product.items():
+            pass
 
 class BaseCommand(object):
     """
@@ -401,6 +444,11 @@ class TrainUnloadCommand(BaseCommand):
         }
 
     def post_processing(self):
+        if self.train.load_id:
+            self.helper.add_warehouse(
+                article_id=self.train.load_id,
+                amount=self.train.load_amount
+            )
         self.train.has_load = False
         self.train.load_amount = 0
         self.train.load_id = None
@@ -435,6 +483,11 @@ class CollectGiftCommand(BaseCommand):
         }
 
     def post_processing(self):
+        if self.gift.job_id:
+            job = self.helper.find_job_with_job_id(job_id=self.gift.job_id)
+            if job:
+                reward = job.rewards_to_article_dict
+
         self.gift.job_id = ''
 
 
@@ -586,6 +639,7 @@ class CollectWhistle(BaseCommand):
 
     COMMAND = 'Whistle:Collect'
     whistle: PlayerWhistle
+    # {"Command":"Whistle:Collect","Time":"2023-01-16T03:10:39Z","Parameters":{"Category":1,"Position":3}}
 
     def __init__(self, *, whistle: PlayerWhistle, **kwargs):
         super(CollectWhistle, self).__init__(**kwargs)
@@ -593,7 +647,6 @@ class CollectWhistle(BaseCommand):
 
     def get_parameters(self) -> dict:
         """
-
         :return:
         """
         return {
@@ -729,6 +782,7 @@ class OrderProductFromFactoryCommand(BaseCommand):
         }
     """
 
+
 class TrainUpgradeCommand(BaseCommand):
     """
 16 01:14:17 | T: 7907 | I | SSL_AsyncWrite  | POST /api/v2/command-processing/run-collection HTTP/1.1
@@ -751,3 +805,22 @@ Accept-Encoding: gzip, deflate
 
 
     """
+
+
+class GameHeatbeat(BaseCommand):
+    """
+    16 12:08:42 | T: 3717 | I | SSL_AsyncWrite  | {"Id":6,"Time":"2023-01-16T03:08:43Z","Commands":[{"Command":"Game:Heartbeat","Time":"2023-01-16T03:08:41Z","Parameters":{}}],"Transactional":false}
+
+    """
+    COMMAND = 'Game:Heartbeat'
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, **kwargs):
+        super(GameHeatbeat, self).__init__(**kwargs)
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {}

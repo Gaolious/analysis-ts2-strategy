@@ -2,8 +2,8 @@ from typing import Optional
 
 from django.utils import timezone
 
-from app_root.bot.models import RunVersion
-from app_root.bot.utils_server_time import ServerTimeHelper
+from app_root.bots.models import RunVersion
+from app_root.bots.utils_server_time import ServerTimeHelper
 from app_root.users.models import User
 from core.utils import Logger
 

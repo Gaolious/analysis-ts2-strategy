@@ -1,15 +1,17 @@
 import json
 import random
 import uuid
+from datetime import datetime, timedelta
 from hashlib import md5
-from typing import List, Iterator, Dict
+from typing import List, Iterator, Dict, Callable
 
 from django.conf import settings
+from django.utils import timezone
 
-from app_root.bot.mixins_command import TrainUnloadCommand, BaseCommand, CollectGiftCommand, \
+from app_root.bots.mixins_command import TrainUnloadCommand, BaseCommand, CollectGiftCommand, \
     TrainSendToDestinationCommand, \
-    BaseCommandHelper, CollectJobReward, CollectWhistle
-from app_root.bot.utils_request import CrawlingHelper
+    BaseCommandHelper, CollectJobReward, CollectWhistle, GameHeatbeat
+from app_root.bots.utils_request import CrawlingHelper
 from core.utils import Logger
 
 LOGGING_MENU = 'utils_run_command'
@@ -78,10 +80,25 @@ class CommandHelper(BaseCommandHelper):
 
 {'buffer': '{"Id":10,"Time":"2023-01-12T02:14:44Z","Commands":[{"Command":"Whistle:Collect","Time":"2023-01-12T02:14:43Z","Parameters":{"Category":1,"Position":1}}],"Transactional":false}'}
 
-{"Success":true,"RequestId":"06ec734c-466b-4c2b-a1c1-37352444b819","Time":"2023-01-12T02:14:44Z","Data":{"CollectionId":10,"Commands":[{"Command":"Whistle:Spawn","Data":{"Whistle":{"Category":1,"Position":1,"SpawnTime":"2023-01-12T02:20:43Z","CollectableFrom":"2023-01-12T02:20:43Z","Reward":{"Items":[{"Id":8,"Value":103,"Amount":4}]},"IsForVideoReward":false}}},{"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"whistle_tap","Level":5,"Progress":16413}}}]}}
+{
+    "Success":true,
+    "RequestId":"06ec734c-466b-4c2b-a1c1-37352444b819",
+    "Time":"2023-01-12T02:14:44Z",
+    "Data":{
+        "CollectionId":10,
+        "Commands":[
+            {
+                "Command":"Whistle:Spawn",
+                "Data":{
+                    "Whistle":{
+                        "Category":1,"Position":1,
+                        "SpawnTime":"2023-01-12T02:20:43Z",
+                        "CollectableFrom":"2023-01-12T02:20:43Z",
+                        "Reward":{"Items":[{"Id":8,"Value":103,"Amount":4}]},"IsForVideoReward":false}}},{"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"whistle_tap","Level":5,"Progress":16413}}}]}}
         :return:
         """
-
+        # 에러 발생.
+        # 로그인 이후 1분 후에 해야 하나
         for whistle in self.find_whistle():
             if whistle.is_collectable(init_data_server_datetime=self.run_version.init_data_server_datetime):
                 yield CollectWhistle(helper=self, whistle=whistle)
@@ -129,55 +146,149 @@ class CommandHelper(BaseCommandHelper):
                         dest=dest.definition
                     )
 
-    def command_prepare_materials_for_event_job(self):
+    def _command_prepare_materials_for_event_job(self):
         pass
 
-    def command_prepare_materials_for_union_job(self):
+    def _command_prepare_materials_for_union_job(self):
         pass
 
-    def command_prepare_materials_for_redundancy(self):
+    def _command_prepare_materials_for_story_job(self):
         pass
 
-    def command_prepare_materials(self):
-        print("event")
-        for job in self.find_jobs(event_jobs=True):
-            print(job.job_id, job.str_requirements)
+    def _command_prepare_materials_for_redundancy(self):
+        pass
 
-        print("union")
-        for job in self.find_jobs(union_jobs=True):
-            print(job.job_id, job.str_requirements, job.str_rewards)
+    def _command_prepare_under_level_25(self):
+        """
+            Minimum level to join the union is 25.
 
-    def command_collect(self):
+        :return:
+        """
+    def command_prepare_materials(self) -> datetime:
+        """
+        재료 준비
+
+        :return:
+        """
+
+        now = timezone.now()
+        ret = now
+
+        if self.number_of_idle_dispatchers > 0:
+            # 1순위. event quest
+            # 2순위. union quest
+            # 3순위. lv < 12 인 경우 & story quest
+
+            # print("event")
+            # for job in self.find_jobs(event_jobs=True):
+            #     print(job.job_id, job.str_requirements)
+
+            # print("union")
+            # for job in self.find_jobs(union_jobs=True):
+            #     print(job.job_id, job.str_requirements, job.str_rewards)
+            if self.run_version.level < 25:
+                for job in self.find_jobs(story_jobs=True, completed_jobs=False, expired_jobs=False):
+                    article_id = job.required_article_id
+                    amount = job.required_amount
+                #     need_articles.setdefault(article_id, 0)
+                #     need_articles[article_id] += amount
+                #
+                #     print(job.job_id, job.str_requirements, job.str_rewards)
+                #
+                # for article_id, amount in need_articles.items():
+                #     print(f'''article{article_id} is need {amount} / in warehouse {self.warehouse_count(article_id)} / in factory ''')
+        return ret
+
+    def set_todo_jobs(self) -> datetime:
+
+        now = timezone.now()
+        ret = now
+        event_jobs = []
+        union_jobs = []
+        story_jobs = []
+
+        event_jobs = self.find_jobs(event_jobs=True, completed_jobs=False, expired_jobs=False)
+        union_jobs = self.find_jobs(union_jobs=True, completed_jobs=False, expired_jobs=False)
+        return ret
+
+    def command_collect(self) -> datetime:
+        """
+        수집.
+
+        :return:
+        """
+        now = timezone.now()
+        ret = now
+
         for cmd in self._command_collect_from_gift():
             print(cmd)
             cmd.sleep()
+
+            next_event = timezone.now() + timedelta(seconds=cmd.duration())
+            ret = max(ret, next_event)
+
             self._send_run_collection(url=self.url, commands=[cmd])
 
         for cmd in self._command_collect_from_event_jobs():
             print(cmd)
             cmd.sleep()
+
+            next_event = timezone.now() + timedelta(seconds=cmd.duration())
+            ret = max(ret, next_event)
+
             self._send_run_collection(url=self.url, commands=[cmd])
 
         for cmd in self._command_collect_from_train():
             print(cmd)
             cmd.sleep()
+
+            next_event = timezone.now() + timedelta(seconds=cmd.duration())
+            ret = max(ret, next_event)
+
             self._send_run_collection(url=self.url, commands=[cmd])
 
-        for cmd in self._command_collect_from_whistle():
-            print(cmd)
-            cmd.sleep()
-            self._send_run_collection(url=self.url, commands=[cmd])
+        # 시간 텀.
+        # whistle 1번 시작은 1분 뒤.
+        # whistle 2번은 (spwan time 1 과 2 차이 이후에)
+        # for cmd in self._command_collect_from_whistle():
+        #     print(cmd)
+        #     cmd.sleep()
+        #
+        #     next_event = timezone.now() + timedelta(seconds=cmd.duration())
+        #     ret = max(ret, next_event)
+        #
+        #     self._send_run_collection(url=self.url, commands=[cmd])
 
-    def command_dispatch_job(self):
-        pass
+        return ret
 
     def run(self):
-        self.command_collect()
+
+        functions: List[Callable[[], datetime]] = [
+            self.command_collect,
+            self.set_todo_jobs,
+            self.command_prepare_materials,
+        ]
+        next_event = timezone.now()
+
+        for func in functions:
+            ret = func()
+            next_event = max(next_event, ret)
+
+        self.user.next_event = next_event
+        self.user.has_error = False
+
+        self.user.save(update_fields=[
+            'next_event',
+            'has_error'
+        ])
 
     def check_response(self, data):
         data = json.loads(data, strict=False)
         if data.get('Success') is not True:
             print(data)
+            self.user.has_error = True
+            self.user.save(update_fields=['has_error'])
+
             raise Exception(str(data))
 
     def start_game(self, start_url):
@@ -228,7 +339,6 @@ class CommandHelper(BaseCommandHelper):
         self.check_response(resp_body)
 
         return resp_body
-
 
     def update_device_id(self, update_device_id_url):
         """
@@ -328,6 +438,7 @@ class CommandHelper(BaseCommandHelper):
             'PXFD-Device-Token': md5(self.user.android_id.encode('utf-8')).hexdigest(),
             'PXFD-Game-Access-Token': str(self.user.game_access_token),
             'PXFD-Player-Id': str(self.user.player_id),
+            'Content-Type': 'application/json',
             'Accept-Encoding': 'gzip, deflate',
         }
         payload = {
@@ -337,12 +448,13 @@ class CommandHelper(BaseCommandHelper):
             'Transactional': False,
         }
         self._command_id += 1
+        payload = json.dumps(payload, separators=(',', ':'))
 
         Logger.info(menu=LOGGING_MENU, action='send_run_collection', msg='before request', url=url, payload=payload)
         resp = CrawlingHelper.post(
             url=url,
             headers=headers,
-            payload=json.dumps(payload, separators=(',', ':')),
+            payload=payload,
             cookies={},
             params={},
         )

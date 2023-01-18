@@ -3,7 +3,7 @@ from functools import cached_property
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bot.models import RunVersion, PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, \
+from app_root.bots.models import RunVersion, PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, \
     PlayerJob, PlayerWarehouse, PlayerTrain, PlayerLeaderBoardProgress
 from core.utils import short_name
 

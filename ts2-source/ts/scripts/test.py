@@ -1,6 +1,6 @@
-from app_root.bot.models import RunVersion, Definition
-from app_root.bot.utils_definition import DefinitionHelper
-from app_root.bot.utils_dump import RunVersionDump
+from app_root.bots.models import RunVersion, DbDefinition
+from app_root.bots.utils_definition import DefinitionHelper
+from app_root.bots.utils_dump import RunVersionDump
 from app_root.users.models import User
 
 def dump():
@@ -22,5 +22,5 @@ def test_run_command():
 def run():
     # dump()
     helper = DefinitionHelper()
-    helper.instance = Definition.objects.order_by('-pk').first()
+    helper.instance = DbDefinition.objects.order_by('-pk').first()
     helper.read_sqlite()

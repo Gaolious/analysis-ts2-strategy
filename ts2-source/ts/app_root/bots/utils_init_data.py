@@ -3,15 +3,14 @@ import uuid
 from hashlib import md5
 from typing import Dict, Callable
 
-from dateutil import parser
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bot.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerJob, \
+from app_root.bots.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerJob, \
     PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
-    WarehouseLevel
-from app_root.bot.utils_abstract import BaseBotHelper
-from app_root.bot.utils_request import CrawlingHelper
+    WarehouseLevel, PlayerAchievement, PlayerDailyReward, PlayerQuest, PlayerVisitedRegion, PlayerMap
+from app_root.bots.utils_abstract import BaseBotHelper
+from app_root.bots.utils_request import CrawlingHelper
 from core.utils import disk_cache, Logger
 
 LOGGING_MENU = 'utils.login'
@@ -194,19 +193,23 @@ class InitdataHelper(BaseBotHelper):
             'contracts': self._parse_init_contracts,
             'dispatcher': self._parse_init_dispatcher,
             'gifts': self._parse_init_gifts,
+            'locations': self._parse_init_locations,
+            'achievements': self._parse_init_achievements,
+            'daily_reward': self._parse_init_daily_reward,
+            'milestones': self._parse_init_milestones,
+            'task_lists': self._parse_init_task_lists,
+            'seasons': self._parse_init_seasons,
+            'commodities': self._parse_init_commodities,
+            'offer_wall': self._parse_init_offer_wall,
+            'containers': self._parse_init_containers,
+            'maps': self._parse_init_maps,
 
             'ab_test': self._parse_init_not_yet_implemented,
-            'achievements': self._parse_init_not_yet_implemented,
-            'maps': self._parse_init_not_yet_implemented,
-            'locations': self._parse_init_not_yet_implemented,
             'login_profile': self._parse_init_not_yet_implemented,
             'game_features': self._parse_init_not_yet_implemented,
-            'daily_reward': self._parse_init_not_yet_implemented,
             'unlocked_contents': self._parse_init_not_yet_implemented,
             'shop': self._parse_init_not_yet_implemented,
             'reminders': self._parse_init_not_yet_implemented,
-            'seasons': self._parse_init_not_yet_implemented,
-            'milestones': self._parse_init_not_yet_implemented,
             'markets': self._parse_init_not_yet_implemented,
             'guild': self._parse_init_not_yet_implemented,
             'game': self._parse_init_not_yet_implemented,
@@ -216,11 +219,7 @@ class InitdataHelper(BaseBotHelper):
             'ship_loop': self._parse_init_not_yet_implemented,
             'tutorial': self._parse_init_not_yet_implemented,
             'tickets': self._parse_init_not_yet_implemented,
-            'task_lists': self._parse_init_not_yet_implemented,
-            'offer_wall': self._parse_init_not_yet_implemented,
-            'containers': self._parse_init_not_yet_implemented,
             'communities': self._parse_init_not_yet_implemented,
-            'commodities': self._parse_init_not_yet_implemented,
             'city_building_shop': self._parse_init_not_yet_implemented,
             'calendars': self._parse_init_not_yet_implemented,
             'boosts': self._parse_init_not_yet_implemented,
@@ -594,7 +593,20 @@ class InitdataHelper(BaseBotHelper):
              __len__ = {int} 4
             'VisitedRegions' = {list: 1} [101]        
         """
-        pass
+
+        quests = data.get('Quests')
+        if quests:
+            bulk_list = PlayerQuest.create_instance(data=quests, version_id=self.run_version.id)
+            if bulk_list:
+                PlayerQuest.objects.bulk_create(bulk_list, 100)
+
+        visited_regions = data.get('VisitedRegions')
+        if visited_regions:
+            bulk_list = PlayerVisitedRegion.create_instance(data=visited_regions, version_id=self.run_version.id)
+            if bulk_list:
+                PlayerVisitedRegion.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_regions', data)
 
     def _parse_init_trains(self, data):
         """
@@ -831,6 +843,106 @@ class InitdataHelper(BaseBotHelper):
         self.run_version.save()
 
         self.print_remain('_parse_init_dispatcher', data)
+
+    def _parse_init_locations(self, data):
+        pass
+
+    def _parse_init_achievements(self, data):
+        """
+
+        "Achievements": [
+          {
+            "AchievementId": "chemical_and_refinery_production",
+            "Level": 5,
+            "Progress": 1456
+          },
+          {
+            "AchievementId": "city_task",
+            "Level": 5,
+            "Progress": 2212
+          },
+          {
+            "AchievementId": "complete_job",
+            "Level": 5,
+            "Progress": 2687
+          },
+
+        :param data:
+        :return:
+        """
+        achievements = data.get('Achievements')
+        _ = data.pop('ReturnAsArray')
+        if achievements:
+            bulk_list = PlayerAchievement.create_instance(data=achievements, version_id=self.run_version.id)
+
+            if bulk_list:
+                PlayerAchievement.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_achievements', data)
+
+    def _parse_init_daily_reward(self, data):
+        """
+
+        "AvailableFrom": "2023-01-16T00:00:00Z",
+        "ExpireAt": "2023-01-16T23:59:59Z",
+        "Rewards": [
+          {
+            "Items": [ { "Id": 8, "Value": 3, "Amount": 450 } ]
+          },
+          {
+            "Items": [ { "Id": 8, "Value": 4, "Amount": 40 } ]
+          },
+          {
+            "Items": [ {"Id": 8,"Value": 8,"Amount": 9}]
+          },
+          {
+            "Items": [{"Id": 8,"Value": 2,"Amount": 10}]
+          },
+          {
+            "Items": [{"Id": 1,"Value": 3}]
+          }
+        ],
+        "PoolId": 3,
+        "Day": 0
+      }
+
+        :param data:
+        :return:
+        """
+        bulk_list = PlayerDailyReward.create_instance(data=data, version_id=self.run_version.id)
+
+        if bulk_list:
+            PlayerDailyReward.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_daily_reward', data)
+
+    def _parse_init_milestones(self, data):
+        pass
+
+    def _parse_init_task_lists(self, data):
+        pass
+
+    def _parse_init_seasons(self, data):
+        pass
+
+    def _parse_init_commodities(self, data):
+        pass
+
+    def _parse_init_offer_wall(self, data):
+        pass
+
+    def _parse_init_containers(self, data):
+        pass
+
+    def _parse_init_maps(self, data):
+        maps = data.get('Maps')
+        if maps:
+            bulk_list = PlayerMap.create_instance(data=maps, version_id=self.run_version.id)
+
+            if bulk_list:
+                PlayerMap.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_maps', data)
 
     def reduce(self, data):
         if isinstance(data, list):

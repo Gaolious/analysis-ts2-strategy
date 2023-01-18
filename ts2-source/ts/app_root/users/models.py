@@ -24,7 +24,10 @@ class User(AbstractUser, PermissionsMixin):
 
     ###########################################################################
     # update by logic
+    has_error = models.BooleanField(_('has error'), blank=True, null=False, default=False)
+
     next_event = models.DateTimeField(_('next_event'), blank=True, null=True, default=None)
+
     class Meta:
         verbose_name = 'User'
         verbose_name_plural = 'Users'

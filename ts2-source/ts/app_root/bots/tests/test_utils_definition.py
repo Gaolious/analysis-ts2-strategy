@@ -4,10 +4,10 @@ from unittest import mock
 import pytest
 from django.conf import settings
 
-from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, JobLocation
-from app_root.bot.models import RunVersion
-from app_root.bot.utils_definition import DefinitionHelper
-from app_root.bot.utils_server_time import ServerTimeHelper
+from app_root.bots.models import DbDefinition, Article, Factory, Product, Train, Destination, Region, Location, JobLocation
+from app_root.bots.models import RunVersion
+from app_root.bots.utils_definition import DefinitionHelper
+from app_root.bots.utils_server_time import ServerTimeHelper
 from app_root.users.models import User
 from core.tests.factory import AbstractFakeResp
 
@@ -63,7 +63,7 @@ def test_utils_definition_helper(multidb, filename, sqlite_filename, fixture_cra
     ###########################################################################
     # assert
     assert bot.instance
-    assert Definition.objects.count() > 0
+    assert DbDefinition.objects.count() > 0
     assert Article.objects.count() > 0
     assert Factory.objects.count() > 0
     assert Product.objects.count() > 0

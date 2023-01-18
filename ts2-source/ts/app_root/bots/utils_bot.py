@@ -3,14 +3,14 @@ from functools import cached_property
 
 from django.conf import settings
 
-from app_root.bot.models import RunVersion, PlayerJob
-from app_root.bot.utils_definition import DefinitionHelper
-from app_root.bot.utils_endpoints import EndpointHelper
-from app_root.bot.utils_get_leader_board_table import LeaderBoardHelper
-from app_root.bot.utils_init_data import InitdataHelper
-from app_root.bot.utils_login import LoginHelper
-from app_root.bot.utils_run_command import CommandHelper
-from app_root.bot.utils_server_time import ServerTimeHelper
+from app_root.bots.models import RunVersion, PlayerJob
+from app_root.bots.utils_definition import DefinitionHelper
+from app_root.bots.utils_endpoints import EndpointHelper
+from app_root.bots.utils_get_leader_board_table import LeaderBoardHelper
+from app_root.bots.utils_init_data import InitdataHelper
+from app_root.bots.utils_login import LoginHelper
+from app_root.bots.utils_run_command import CommandHelper
+from app_root.bots.utils_server_time import ServerTimeHelper
 from app_root.users.models import User
 
 LOGGING_MENU = 'bot.utils'
@@ -116,6 +116,7 @@ class Bot():
         helper = CommandHelper(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
 
         # reset command ID to 1
+        # helper.update_device_id(update_device_id_url=self.endpoints.get_update_device_id())
         helper.start_game(start_url=self.endpoints.get_start_game())
         helper.run()
 

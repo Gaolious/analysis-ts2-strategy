@@ -8,10 +8,10 @@ from typing import Optional
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bot.models import Definition, Article, Factory, Product, Train, Destination, Region, Location, \
+from app_root.bots.models import DbDefinition, Article, Factory, Product, Train, Destination, Region, Location, \
     JobLocation, TrainLevel, UserLevel, WarehouseLevel
-from app_root.bot.utils_abstract import BaseBotHelper
-from app_root.bot.utils_request import CrawlingHelper
+from app_root.bots.utils_abstract import BaseBotHelper
+from app_root.bots.utils_request import CrawlingHelper
 from core.utils import disk_cache, Logger, download_file
 
 LOGGING_MENU = 'utils.login'
@@ -120,7 +120,7 @@ def get_definition(*, url: str, android_id, sent_at: str, game_access_token: str
 
 
 class DefinitionHelper(BaseBotHelper):
-    instance: Optional[Definition]
+    instance: Optional[DbDefinition]
     BASE_PATH = settings.SITE_PATH / 'download' / 'definition'
 
     def __init__(self):
@@ -176,11 +176,11 @@ class DefinitionHelper(BaseBotHelper):
             url = server_data.get('Url', '')
 
             if version and checksum and url:
-                self.instance = Definition.objects.order_by('-pk').first()
+                self.instance = DbDefinition.objects.order_by('-pk').first()
 
                 # try:
                 if not self.instance or self.instance.version != version:
-                    self.instance = Definition.objects.create(
+                    self.instance = DbDefinition.objects.create(
                         version=version,
                         checksum=checksum,
                         url=url,

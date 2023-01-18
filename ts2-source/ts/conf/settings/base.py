@@ -143,7 +143,9 @@ DJANGO_APPS = [
 DATA_APPS = [
     'core',
     'app_root.users',
-    'app_root.bot',
+    'app_root.bots',
+    'app_root.servers',
+    'app_root.players',
 ]
 
 ADMIN_APPS = [
@@ -232,7 +234,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': DJANGO_PATH / 'db.sqlite3',
-    }
+    },
 }
 
 

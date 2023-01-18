@@ -1,6 +1,6 @@
 from functools import cached_property
 
-from app_root.bot.models import RunVersion
+from app_root.bots.models import RunVersion
 
 
 class BaseManager(object):

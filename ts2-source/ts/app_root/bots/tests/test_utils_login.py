@@ -3,9 +3,9 @@ from unittest import mock
 import pytest
 from django.conf import settings
 
-from app_root.bot.models import RunVersion
-from app_root.bot.utils_login import LoginHelper
-from app_root.bot.utils_server_time import ServerTimeHelper
+from app_root.bots.models import RunVersion
+from app_root.bots.utils_login import LoginHelper
+from app_root.bots.utils_server_time import ServerTimeHelper
 from app_root.users.models import User
 from core.tests.factory import AbstractFakeResp
 

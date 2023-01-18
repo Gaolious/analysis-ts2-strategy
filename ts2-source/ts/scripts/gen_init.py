@@ -5,7 +5,7 @@ from core.utils import Logger
 def run():
     init_data = [
         {'username': 'gaolious1', 'android_id': '57316822b8f2aa50'},
-        {'username': 'gaolious', 'android_id': '346c03d6d4042d74'},
+        {'username': 'gaolious', 'android_id': '346c03d6d4042d74', 'has_error': True, 'is_active': False},
     ]
 
     for row in init_data:
@@ -18,6 +18,6 @@ def run():
         if User.objects.filter(username=username).exists():
             continue
 
-        User.objects.create_user(username=username, android_id=android_id)
+        User.objects.create_user(**row)
 
         Logger.info(menu='gen_init', action='create user', username=username, android_id=android_id)
