@@ -6,7 +6,8 @@ from django.db import models
 from app_root.players.mixins import PlayerBuildingMixin, PlayerDestinationMixin, PlayerFactoryMixin, \
     PlayerFactoryProductOrderMixin, PlayerJobMixin, PlayerContractListMixin, PlayerContractMixin, PlayerGiftMixin, \
     PlayerLeaderBoardMixin, PlayerLeaderBoardProgressMixin, PlayerTrainMixin, PlayerWarehouseMixin, \
-    PlayerWhistleItemMixin, PlayerWhistleMixin
+    PlayerWhistleItemMixin, PlayerWhistleMixin, PlayerAchievementMixin, PlayerDailyRewardMixin, PlayerMapMixin, \
+    PlayerQuestMixin, PlayerVisitedRegionMixin
 from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
 
 """
@@ -53,7 +54,6 @@ class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
     def current_guild_amount(self):
         return sum(PlayerLeaderBoardProgress.objects.filter(leader_board__player_job_id=self.id).values_list('progress',
                                                                                                              flat=True))
-
 
 class PlayerContractList(PlayerContractListMixin, BaseModelMixin, TimeStampedMixin):
     class Meta:
@@ -116,3 +116,34 @@ class PlayerWhistleItem(PlayerWhistleItemMixin, BaseModelMixin, TimeStampedMixin
     class Meta:
         verbose_name = 'Player Whistle Item'
         verbose_name_plural = 'Player Whistle Items'
+
+
+class PlayerAchievement(PlayerAchievementMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player Achievement'
+        verbose_name_plural = 'Player Achievements'
+
+
+class PlayerDailyReward(PlayerDailyRewardMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player Daily Reward'
+        verbose_name_plural = 'Player Daily Rewards'
+
+
+class PlayerMap(PlayerMapMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player Map'
+        verbose_name_plural = 'Player Maps'
+
+class PlayerQuest(PlayerQuestMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player Quest'
+        verbose_name_plural = 'Player Quests'
+
+class PlayerVisitedRegion(PlayerVisitedRegionMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player Visited Region'
+        verbose_name_plural = 'Player Visited Regions'
+
+
+

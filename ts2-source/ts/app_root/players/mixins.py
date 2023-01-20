@@ -1172,3 +1172,256 @@ class PlayerWhistleItemMixin(BaseVersionMixin):
                 )
 
         return ret, _
+
+
+class PlayerAchievementMixin(BaseVersionMixin):
+    achievement = models.CharField(_('achievement'), max_length=255, null=False, blank=False, default='')
+    level = models.IntegerField(_('level'), null=False, blank=False, default=0)
+    progress = models.IntegerField(_('level'), null=False, blank=False, default=0)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+                {
+                    "AchievementId": "complete_job",
+                    "Level": 5,
+                    "Progress": 2687
+                },
+            """
+            for achievement in data:
+                instance = cls(
+                    version_id=version_id,
+                    achievement=achievement.pop('AchievementId', None),
+                    level=achievement.pop('Level', None),
+                    progress=achievement.pop('Progress', None),
+                    created=now, modified=now
+                )
+                ret.append(instance)
+
+        return ret, _
+
+
+class PlayerDailyRewardMixin(BaseVersionMixin):
+    available_from = models.DateTimeField(_('AvailableFrom'), null=True, blank=True, default=None)
+    expire_at = models.DateTimeField(_('ExpireAt'), null=True, blank=True, default=None)
+    rewards = models.CharField(_('Rewards'), max_length=255, null=False, blank=False, default='')
+    pool_id = models.IntegerField(_('PoolId'), null=False, blank=False, default=0)
+    day = models.IntegerField(_('Day'), null=False, blank=False, default=0)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+                {
+                    "AvailableFrom": "2023-01-16T00:00:00Z",
+                    "ExpireAt": "2023-01-16T23:59:59Z",
+                    "Rewards": [
+                      {
+                        "Items": [ { "Id": 8, "Value": 3, "Amount": 450 } ]
+                      },
+                      {
+                        "Items": [ { "Id": 8, "Value": 4, "Amount": 40 } ]
+                      },
+                      {
+                        "Items": [ {"Id": 8,"Value": 8,"Amount": 9}]
+                      },
+                      {
+                        "Items": [{"Id": 8,"Value": 2,"Amount": 10}]
+                      },
+                      {
+                        "Items": [{"Id": 1,"Value": 3}]
+                      }
+                    ],
+                    "PoolId": 3,
+                    "Day": 0
+                },
+            """
+            for daily in data:
+                rewards = daily.pop('Rewards', None)
+                instance = cls(
+                    version_id=version_id,
+                    available_from=convert_datetime(daily.pop('AvailableFrom', None)),
+                    expire_at=convert_datetime(daily.pop('ExpireAt', None)),
+                    rewards=json.dumps(rewards, separators=(',', ':')) if rewards else '',
+                    pool_id=daily.pop('PoolId', None),
+                    day=daily.pop('Day', None),
+                    created=now, modified=now
+                )
+                ret.append(instance)
+
+        return ret, _
+
+
+class PlayerMapMixin(BaseVersionMixin):
+    region_name = models.CharField(_('region name'), max_length=20, null=False, blank=False, default='')
+    spot_id = models.IntegerField(_('SpotId'), null=False, blank=False, default=0)
+    position_x = models.IntegerField(_('SpotId'), null=False, blank=False, default=0)
+    position_y = models.IntegerField(_('SpotId'), null=False, blank=False, default=0)
+    connections = models.CharField(_('region name'), max_length=50, null=False, blank=False, default='')
+    is_resolved = models.BooleanField(_('IsResolved'), null=False, blank=False, default=False)
+    content = models.CharField(_('region name'), max_length=255, null=False, blank=False, default='')
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+                "Id": "region_101",
+                "Spots": [
+                  {
+                    "SpotId": 161,
+                    "Position": {
+                      "X": 3,
+                      "Y": 0
+                    },
+                    "Connections": [
+                      164
+                    ],
+                    "IsResolved": true,
+                    "Content": {
+                      "Category": "quest",
+                      "Data": {
+                        "JobLocationIds": [
+                          161
+                        ],
+                        "Reward": {
+                          "Items": []
+                        }
+                      }
+                    }
+                  },
+        
+            """
+            for region in data:
+                region_name = region.pop('Id', None)
+                spots = region.get('Spots', [])
+
+                for spot in spots:
+
+                    spot_id = spot.pop('SpotId', None)
+                    position = spot.get('Position', {})
+                    x = position.pop('X', 0)
+                    y = position.pop('Y', 0)
+                    connections = spot.pop('Connections', [])
+                    is_resolved = spot.pop('IsResolved', False)
+                    content = spot.pop('Content', {})
+
+                    instance = cls(
+                        version_id=version_id,
+                        region_name=region_name,
+                        spot_id=spot_id,
+                        position_x=x,
+                        position_y=y,
+                        connections=json.dumps(connections, separators=(',', ':')) if connections else '',
+                        is_resolved=is_resolved,
+                        content=json.dumps(content, separators=(',', ':')) if content else '',
+                        created=now, modified=now
+                    )
+                    ret.append(instance)
+
+        return ret, _
+
+
+class PlayerQuestMixin(BaseVersionMixin):
+    job_location = models.ForeignKey(
+        to='servers.TSJobLocation',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    milestone = models.IntegerField(_('Milestone'), null=False, blank=False, default=0)
+    progress = models.IntegerField(_('Progress'), null=False, blank=False, default=0)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+            [
+                 0 = {dict: 3} {'JobLocationId': 150, 'Milestone': 1, 'Progress': 1}
+                 1 = {dict: 3} {'JobLocationId': 152, 'Milestone': 1, 'Progress': 1}
+                 2 = {dict: 3} {'JobLocationId': 159, 'Milestone': 3, 'Progress': 3}
+                 3 = {dict: 3} {'JobLocationId': 160, 'Milestone': 4, 'Progress': 4}
+            ]
+            """
+
+            for region in data:
+                job_location_id = region.pop('JobLocationId', 0)
+                milestone = region.get('Milestone', 0)
+                progress = region.get('Progress', 0)
+                instance = cls(
+                    version_id=version_id,
+                    region_name=job_location_id,
+                    milestone=milestone,
+                    spot_id=progress,
+                    created=now, modified=now
+                )
+                ret.append(instance)
+
+        return ret, _
+
+
+class PlayerVisitedRegionMixin(BaseVersionMixin):
+    region = models.ForeignKey(
+        to='servers.TSRegion',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+            'VisitedRegions' = {list: 1} [101]        
+            """
+
+            for region_id in data:
+                instance = cls(
+                    version_id=version_id,
+                    region_id=region_id,
+                    created=now, modified=now,
+                )
+                ret.append(instance)
+
+        return ret, _

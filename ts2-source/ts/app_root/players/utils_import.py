@@ -9,10 +9,11 @@ from django.utils import timezone
 from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, \
     PlayerJob, \
-    PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract
+    PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
+    PlayerAchievement, PlayerDailyReward, PlayerMap, PlayerQuest, PlayerVisitedRegion
 from app_root.servers.models import TSWarehouseLevel, EndPoint
 
-# PlayerAchievement, PlayerDailyReward, PlayerQuest, PlayerVisitedRegion, PlayerMap
+# , , PlayerQuest, PlayerVisitedRegion,
 from core.utils import disk_cache, Logger
 
 LOGGING_MENU = 'plyaers.import'
@@ -287,7 +288,7 @@ class InitdataHelper(ImportHelperMixin):
         """
         gifts = data.pop('Gifts', [])
         if gifts:
-            bulk_list = PlayerGift.create_instance(data=gifts, version_id=self.version.id)
+            bulk_list, _ = PlayerGift.create_instance(data=gifts, version_id=self.version.id)
             if bulk_list:
                 PlayerGift.objects.bulk_create(bulk_list)
 
@@ -335,7 +336,7 @@ class InitdataHelper(ImportHelperMixin):
         buildings = data.get('Buildings')
         if buildings:
 
-            bulk_list = PlayerBuilding.create_instance(data=buildings, version_id=self.version.id)
+            bulk_list, _ = PlayerBuilding.create_instance(data=buildings, version_id=self.version.id)
 
             if bulk_list:
                 PlayerBuilding.objects.bulk_create(bulk_list, 100)
@@ -408,7 +409,7 @@ class InitdataHelper(ImportHelperMixin):
         """
         destination = data.get('Destinations')
         if destination:
-            bulk_list = PlayerDestination.create_instance(data=destination, version_id=self.version.id)
+            bulk_list, _ = PlayerDestination.create_instance(data=destination, version_id=self.version.id)
 
             if bulk_list:
                 PlayerDestination.objects.bulk_create(bulk_list, 100)
@@ -547,7 +548,7 @@ class InitdataHelper(ImportHelperMixin):
         _ = data.pop('NextVideoReplaceAt', None)
         jobs = data.get('Jobs')
         if jobs:
-            bulk_list = PlayerJob.create_instance(data=jobs, version_id=self.version.id)
+            bulk_list, _ = PlayerJob.create_instance(data=jobs, version_id=self.version.id)
 
             if bulk_list:
                 PlayerJob.objects.bulk_create(bulk_list, 100)
@@ -608,13 +609,13 @@ class InitdataHelper(ImportHelperMixin):
 
         quests = data.get('Quests')
         if quests:
-            bulk_list = PlayerQuest.create_instance(data=quests, version_id=self.version.id)
+            bulk_list, _ = PlayerQuest.create_instance(data=quests, version_id=self.version.id)
             if bulk_list:
                 PlayerQuest.objects.bulk_create(bulk_list, 100)
 
         visited_regions = data.get('VisitedRegions')
         if visited_regions:
-            bulk_list = PlayerVisitedRegion.create_instance(data=visited_regions, version_id=self.version.id)
+            bulk_list, _ = PlayerVisitedRegion.create_instance(data=visited_regions, version_id=self.version.id)
             if bulk_list:
                 PlayerVisitedRegion.objects.bulk_create(bulk_list, 100)
 
@@ -692,7 +693,7 @@ class InitdataHelper(ImportHelperMixin):
 
         trains = data.get('Trains')
         if trains:
-            bulk_list = PlayerTrain.create_instance(data=trains, version_id=self.version.id)
+            bulk_list, _ = PlayerTrain.create_instance(data=trains, version_id=self.version.id)
 
             if bulk_list:
                 PlayerTrain.objects.bulk_create(bulk_list, 100)
@@ -727,7 +728,7 @@ class InitdataHelper(ImportHelperMixin):
 
             articles = data.pop('Articles', None)
             if articles:
-                bulk_list = PlayerWarehouse.create_instance(data=articles, version_id=self.version.id)
+                bulk_list, _ = PlayerWarehouse.create_instance(data=articles, version_id=self.version.id)
                 self.print_remain('_parse_init_warehouse', articles)
 
                 if bulk_list:
@@ -794,12 +795,12 @@ class InitdataHelper(ImportHelperMixin):
         now = timezone.now()
 
         if contract_list:
-            bulk_list = PlayerContractList.create_instance(data=contract_list, version_id=self.version.id)
+            bulk_list, _ = PlayerContractList.create_instance(data=contract_list, version_id=self.version.id)
             if bulk_list:
                 PlayerContractList.objects.bulk_create(bulk_list)
 
         if contracts:
-            bulk_list = PlayerContract.create_instance(data=contracts, version_id=self.version.id)
+            bulk_list, _ = PlayerContract.create_instance(data=contracts, version_id=self.version.id)
             if bulk_list:
                 PlayerContract.objects.bulk_create(bulk_list)
 
@@ -885,7 +886,7 @@ class InitdataHelper(ImportHelperMixin):
         achievements = data.get('Achievements')
         _ = data.pop('ReturnAsArray')
         if achievements:
-            bulk_list = PlayerAchievement.create_instance(data=achievements, version_id=self.version.id)
+            bulk_list, _ = PlayerAchievement.create_instance(data=achievements, version_id=self.version.id)
 
             if bulk_list:
                 PlayerAchievement.objects.bulk_create(bulk_list, 100)
@@ -921,7 +922,7 @@ class InitdataHelper(ImportHelperMixin):
         :param data:
         :return:
         """
-        bulk_list = PlayerDailyReward.create_instance(data=data, version_id=self.version.id)
+        bulk_list, _ = PlayerDailyReward.create_instance(data=data, version_id=self.version.id)
 
         if bulk_list:
             PlayerDailyReward.objects.bulk_create(bulk_list, 100)
@@ -949,7 +950,7 @@ class InitdataHelper(ImportHelperMixin):
     def _parse_init_maps(self, data):
         maps = data.get('Maps')
         if maps:
-            bulk_list = PlayerMap.create_instance(data=maps, version_id=self.version.id)
+            bulk_list, _ = PlayerMap.create_instance(data=maps, version_id=self.version.id)
 
             if bulk_list:
                 PlayerMap.objects.bulk_create(bulk_list, 100)
