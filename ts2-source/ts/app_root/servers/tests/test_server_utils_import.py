@@ -4,8 +4,9 @@ from unittest import mock
 import pytest
 from django.conf import settings
 
-from app_root.servers.models import RunVersion, EndPoint
-from app_root.servers.utils_import import EndpointHelper, SQLDefinitionHelper
+from app_root.servers.models import RunVersion, EndPoint, TSArticle, TSUserLevel, TSWarehouseLevel, TSFactory, \
+    TSProduct, TSTrain, TSTrainLevel, TSRegion, TSLocation, TSDestination, TSJobLocation
+from app_root.servers.utils_import import EndpointHelper, SQLDefinitionHelper, LoginHelper
 from app_root.users.models import User
 from core.tests.factory import AbstractFakeResp
 from core.utils import hash10
@@ -88,7 +89,7 @@ def test_server_import_sql_definition(
 
     ###########################################################################
     # prepare
-    user = User.objects.create_user(username='test', android_id='test')
+    user = User.objects.create_user(username='test', android_id='test', game_access_token='a', player_id='1')
     version = RunVersion.objects.create(user_id=user.id)
     EndPoint.objects.create(name=EndPoint.ENDPOINT_DEFINITION, name_hash=hash10(EndPoint.ENDPOINT_DEFINITION), url='a')
 
@@ -102,3 +103,53 @@ def test_server_import_sql_definition(
 
     ###########################################################################
     # assert
+    models = [
+        TSArticle,
+        TSUserLevel,
+        TSWarehouseLevel,
+        TSFactory,
+        TSProduct,
+        TSTrain,
+        TSTrainLevel,
+        TSRegion,
+        TSLocation,
+        TSDestination,
+        TSJobLocation,
+    ]
+    for model in models:
+        assert model.objects.count() > 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('remember_me_token, filename', [
+    ('', 'gaolious1_2022.12.29_with_device_id.json'),
+    ('a', 'gaolious1_2022.12.29_with_remember_token.json'),
+    ('', 'gaolious_2022.12.30_with_device_id.json'),
+    ('a', 'gaolious_2022.12.30_with_remember_token.json'),
+])
+def test_utils_login_helper(multidb, filename, remember_me_token, fixture_crawling_get, fixture_crawling_post):
+    class FakeResp(AbstractFakeResp):
+        text = (settings.DJANGO_PATH / 'fixtures' / 'login' / filename).read_text('utf-8')
+
+    ###########################################################################
+    # prepare
+    user = User.objects.create_user(username='test', android_id='test', remember_me_token=remember_me_token)
+    version = RunVersion.objects.create(user_id=user.id)
+    EndPoint.objects.create(name=EndPoint.ENDPOINT_LOGIN, name_hash=hash10(EndPoint.ENDPOINT_LOGIN), url='a')
+
+    fixture_crawling_post.return_value = FakeResp()
+
+    helper = LoginHelper(version=version)
+    ###########################################################################
+    # call function
+    helper.run()
+
+    ###########################################################################
+    # assert
+    user.refresh_from_db()
+    assert user.player_id
+    assert user.game_access_token
+    assert user.authentication_token
+    assert user.remember_me_token
+    assert user.device_token
+    assert user.support_url

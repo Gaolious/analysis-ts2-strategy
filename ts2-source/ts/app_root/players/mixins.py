@@ -1274,9 +1274,9 @@ class PlayerDailyRewardMixin(BaseVersionMixin):
 class PlayerMapMixin(BaseVersionMixin):
     region_name = models.CharField(_('region name'), max_length=20, null=False, blank=False, default='')
     spot_id = models.IntegerField(_('SpotId'), null=False, blank=False, default=0)
-    position_x = models.IntegerField(_('SpotId'), null=False, blank=False, default=0)
-    position_y = models.IntegerField(_('SpotId'), null=False, blank=False, default=0)
-    connections = models.CharField(_('region name'), max_length=50, null=False, blank=False, default='')
+    position_x = models.IntegerField(_('Position X'), null=False, blank=False, default=0)
+    position_y = models.IntegerField(_('Position Y'), null=False, blank=False, default=0)
+    connections = models.CharField(_('connections'), max_length=50, null=False, blank=False, default='')
     is_resolved = models.BooleanField(_('IsResolved'), null=False, blank=False, default=False)
     content = models.CharField(_('region name'), max_length=255, null=False, blank=False, default='')
 
@@ -1384,9 +1384,9 @@ class PlayerQuestMixin(BaseVersionMixin):
                 progress = region.get('Progress', 0)
                 instance = cls(
                     version_id=version_id,
-                    region_name=job_location_id,
+                    job_location_id=job_location_id,
                     milestone=milestone,
-                    spot_id=progress,
+                    progress=progress,
                     created=now, modified=now
                 )
                 ret.append(instance)

@@ -57,13 +57,13 @@ class ImportHelperMixin:
             self.HEADER_CLIENT_VERSION: ('PXFD-Client-Version', str(settings.CLIENT_INFORMATION_VERSION)),
             self.HEADER_DEVICE_TOKEN: ('PXFD-Device-Token', self.version.user.device_token),
             self.HEADER_GAME_ACCESS_TOKEN: ('PXFD-Game-Access-Token', self.version.user.game_access_token),
-            self.HEADER_PLAYER_ID: ('PXFD-Player-Id', self.version.player_id),
+            self.HEADER_PLAYER_ID: ('PXFD-Player-Id', self.version.user.player_id),
         }
 
         for key, (field, value) in mapping.items():
             if mask & key:
                 headers.update({field: value})
-                assert value
+                assert value, f'in header, value of "{field}" is empty'
 
         return headers
 
@@ -105,7 +105,7 @@ class ImportHelperMixin:
             menu=cls.__name__, action='BeforeRequest',
             url=url, headers=headers
         )
-        resp = CrawlingHelper.get(
+        resp = CrawlingHelper.post(
             url=url,
             headers=headers,
             payload=payload,

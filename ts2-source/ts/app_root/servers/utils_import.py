@@ -110,7 +110,7 @@ class LoginHelper(ImportHelperMixin):
         else:
             payload = {
                 'LoginType': 'device_id',
-                'Identity': self.version.user.device_id,
+                'Identity': self.version.user.device_token,
             }
 
         return self.post(
@@ -138,14 +138,12 @@ class LoginHelper(ImportHelperMixin):
             self.version.user.game_access_token = server_data.get('GameAccessToken', '') or ''
             self.version.user.authentication_token = server_data.get('AuthenticationToken', '') or ''
             self.version.user.remember_me_token = server_data.get('RememberMeToken', '') or ''
-            # self.version.user.device_id = server_data.get('DeviceId', '') or ''
             self.version.user.support_url = server_data.get('SupportUrl', '') or ''
             self.version.user.save(update_fields=[
                 'player_id',
                 'game_access_token',
                 'authentication_token',
                 'remember_me_token',
-                # 'device_id',
                 'support_url',
             ])
 
