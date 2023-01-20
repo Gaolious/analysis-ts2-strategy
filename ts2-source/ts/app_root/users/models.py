@@ -34,5 +34,5 @@ class User(AbstractUser, PermissionsMixin):
         verbose_name_plural = 'Users'
 
     @property
-    def device_id(self) -> str:
+    def device_token(self) -> str:
         return md5(self.android_id.encode('utf-8')).hexdigest()

@@ -1,7 +1,7 @@
 import json
 import sqlite3
-from hashlib import md5
 from pathlib import Path
+from typing import Iterator, Tuple
 
 from django.conf import settings
 from django.utils import timezone
@@ -11,17 +11,23 @@ from app_root.mixins import ImportHelperMixin
 from app_root.servers.models import EndPoint, SQLDefinition, TSJobLocation, TSDestination, TSLocation, TSRegion, \
     TSTrainLevel, TSTrain, TSProduct, TSFactory, TSWarehouseLevel, TSUserLevel, TSArticle
 from app_root.utils import get_curr_server_str_datetime_ms
-from core.utils import download_file, hash10
+from core.utils import download_file
 
 
 class EndpointHelper(ImportHelperMixin):
-    FIELD_REQUEST_DATETIME = 'ep_sent'
-    FIELD_SERVER_DATETIME = 'ep_server'
-    FIELD_RESPONSE_DATETIME = 'ep_recv'
 
-    def get_data(self) -> str:
-        url = 'https://game.trainstation2.com/get-endpoints'
-        headers = self.default_header()
+    def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
+        yield 'https://game.trainstation2.com/get-endpoints', 'ep_sent', 'ep_server', 'ep_recv'
+
+    def get_data(self, url) -> str:
+        mask = self.HEADER_REQUEST_ID \
+               | self.HEADER_RETRY_NO \
+               | self.HEADER_SENT_AT \
+               | self.HEADER_CLIENT_INFORMATION \
+               | self.HEADER_CLIENT_VERSION
+
+        headers = self.get_headers(mask=mask)
+
         return self.get(
             url=url,
             headers=headers,
@@ -40,34 +46,40 @@ class EndpointHelper(ImportHelperMixin):
         check_response(json_data=json_data)
 
         server_time = json_data.get('Time')
-        ret, _ = EndPoint.create_instance(
-            data=json_data.get('Data', {}).get('Endpoints', []),
-            version_id=self.version.id,
-        )
-        stores = list(EndPoint.objects.all())
+        server_data = json_data.get('Data', {})
 
-        a = set([(a.name, a.url) for a in ret])
-        b = set([(a.name, a.url) for a in stores])
+        if server_data:
+            ret, _ = EndPoint.create_instance(
+                data=server_data.get('Endpoints', []),
+                version_id=self.version.id,
+            )
+            ret += EndPoint.create_init_urls(
+                data=server_data.get('InitialDataUrls', [])
+            )
+            stores = list(EndPoint.objects.all())
 
-        if a != b:
-            EndPoint.objects.all().delete()
+            a = set([(a.name, a.url) for a in ret])
+            b = set([(a.name, a.url) for a in stores])
 
-            if ret:
-                EndPoint.objects.bulk_create(ret)
+            if a != b:
+                EndPoint.objects.all().delete()
+
+                if ret:
+                    EndPoint.objects.bulk_create(ret)
 
         return server_time
 
 
 class LoginHelper(ImportHelperMixin):
-
     FIELD_REQUEST_DATETIME = 'login_sent'
     FIELD_SERVER_DATETIME = 'login_server'
     FIELD_RESPONSE_DATETIME = 'login_recv'
 
-    def get_data(self) -> str:
-        urls = EndPoint.get_login_url()
+    def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
+        for url in EndPoint.get_login_urls():
+            yield url, 'login_sent', 'login_server', 'login_recv'
 
-        headers = self.default_header()
+    def get_data(self, url) -> str:
         """
             "headers": {
                 "PXFD-Request-Id": "68d3d880-04ab-402c-bf96-1c19ef2e4152", 
@@ -80,10 +92,15 @@ class LoginHelper(ImportHelperMixin):
                 "Accept-Encoding": "gzip, deflate"
             }, 
         """
-        headers.update({
-            'PXFD-Sent-At': get_curr_server_str_datetime_ms(version=self.version),  # 'PXFD-Sent-At': '2023-01-17T04:09:17.617Z',
-            'Accept-Encoding': 'gzip, deflate',
-        })
+
+        mask = self.HEADER_REQUEST_ID \
+               | self.HEADER_RETRY_NO \
+               | self.HEADER_SENT_AT \
+               | self.HEADER_CLIENT_INFORMATION \
+               | self.HEADER_CLIENT_VERSION \
+               | self.HEADER_DEVICE_TOKEN
+
+        headers = self.get_headers(mask=mask)
 
         if self.version.user.remember_me_token:
             payload = {
@@ -97,7 +114,7 @@ class LoginHelper(ImportHelperMixin):
             }
 
         return self.post(
-            url=urls[0] if urls else None,
+            url=url,
             headers=headers,
             payload=json.dumps(payload, separators=(',', ':')),
         )
@@ -114,36 +131,36 @@ class LoginHelper(ImportHelperMixin):
         check_response(json_data=json_data)
 
         server_time = json_data.get('Time')
-        ret, _ = EndPoint.create_instance(
-            data=json_data.get('Data', {}).get('Endpoints', []),
-            version_id=self.version.id,
-        )
-        stores = list(EndPoint.objects.all())
+        server_data = json_data.get('Data', {})
 
-        a = set([(a.name, a.url) for a in ret])
-        b = set([(a.name, a.url) for a in stores])
-
-        if a != b:
-            EndPoint.objects.all().delete()
-
-            if ret:
-                EndPoint.objects.bulk_create(ret)
+        if server_data:
+            self.version.user.player_id = server_data.get('PlayerId', '') or ''
+            self.version.user.game_access_token = server_data.get('GameAccessToken', '') or ''
+            self.version.user.authentication_token = server_data.get('AuthenticationToken', '') or ''
+            self.version.user.remember_me_token = server_data.get('RememberMeToken', '') or ''
+            # self.version.user.device_id = server_data.get('DeviceId', '') or ''
+            self.version.user.support_url = server_data.get('SupportUrl', '') or ''
+            self.version.user.save(update_fields=[
+                'player_id',
+                'game_access_token',
+                'authentication_token',
+                'remember_me_token',
+                # 'device_id',
+                'support_url',
+            ])
 
         return server_time
 
 
 class SQLDefinitionHelper(ImportHelperMixin):
-    FIELD_REQUEST_DATETIME = 'sd_sent'
-    FIELD_SERVER_DATETIME = 'sd_server'
-    FIELD_RESPONSE_DATETIME = 'sd_recv'
-
     BASE_PATH = settings.SITE_PATH / 'download' / 'definition'
 
-    def get_data(self) -> str:
+    def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
+        for url in EndPoint.get_definition_urls():
+            yield url, 'sd_sent', 'sd_server', 'sd_recv'
 
-        urls = EndPoint.get_definition_url()
+    def get_data(self, url) -> str:
 
-        headers = self.default_header()
         """
             "headers": {
                 'PXFD-Request-Id': '28d035ae-cc67-4234-a12e-d333cfcbcd14', 
@@ -157,15 +174,20 @@ class SQLDefinitionHelper(ImportHelperMixin):
                 'Accept-Encoding': 'gzip, deflate'
             }
         """
-        headers.update({
-            'PXFD-Sent-At': get_curr_server_str_datetime_ms(version=self.version),  # 'PXFD-Sent-At': '2023-01-17T04:09:17.617Z',
-            'PXFD-Game-Access-Token': self.version.user.game_access_token,
-            'PXFD-Player-Id': self.version.player_id,
-            'Accept-Encoding': 'gzip, deflate',
-        })
+
+        mask = self.HEADER_REQUEST_ID \
+               | self.HEADER_RETRY_NO \
+               | self.HEADER_SENT_AT \
+               | self.HEADER_CLIENT_INFORMATION \
+               | self.HEADER_CLIENT_VERSION \
+               | self.HEADER_DEVICE_TOKEN \
+               | self.HEADER_GAME_ACCESS_TOKEN \
+               | self.HEADER_PLAYER_ID
+
+        headers = self.get_headers(mask=mask)
 
         return self.get(
-            url=urls[0] if urls else None,
+            url=url,
             headers=headers,
             params={}
         )

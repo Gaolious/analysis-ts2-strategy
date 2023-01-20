@@ -60,7 +60,7 @@ class Bot():
     ###########################################################################
     def run_login(self):
         print(f"[Step #2] Login : #{self.user_id} - {self.user.username} ({self.user.android_id})")
-        url = self.endpoints.get_login_url()
+        url = self.endpoints.get_login_urls()
         self.login.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
 
     ###########################################################################
@@ -68,7 +68,7 @@ class Bot():
     ###########################################################################
     def run_definition(self):
         print(f"[Step #3] Get Definition : #{self.user_id} - {self.user.username} ({self.user.android_id})")
-        url = self.endpoints.get_definition_url()
+        url = self.endpoints.get_definition_urls()
         self.definition.run(url=url, user=self.user, server_time=self.server_time, run_version=self.version)
 
     ###########################################################################

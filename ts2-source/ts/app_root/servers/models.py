@@ -19,39 +19,27 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
         to=settings.AUTH_USER_MODEL,
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
+
+    # from _parse_init_player
     player_id = models.CharField(_('PlayerId'), max_length=50, null=False, blank=False)
     player_name = models.CharField(_('PlayerName'), max_length=50, null=False, blank=False)
+    level = models.IntegerField(_('level'), null=False, blank=False, default=0)
 
-    # # article id = 1
-    # xp = models.IntegerField(_('xp'), null=False, blank=False, default=0)
-    # # article id = 2
-    # gem = models.IntegerField(_('gem'), null=False, blank=False, default=0)
-    # # article id = 3
-    # gold = models.IntegerField(_('gold'), null=False, blank=False, default=0)
-    # # article id = 4
-    # key = models.IntegerField(_('key'), null=False, blank=False, default=0)
-    #
-    # level = models.IntegerField(_('level'), null=False, blank=False, default=0)
-    # population = models.IntegerField(_('population'), null=False, blank=False, default=0)
-    # warehouse = models.IntegerField(_('warehouse'), null=False, blank=False, default=0)
-    # warehouse_level = models.IntegerField(_('warehouse_level'), null=False, blank=False, default=0)
-    #
-    # train_parts_common = models.IntegerField(_('train_common'), null=False, blank=False, default=0)
-    # train_parts_rare = models.IntegerField(_('train_rare'), null=False, blank=False, default=0)
-    # train_parts_epic = models.IntegerField(_('train_epic'), null=False, blank=False, default=0)
-    # train_parts_legendary = models.IntegerField(_('train_legendary'), null=False, blank=False, default=0)
-    #
-    # # article id = 10
-    # blue_city_plans = models.IntegerField(_('blue_city_plans'), null=False, blank=False, default=0)
-    # # article id = 11
-    # yellow_city_plans = models.IntegerField(_('yellow_city_plans'), null=False, blank=False, default=0)
-    # # article id = 12
-    # red_city_plans = models.IntegerField(_('red_city_plans'), null=False, blank=False, default=0)
-    #
-    # dispatchers = models.IntegerField(_('dispatchers'), null=False, blank=False, default=0)
-    # guild_dispatchers = models.IntegerField(_('guild_dispatchers'), null=False, blank=False, default=0)
+    # from _parse_init_city_loop
+    population = models.IntegerField(_('population'), null=False, blank=False, default=0)
 
+    # from _parse_init_warehouse
+    # warehouse_capacity = models.IntegerField(_('warehouse'), null=False, blank=False, default=0)
+    warehouse_level = models.IntegerField(_('warehouse_level'), null=False, blank=False, default=0)
+
+    # _parse_init_dispatcher
+    dispatchers = models.IntegerField(_('dispatchers'), null=False, blank=False, default=0)
+    guild_dispatchers = models.IntegerField(_('guild_dispatchers'), null=False, blank=False, default=0)
+
+    # next event
     next_event_datetime = models.DateTimeField(_('next event datetime'), null=True, blank=False, default=None)
+
+    # command no.
     command_no = models.IntegerField(_('Command No'), null=False, blank=True, default=1)
 
     is_completed = models.BooleanField(_('is completed'), null=False, blank=True, default=False)
@@ -73,9 +61,14 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
     sd_recv = models.DateTimeField(_('SQL Definition Recv Datetime'), null=True, blank=False, default=None)
 
     # Step 4. Init Data
-    init_sent = models.DateTimeField(_('Init Data Sent Datetime'), null=True, blank=False, default=None)
-    init_server = models.DateTimeField(_('Init Data Server Datetime'), null=True, blank=False, default=None)
-    init_recv = models.DateTimeField(_('Init Data Recv Datetime'), null=True, blank=False, default=None)
+    init_sent_1 = models.DateTimeField(_('Init Data Sent Datetime'), null=True, blank=False, default=None)
+    init_server_1 = models.DateTimeField(_('Init Data Server Datetime'), null=True, blank=False, default=None)
+    init_recv_1 = models.DateTimeField(_('Init Data Recv Datetime'), null=True, blank=False, default=None)
+
+    # Step 4. Init Data (legacy)
+    init_sent_2 = models.DateTimeField(_('Init Data Sent Datetime'), null=True, blank=False, default=None)
+    init_server_2 = models.DateTimeField(_('Init Data Server Datetime'), null=True, blank=False, default=None)
+    init_recv_2 = models.DateTimeField(_('Init Data Recv Datetime'), null=True, blank=False, default=None)
 
     class Meta:
         verbose_name = 'Version'
@@ -86,12 +79,18 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
         delta = []
         if self.ep_sent and self.ep_server and self.ep_recv:
             delta.append(self.ep_server - self.ep_recv)
+
         if self.login_sent and self.login_server and self.login_recv:
             delta.append(self.login_server - self.login_recv)
+
         if self.sd_sent and self.sd_server and self.sd_recv:
             delta.append(self.sd_server - self.sd_recv)
-        if self.init_sent and self.init_server and self.init_recv:
-            delta.append(self.init_server - self.init_recv)
+
+        if self.init_sent_1 and self.init_server_1 and self.init_recv_1:
+            delta.append(self.init_server_1 - self.init_recv_1)
+
+        if self.init_sent_2 and self.init_server_2 and self.init_recv_2:
+            delta.append(self.init_server_2 - self.init_recv_2)
 
         return sum(delta) / len(delta) if delta else timedelta(seconds=0)
 
@@ -104,7 +103,7 @@ class EndPoint(BaseModelMixin, TimeStampedMixin):
     ENDPOINT_COMMAND_PROCESSING = 'command_processing_collection'
     ENDPOINT_START_GAME = 'start_game'
     ENDPOINT_UPDATE_DEVICE_ID = 'update_device_id'
-
+    ENDPOINT_INIT_DATA_URLS = '_initdata_urls_'
     name = models.CharField(_('version'), max_length=255, null=False, blank=False)
     name_hash = models.BigIntegerField(_('name hash'), null=False, blank=False, default=0, db_index=True)
 
@@ -142,6 +141,29 @@ class EndPoint(BaseModelMixin, TimeStampedMixin):
         return ret, _
 
     @classmethod
+    def create_init_urls(cls, *, data: List) -> List:
+        # InitialDataUrls
+        """
+            "InitialDataUrls\":[
+                [\"https://game.trainstation2.com/api/v2/initial-data/load\",\"https://game.trainstation2.com/api/v2/initial-data/legacy\"]
+            ]}}
+        """
+        ret = []
+        now = timezone.now()
+
+        for row in data:
+            for url in row:
+                ret.append(
+                    EndPoint(
+                        name=cls.ENDPOINT_INIT_DATA_URLS,
+                        name_hash=hash10(cls.ENDPOINT_INIT_DATA_URLS),
+                        url=url,
+                        created=now, modified=now
+                    )
+                )
+
+        return ret
+    @classmethod
     def get_urls(cls, endpoint) -> List[str]:
         ret = []
         queryset = cls.objects.filter(name_hash=hash10(endpoint), name=endpoint).all()
@@ -150,11 +172,11 @@ class EndPoint(BaseModelMixin, TimeStampedMixin):
         return ret
 
     @classmethod
-    def get_login_url(cls) -> List[str]:
+    def get_login_urls(cls) -> List[str]:
         return cls.get_urls(cls.ENDPOINT_LOGIN)
 
     @classmethod
-    def get_definition_url(cls) -> List[str]:
+    def get_definition_urls(cls) -> List[str]:
         return cls.get_urls(cls.ENDPOINT_DEFINITION)
 
 

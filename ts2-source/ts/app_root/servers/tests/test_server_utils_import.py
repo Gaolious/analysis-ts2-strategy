@@ -52,89 +52,15 @@ def test_server_import_endpoint(multidb, filename, fixture_crawling_get, fixture
 
     ###########################################################################
     # assert
-    assert ret
 
-    names = ['login', 'login_v2', 'payment', 'command_processing', 'command_processing_collection', 'support_url', 'definitions', 'start_game', 'login_restore_url', 'restore_decision_url', 'store_notification_token', 'update_device_id', 'impersonate_link', 'payments', 'leaderboard', 'firebase_auth_token', 'dwh_events', 'search_player', 'search_guild', 'search_guild_recommended', 'privacy', 'eula', 'localized_privacy', 'localized_eula', 'app_logs', 'applogs', 'firebase_db', 'payment_obfuscation_public_key', 'ts2feedback', 'facebook', 'twitter', 'forum', 'instagram', 'youtube', 'cdn_enpoint']
+    names = [
+        'login', 'login_v2', 'payment', 'command_processing', 'command_processing_collection', 'support_url', 'definitions', 'start_game', 'login_restore_url', 'restore_decision_url', 'store_notification_token', 'update_device_id', 'impersonate_link', 'payments', 'leaderboard', 'firebase_auth_token', 'dwh_events', 'search_player', 'search_guild', 'search_guild_recommended', 'privacy', 'eula', 'localized_privacy', 'localized_eula', 'app_logs', 'applogs', 'firebase_db', 'payment_obfuscation_public_key', 'ts2feedback', 'facebook', 'twitter', 'forum', 'instagram', 'youtube', 'cdn_enpoint',
+        EndPoint.ENDPOINT_INIT_DATA_URLS,
+    ]
     for name in names:
         cnt = len(EndPoint.get_urls(name))
 
-        assert cnt > 0
-
-
-# import shutil
-# from unittest import mock
-#
-# import pytest
-# from django.conf import settings
-#
-# from app_root.servers.models import SQLDefinition, TSArticle, TSFactory, TSProduct, TSTrain, TSDestination, TSRegion, TSLocation, TSJobLocation
-# from app_root.players.models import RunVersion
-# from app_root.bots.utils_definition import DefinitionHelper
-# from app_root.bots.utils_server_time import ServerTimeHelper
-# from app_root.users.models import User
-# from core.tests.factory import AbstractFakeResp
-#
-#
-# @pytest.fixture(scope='function')
-# def fixture_crawling_get():
-#     with mock.patch('app_root.bot.utils_definition.CrawlingHelper.get') as p:
-#         yield p
-#
-#
-# @pytest.fixture(scope='function')
-# def fixture_crawling_post():
-#     with mock.patch('app_root.bot.utils_definition.CrawlingHelper.post') as p:
-#         yield p
-#
-#
-# @pytest.fixture(scope='function')
-# def fixture_download_file():
-#     with mock.patch('app_root.bot.utils_definition.download_file') as p:
-#         yield p
-#
-#
-# @pytest.mark.django_db
-# @pytest.mark.parametrize('filename, sqlite_filename', [
-#     ('gaolious1_2022.12.29.json', 'client-data-206.009.sqlite'),
-# ])
-# def test_utils_definition_helper(multidb, filename, sqlite_filename, fixture_crawling_get, fixture_crawling_post, fixture_download_file):
-#     class FakeResp(AbstractFakeResp):
-#         text = (settings.DJANGO_PATH / 'fixtures' / 'definition' / filename).read_text('utf-8')
-#     sqllite_filepath = settings.DJANGO_PATH / 'fixtures' / 'definition' / sqlite_filename
-#
-#     def FakeDownload(download_filename, *args, **kwargs):
-#         path = download_filename.parent
-#         if not path.exists():
-#             path.mkdir(0o755, True, True)
-#         shutil.copy(sqllite_filepath, download_filename)
-#         return 1_000_000
-#
-#     ###########################################################################
-#     # prepare
-#     user = User.objects.create_user(username='test', android_id='test')
-#     version = RunVersion.objects.create(user_id=user.id)
-#
-#     server_time = ServerTimeHelper()
-#     fixture_crawling_get.return_value = FakeResp()
-#     fixture_download_file.side_effect = FakeDownload
-#
-#     bot = DefinitionHelper()
-#     ###########################################################################
-#     # call function
-#     bot.run(url='url', user=user, server_time=server_time, run_version=version)
-#
-#     ###########################################################################
-#     # assert
-#     assert bot.instance
-#     assert SQLDefinition.objects.count() > 0
-#     assert TSArticle.objects.count() > 0
-#     assert TSFactory.objects.count() > 0
-#     assert TSProduct.objects.count() > 0
-#     assert TSTrain.objects.count() > 0
-#     assert TSDestination.objects.count() > 0
-#     assert TSRegion.objects.count() > 0
-#     assert TSLocation.objects.count() > 0
-#     assert TSJobLocation.objects.count() > 0
+        assert cnt > 0, f"Not found for name='{name}'"
 
 
 @pytest.mark.django_db
@@ -176,4 +102,3 @@ def test_server_import_sql_definition(
 
     ###########################################################################
     # assert
-    assert ret

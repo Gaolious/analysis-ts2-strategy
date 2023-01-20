@@ -1,12 +1,13 @@
 import json
 import uuid
 from hashlib import md5
-from typing import Dict
+from typing import Dict, Tuple, Iterator
 
 from django.conf import settings
 from django.utils import timezone
 
 from app_root.servers.models import RunVersion, EndPoint
+from app_root.utils import get_curr_server_str_datetime_ms
 from core.requests_helper import CrawlingHelper
 from core.utils import Logger, convert_datetime, hash10
 
@@ -18,32 +19,52 @@ class ImportHelperMixin:
     """
         Bot Helper
     """
+    HEADER_REQUEST_ID = 0x01 << 0
+    HEADER_RETRY_NO = 0x01 << 1
+    HEADER_SENT_AT = 0x01 << 2
+    HEADER_CLIENT_INFORMATION = 0x01 << 3
+    HEADER_CLIENT_VERSION = 0x01 << 4
+    HEADER_DEVICE_TOKEN = 0x01 << 5
+    HEADER_GAME_ACCESS_TOKEN = 0x01 << 6
+    HEADER_PLAYER_ID = 0x01 << 7
 
     version: RunVersion
-    FIELD_REQUEST_DATETIME = 'ep_sent'
-    FIELD_SERVER_DATETIME = 'ep_server'
-    FIELD_RESPONSE_DATETIME = 'ep_recv'
 
     def __init__(self, version: RunVersion):
         self.version = version
 
-    def default_header(self) -> Dict[str, str]:
-        client_info = {
-            "Store": str(settings.CLIENT_INFORMATION_STORE),
-            "Version": str(settings.CLIENT_INFORMATION_VERSION),
-            "Language": str(settings.CLIENT_INFORMATION_LANGUAGE),
-        }
+    def get_headers(self, *, mask) -> Dict[str, str]:
+
+        client_info = json.dumps(
+            {
+                "Store": str(settings.CLIENT_INFORMATION_STORE),
+                "Version": str(settings.CLIENT_INFORMATION_VERSION),
+                "Language": str(settings.CLIENT_INFORMATION_LANGUAGE),
+            },
+            separators=(',', ':')
+        )
 
         headers = {
-            'PXFD-Request-Id': str(uuid.uuid4()),
-            'PXFD-Retry-No': '0',
             'PXFD-Sent-At': '0001-01-01T00:00:00.000',
-            'PXFD-Client-Information': json.dumps(client_info, separators=(',', ':')),
-            'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_VERSION),
-            'PXFD-Device-Token': md5(self.version.user.android_id.encode('utf-8')).hexdigest(),
             'Content-Type': 'application/json',
             'Accept-Encoding': 'gzip, deflate',
         }
+        mapping = {
+            self.HEADER_REQUEST_ID: ('PXFD-Request-Id', str(uuid.uuid4())),
+            self.HEADER_RETRY_NO: ('PXFD-Retry-No', '0'),
+            self.HEADER_SENT_AT: ('PXFD-Sent-At', get_curr_server_str_datetime_ms(version=self.version)),
+            self.HEADER_CLIENT_INFORMATION: ('PXFD-Client-Information', json.dumps(client_info, separators=(',', ':'))),
+            self.HEADER_CLIENT_VERSION: ('PXFD-Client-Version', str(settings.CLIENT_INFORMATION_VERSION)),
+            self.HEADER_DEVICE_TOKEN: ('PXFD-Device-Token', self.version.user.device_token),
+            self.HEADER_GAME_ACCESS_TOKEN: ('PXFD-Game-Access-Token', self.version.user.game_access_token),
+            self.HEADER_PLAYER_ID: ('PXFD-Player-Id', self.version.player_id),
+        }
+
+        for key, (field, value) in mapping.items():
+            if mask & key:
+                headers.update({field: value})
+                assert value
+
         return headers
 
     @classmethod
@@ -105,32 +126,32 @@ class ImportHelperMixin:
         )
         return resp_body
 
-    def get_data(self) -> str:
+    def get_data(self, url) -> str:
         raise NotImplementedError
 
     def parse_data(self, data) -> str:
         raise NotImplementedError
 
-    def run(self) -> bool:
-        setattr(self.version, self.FIELD_REQUEST_DATETIME, timezone.now())
-        data = self.get_data()
-        setattr(self.version, self.FIELD_REQUEST_DATETIME, timezone.now())
-        if data:
-            ret_time = self.parse_data(data=data)
+    def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
+        """
 
-            server_resp_datetime = convert_datetime(ret_time)
-            setattr(self.version, self.FIELD_SERVER_DATETIME, server_resp_datetime)
+        :return:
+        """
+        raise NotImplementedError
 
-            self.version.save(
-                update_fields=[
-                    self.FIELD_REQUEST_DATETIME,
-                    self.FIELD_SERVER_DATETIME,
-                    self.FIELD_RESPONSE_DATETIME,
-                ]
-            )
-            return True
+    def run(self):
+        for url, req_field, server_field, resp_field in self.get_urls():
+            setattr(self.version, req_field, timezone.now())
+            data = self.get_data(url=url)
+            setattr(self.version, resp_field, timezone.now())
+            if data:
+                ret_time = self.parse_data(data=data)
 
-        return False
+                server_resp_datetime = convert_datetime(ret_time)
+                setattr(self.version, server_field, server_resp_datetime)
+
+                self.version.save(update_fields=[req_field, server_field, resp_field])
+
 
     #
     # def _update_server_time(self, request_datetime, response_datetime, server_datetime):
