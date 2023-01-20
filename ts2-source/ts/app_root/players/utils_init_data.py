@@ -9,7 +9,7 @@ from django.utils import timezone
 from app_root.bots.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerJob, \
     PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
     WarehouseLevel, PlayerAchievement, PlayerDailyReward, PlayerQuest, PlayerVisitedRegion, PlayerMap
-from app_root.bots.utils_abstract import BaseBotHelper
+from app_root.servers.utils_abstract import BaseBotHelper
 from app_root.bots.utils_request import CrawlingHelper
 from core.utils import disk_cache, Logger
 
@@ -114,7 +114,7 @@ class InitdataHelper(BaseBotHelper):
         return get_init_data(
             url=url,
             android_id=self.user.android_id,
-            sent_at=self.server_time.get_curr_time(),
+            sent_at=self.server_time.get_curr_time_ms(),
             game_access_token=self.user.game_access_token,
             player_id=self.user.player_id,
         )

@@ -143,7 +143,7 @@ DJANGO_APPS = [
 DATA_APPS = [
     'core',
     'app_root.users',
-    'app_root.bots',
+    'app_root.commands',
     'app_root.servers',
     'app_root.players',
 ]

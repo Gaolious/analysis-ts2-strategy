@@ -7,8 +7,8 @@ import random
 from time import sleep
 from typing import List, Iterator, Dict, Set, Type, Union
 
-from app_root.bots.models import RunVersion, PlayerTrain, PlayerGift, PlayerDestination, PlayerJob, Destination, \
-    PlayerWarehouse, PlayerWhistle, Article, PlayerFactory, PlayerFactoryProductOrder, Product
+from app_root.players.models import RunVersion, PlayerTrain, PlayerGift, PlayerDestination, PlayerJob, \
+    PlayerWarehouse, PlayerWhistle, PlayerFactory, PlayerFactoryProductOrder
 from app_root.bots.utils_server_time import ServerTimeHelper
 from app_root.users.models import User
 
@@ -243,7 +243,7 @@ class BaseCommandHelper(object):
         return len(self._gold_destinations)
 
     def get_gold_destination_available(self) -> Iterator[PlayerDestination]:
-        now = self.server_time.get_curr_time_dt()
+        now = self.server_time.get_curr_datetime()
 
         for definition_id, destination in self._gold_destinations.items():
             remains = destination.remain_seconds(
@@ -255,7 +255,7 @@ class BaseCommandHelper(object):
                 yield destination
 
     def find_gold_destination_iter(self, only_available: bool = False) -> Iterator[PlayerDestination]:
-        now = self.server_time.get_curr_time_dt()
+        now = self.server_time.get_curr_datetime()
         for definition_id, destination in self._gold_destinations.items():
             if only_available:
                 remains = destination.remain_seconds(
@@ -391,11 +391,11 @@ class BaseCommand(object):
         return {}
 
     def get_command(self):
-        self._start_datetime = self.helper.server_time.get_curr_time_dt()
+        self._start_datetime = self.helper.server_time.get_curr_datetime()
 
         return {
             'Command': self.COMMAND,
-            'Time': self.helper.server_time.get_curr_time_ymdhis(),
+            'Time': self.helper.server_time.get_curr_time_s(),
             'Parameters': self.get_parameters()
         }
 

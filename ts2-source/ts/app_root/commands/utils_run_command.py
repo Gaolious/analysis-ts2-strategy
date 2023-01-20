@@ -307,7 +307,7 @@ class CommandHelper(BaseCommandHelper):
         headers = {
             'PXFD-Request-Id': str(uuid.uuid4()),  # 'ed52b756-8c2f-4878-a5c0-5d249c36e0d3',
             'PXFD-Retry-No': '0',
-            'PXFD-Sent-At': self.server_time.get_curr_time(),
+            'PXFD-Sent-At': self.server_time.get_curr_time_ms(),
             'PXFD-Client-Information': json.dumps(client_info, separators=(',', ':')),
             'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_VERSION),
             'PXFD-Device-Token': md5(self.user.android_id.encode('utf-8')).hexdigest(),
@@ -374,7 +374,7 @@ class CommandHelper(BaseCommandHelper):
         headers = {
             'PXFD-Request-Id': str(uuid.uuid4()),  # 'ed52b756-8c2f-4878-a5c0-5d249c36e0d3',
             'PXFD-Retry-No': '0',
-            'PXFD-Sent-At': self.server_time.get_curr_time(),
+            'PXFD-Sent-At': self.server_time.get_curr_time_ms(),
             'PXFD-Client-Information': json.dumps(client_info, separators=(',', ':')),
             'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_VERSION),
             'PXFD-Device-Token': md5(self.user.android_id.encode('utf-8')).hexdigest(),
@@ -432,7 +432,7 @@ class CommandHelper(BaseCommandHelper):
         headers = {
             'PXFD-Request-Id': str(uuid.uuid4()),  # 'ed52b756-8c2f-4878-a5c0-5d249c36e0d3',
             'PXFD-Retry-No': '0',
-            'PXFD-Sent-At': self.server_time.get_curr_time(),
+            'PXFD-Sent-At': self.server_time.get_curr_time_ms(),
             'PXFD-Client-Information': json.dumps(client_info, separators=(',', ':')),
             'PXFD-Client-Version': str(settings.CLIENT_INFORMATION_VERSION),
             'PXFD-Device-Token': md5(self.user.android_id.encode('utf-8')).hexdigest(),
@@ -443,7 +443,7 @@ class CommandHelper(BaseCommandHelper):
         }
         payload = {
             'Id': self._command_id,
-            'Time': self.server_time.get_curr_time_ymdhis(),
+            'Time': self.server_time.get_curr_time_s(),
             'Commands': [c.get_command() for c in commands],
             'Transactional': False,
         }

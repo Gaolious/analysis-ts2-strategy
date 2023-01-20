@@ -504,6 +504,7 @@ def convert_datetime(str_datetime: str, default=None):
 
     return default
 
+
 def convert_time(text: str, default=None) -> int:
     """
 
@@ -722,3 +723,4 @@ else:
             return caller
 
         return decorator
+

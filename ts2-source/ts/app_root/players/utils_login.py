@@ -4,7 +4,7 @@ from hashlib import md5
 
 from django.conf import settings
 
-from app_root.bots.utils_abstract import BaseBotHelper
+from app_root.servers.utils_abstract import BaseBotHelper
 from app_root.bots.utils_request import CrawlingHelper
 from core.utils import disk_cache, Logger
 
@@ -205,18 +205,23 @@ class LoginHelper(BaseBotHelper):
         :param url:
         :return:
         """
+        # [INFO] [2023-01-17 13:09:17] {"msg": "before request", "url": "https://game.trainstation2.com/login",
+        # "headers": {
+        # "PXFD-Request-Id": "68d3d880-04ab-402c-bf96-1c19ef2e4152",
+        # "PXFD-Retry-No": "0", "PXFD-Sent-At": "2023-01-17T04:09:17.207Z",
+        # "PXFD-Client-Information": "{\"Store\":\"google_play\",\"Version\":\"2.6.3.4068\",\"Language\":\"ko\"}", "PXFD-Client-Version": "2.6.3.4068", "PXFD-Device-Token": "30b270ca64e80bbbf4b186f251ba358a", "Content-Type": "application/json", "Accept-Encoding": "gzip, deflate"}, "menu": "utils.login", "action": "login_with_remember_token"}
         if self.user.remember_me_token:
             data = login_with_remember_token(
                 url=url,
                 android_id=self.user.android_id,
                 remember_me_token=self.user.remember_me_token,
-                sent_at=self.server_time.get_curr_time(),
+                sent_at=self.server_time.get_curr_time_ms(),
             )
         else:
             data = login_with_device_id(
                 url=url,
                 android_id=self.user.android_id,
-                sent_at=self.server_time.get_curr_time(),
+                sent_at=self.server_time.get_curr_time_ms(),
             )
 
         return data

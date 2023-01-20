@@ -4,10 +4,11 @@ import requests
 
 REQUEST_TIMEOUT = 10
 
-LOGGING_MENU = 'bot.utils'
+LOGGING_MENU = 'core.requests_helper'
 
 import urllib3
 urllib3.disable_warnings()
+
 
 class CrawlingHelper(object):
 
@@ -54,5 +55,3 @@ class CrawlingHelper(object):
              **kwargs) -> requests.Response:
         return cls._request(method='post', url=url, headers=headers, payload=payload, params=params, cookies=cookies,
                             **kwargs)
-
-

@@ -1,15 +1,164 @@
+from datetime import timedelta
 from decimal import Decimal
 from functools import cached_property
-from typing import List,  Dict
+from typing import List, Dict, Tuple
 
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from app_root.servers.mixins import ContentCategoryMixin, RarityMixin, EraMixin
-from core.models.mixins import BaseModelMixin, TimeStampedMixin
+from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
+from core.utils import hash10
 
 
-class SQLDefinition(BaseModelMixin, TimeStampedMixin):
+class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
+
+    user = models.ForeignKey(
+        to=settings.AUTH_USER_MODEL,
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    player_id = models.CharField(_('PlayerId'), max_length=50, null=False, blank=False)
+    player_name = models.CharField(_('PlayerName'), max_length=50, null=False, blank=False)
+
+    # # article id = 1
+    # xp = models.IntegerField(_('xp'), null=False, blank=False, default=0)
+    # # article id = 2
+    # gem = models.IntegerField(_('gem'), null=False, blank=False, default=0)
+    # # article id = 3
+    # gold = models.IntegerField(_('gold'), null=False, blank=False, default=0)
+    # # article id = 4
+    # key = models.IntegerField(_('key'), null=False, blank=False, default=0)
+    #
+    # level = models.IntegerField(_('level'), null=False, blank=False, default=0)
+    # population = models.IntegerField(_('population'), null=False, blank=False, default=0)
+    # warehouse = models.IntegerField(_('warehouse'), null=False, blank=False, default=0)
+    # warehouse_level = models.IntegerField(_('warehouse_level'), null=False, blank=False, default=0)
+    #
+    # train_parts_common = models.IntegerField(_('train_common'), null=False, blank=False, default=0)
+    # train_parts_rare = models.IntegerField(_('train_rare'), null=False, blank=False, default=0)
+    # train_parts_epic = models.IntegerField(_('train_epic'), null=False, blank=False, default=0)
+    # train_parts_legendary = models.IntegerField(_('train_legendary'), null=False, blank=False, default=0)
+    #
+    # # article id = 10
+    # blue_city_plans = models.IntegerField(_('blue_city_plans'), null=False, blank=False, default=0)
+    # # article id = 11
+    # yellow_city_plans = models.IntegerField(_('yellow_city_plans'), null=False, blank=False, default=0)
+    # # article id = 12
+    # red_city_plans = models.IntegerField(_('red_city_plans'), null=False, blank=False, default=0)
+    #
+    # dispatchers = models.IntegerField(_('dispatchers'), null=False, blank=False, default=0)
+    # guild_dispatchers = models.IntegerField(_('guild_dispatchers'), null=False, blank=False, default=0)
+
+    next_event_datetime = models.DateTimeField(_('next event datetime'), null=True, blank=False, default=None)
+    command_no = models.IntegerField(_('Command No'), null=False, blank=True, default=1)
+
+    is_completed = models.BooleanField(_('is completed'), null=False, blank=True, default=False)
+    has_error = models.BooleanField(_('has error'), null=False, blank=True, default=False)
+
+    # Step 1. Endpoint
+    ep_sent = models.DateTimeField(_('Endpoint Sent Datetime'), null=True, blank=False, default=None)
+    ep_server = models.DateTimeField(_('Endpoint Server Datetime'), null=True, blank=False, default=None)
+    ep_recv = models.DateTimeField(_('Endpoint Recv Datetime'), null=True, blank=False, default=None)
+
+    # Step 2. Login
+    login_sent = models.DateTimeField(_('Login Sent Datetime'), null=True, blank=False, default=None)
+    login_server = models.DateTimeField(_('Login Server Datetime'), null=True, blank=False, default=None)
+    login_recv = models.DateTimeField(_('Login Recv Datetime'), null=True, blank=False, default=None)
+
+    # Step 3. SQL Definition.
+    sd_sent = models.DateTimeField(_('SQL Definition Sent Datetime'), null=True, blank=False, default=None)
+    sd_server = models.DateTimeField(_('SQL Definition Server Datetime'), null=True, blank=False, default=None)
+    sd_recv = models.DateTimeField(_('SQL Definition Recv Datetime'), null=True, blank=False, default=None)
+
+    # Step 4. Init Data
+    init_sent = models.DateTimeField(_('Init Data Sent Datetime'), null=True, blank=False, default=None)
+    init_server = models.DateTimeField(_('Init Data Server Datetime'), null=True, blank=False, default=None)
+    init_recv = models.DateTimeField(_('Init Data Recv Datetime'), null=True, blank=False, default=None)
+
+    class Meta:
+        verbose_name = 'Version'
+        verbose_name_plural = 'Versions'
+
+    @property
+    def delta(self) -> timedelta:
+        delta = []
+        if self.ep_sent and self.ep_server and self.ep_recv:
+            delta.append(self.ep_server - self.ep_recv)
+        if self.login_sent and self.login_server and self.login_recv:
+            delta.append(self.login_server - self.login_recv)
+        if self.sd_sent and self.sd_server and self.sd_recv:
+            delta.append(self.sd_server - self.sd_recv)
+        if self.init_sent and self.init_server and self.init_recv:
+            delta.append(self.init_server - self.init_recv)
+
+        return sum(delta) / len(delta) if delta else timedelta(seconds=0)
+
+
+class EndPoint(BaseModelMixin, TimeStampedMixin):
+
+    ENDPOINT_LOGIN = 'login'
+    ENDPOINT_DEFINITION = 'definitions'
+    ENDPOINT_LEADER_BOARD = 'leaderboard'
+    ENDPOINT_COMMAND_PROCESSING = 'command_processing_collection'
+    ENDPOINT_START_GAME = 'start_game'
+    ENDPOINT_UPDATE_DEVICE_ID = 'update_device_id'
+
+    name = models.CharField(_('version'), max_length=255, null=False, blank=False)
+    name_hash = models.BigIntegerField(_('name hash'), null=False, blank=False, default=0, db_index=True)
+
+    url = models.CharField(_('version'), max_length=255, null=False, blank=False)
+
+    class Meta:
+        verbose_name = 'Endpoint'
+        verbose_name_plural = 'Endpoints'
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+                {"Name":"login","Url":"https://game.trainstation2.com/login"}
+                {"Name":"login_v2","Url":"https://game.trainstation2.com/login/v2"}                
+            """
+            for ep in data:
+                name = ep.get('Name')
+                url = ep.get('Url')
+                ret.append(
+                    EndPoint(
+                        name=name,
+                        name_hash=hash10(name),
+                        url=url,
+                        created=now, modified=now
+                    )
+                )
+
+        return ret, _
+
+    @classmethod
+    def get_urls(cls, endpoint) -> List[str]:
+        ret = []
+        queryset = cls.objects.filter(name_hash=hash10(endpoint), name=endpoint).all()
+        for row in queryset.all():
+            ret.append(row.url)
+        return ret
+
+    @classmethod
+    def get_login_url(cls) -> List[str]:
+        return cls.get_urls(cls.ENDPOINT_LOGIN)
+
+    @classmethod
+    def get_definition_url(cls) -> List[str]:
+        return cls.get_urls(cls.ENDPOINT_DEFINITION)
+
+
+class SQLDefinition(TaskModelMixin, BaseModelMixin, TimeStampedMixin):
     version = models.CharField(_('version'), max_length=20, null=False, blank=False)
     checksum = models.CharField(_('checksum'), max_length=50, null=False, blank=False)
     url = models.URLField(_('download url'), null=False, blank=False)

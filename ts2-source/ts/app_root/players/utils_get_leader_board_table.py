@@ -7,8 +7,9 @@ from typing import Optional
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.bots.models import DbDefinition, PlayerLeaderBoard, PlayerJob, PlayerLeaderBoardProgress
-from app_root.bots.utils_abstract import BaseBotHelper
+from app_root.servers.models import SQLDefinition
+from app_root.players.models import PlayerLeaderBoard, PlayerJob, PlayerLeaderBoardProgress
+from app_root.servers.utils_abstract import BaseBotHelper
 from app_root.bots.utils_request import CrawlingHelper
 from core.utils import disk_cache, Logger, download_file
 
@@ -83,7 +84,7 @@ Accept-Encoding: gzip, deflate
 
 
 class LeaderBoardHelper(BaseBotHelper):
-    instance: Optional[DbDefinition]
+    instance: Optional[SQLDefinition]
     BASE_PATH = settings.SITE_PATH / 'download' / 'definition'
     player_job_id: int
 
@@ -115,7 +116,7 @@ class LeaderBoardHelper(BaseBotHelper):
             return get_leader_board_table(
                 url=url,
                 android_id=self.user.android_id,
-                sent_at=self.server_time.get_curr_time(),
+                sent_at=self.server_time.get_curr_time_ms(),
                 game_access_token=self.user.game_access_token,
                 player_id=self.user.player_id,
                 job_id=job.job_id,
