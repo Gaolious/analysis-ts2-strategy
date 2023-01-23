@@ -11,7 +11,7 @@ from app_root.players.utils_import import InitdataHelper
 from app_root.servers.models import RunVersion, SQLDefinition
 from app_root.servers.utils_import import SQLDefinitionHelper
 from app_root.strategies.dumps import ts_dump
-from app_root.strategies.managers import find_jobs, find_trains_by_job, find_job_materials
+from app_root.strategies.managers import find_jobs, find_trains_by_job, find_job_sources
 from app_root.users.models import User
 from core.utils import convert_datetime
 
@@ -158,7 +158,7 @@ def test_find_job_materials(multidb, init_filename, event_count, union_count, st
 
         jobs = list(find_jobs(version=version))
 
-        materials = find_job_materials(version=version, jobs=jobs)
+        materials = find_job_sources(version=version, jobs=jobs)
 
         assert materials
         assert len(materials) == len(jobs)

@@ -9,7 +9,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from app_root.servers.mixins import CHOICE_RARITY, CHOICE_ERA
+from app_root.servers.mixins import CHOICE_RARITY, CHOICE_ERA, ContentCategoryMixin
 from app_root.servers.models import TSArticle
 from core.utils import convert_time, convert_datetime
 
@@ -1158,14 +1158,15 @@ class PlayerWhistleMixin(BaseVersionMixin):
     class Meta:
         abstract = True
 
-    def is_collectable(self, init_data_server_datetime) -> bool:
-        dt = init_data_server_datetime + datetime.timedelta(seconds=self.INTERVAL_SECONDS)
+    def is_collectable(self, login_dt, now) -> bool:
+        login_dt = login_dt + datetime.timedelta(seconds=self.INTERVAL_SECONDS)
 
+        dt = min(login_dt, now)
         if self.spawn_time and self.spawn_time < dt:
             return False
         if self.collectable_from and self.collectable_from < dt:
             return False
-        if self.expires_at and self.expires_at >= dt:
+        if self.expires_at and now <= self.expires_at:
             return False
         if self.is_for_video_reward:
             return False
@@ -1580,7 +1581,6 @@ class PlayerShipOfferMixin(BaseVersionMixin):
 
         return ret, _
 
-
     @cached_property
     def reward_to_article_dict(self) -> Dict:
         ret = {}
@@ -1604,3 +1604,90 @@ class PlayerShipOfferMixin(BaseVersionMixin):
                 ret.update({_id: _amount})
 
         return ret
+
+
+class PlayerCompetitionMixin(BaseVersionMixin, ContentCategoryMixin):
+
+    type = models.CharField(_('Type'), max_length=20, null=False, blank=False, default='')
+    level_from = models.IntegerField(_('LevelFrom'), null=True, blank=False)
+    max_attendees = models.IntegerField(_('MaxAttendees'), null=True, blank=False)
+    competition_id = models.CharField(_('CompetitionId'), max_length=50, null=False, blank=False, default='')
+    rewards = models.CharField(_('Rewards'), max_length=255, null=False, blank=False, default='')
+    starts_at = models.DateTimeField(_('StartsAt'), null=True, blank=False)
+    enrolment_available_to = models.DateTimeField(_('EnrolmentAvailableTo'), null=True, blank=False)
+    finishes_at = models.DateTimeField(_('FinishesAt'), null=True, blank=False)
+    expires_at = models.DateTimeField(_('ExpiresAt'), null=True, blank=False)
+    activated_at = models.DateTimeField(_('ActivatedAt'), null=True, blank=False)
+    progress = models.CharField(_('Progress'), max_length=255, null=False, blank=False, default='')
+    presentation_data_id = models.IntegerField(_('PresentationDataId'), null=True, blank=False)
+    guild_data = models.CharField(_('GuildData'), max_length=255, null=False, blank=False, default='')
+    scope = models.CharField(_('Scope'), max_length=20, null=False, blank=False, default='')
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+                'Type' = {str} 'union'
+                'LevelFrom' = {int} 25
+                'MaxAttendees' = {int} 15
+                'CompetitionId' = {str} '0a96024d-fcee-4402-9f33-618eaf07ca5b'
+                'ContentCategory' = {int} 3
+                'Rewards' = {list: 0} []
+                'StartsAt' = {str} '2022-12-05T12:00:00Z'
+                'EnrolmentAvailableTo' = {str} '2023-02-27T12:00:00Z'
+                'FinishesAt' = {str} '2023-02-27T12:00:00Z'
+                'ExpiresAt' = {str} '2023-03-03T12:00:00Z'
+                'ActivatedAt' = {str} '2022-12-05T12:00:51Z'
+                'Progress' = {dict: 7} {'PlayerId': 61561146, 'AvatarId': 58, 'FirebaseUid': 'prod_61561146', 'PlayerName': 'SRand', 'Progress': 26278, 'LastUpdate': '2023-01-20T14:16:29Z', 'RewardClaimed': False}
+                'PresentationDataId' = {int} 100001
+                'GuildData' = {dict: 5} {'Status': 0, 'MemberContributionEnrolledAt': '2022-12-05T12:00:03Z', 'GuildEnrolledAt': '2022-12-05T12:00:03Z', 'GuildId': '3a3dfa63-2e0f-4a40-b36c-08d252db9c2b', 'EnrolledAt': '2022-12-05T12:00:03Z'}
+                'Scope' = {str} 'global'  
+            """
+            for competition in data:
+                _type = competition.pop('Type', '')
+                _level_from = competition.pop('LevelFrom', 0)
+                _max_attendees = competition.pop('MaxAttendees', 0)
+                _competition_id = competition.pop('CompetitionId', '')
+                _rewards = competition.pop('Rewards', [])
+                _starts_at = competition.pop('StartsAt', '')
+                _enrolment_available_to = competition.pop('EnrolmentAvailableTo', '')
+                _finishes_at = competition.pop('FinishesAt', '')
+                _expires_at = competition.pop('ExpiresAt', '')
+                _activated_at = competition.pop('ActivatedAt', '')
+                _progress = competition.pop('Progress', {})
+                _presentation_data_id = competition.pop('PresentationDataId', 0)
+                _guild_data = competition.pop('GuildData', {})
+                _scope = competition.pop('Scope', '')
+                _content_category = competition.pop('ContentCategory', 0)
+
+                instance = cls(
+                    version_id=version_id,
+                    type=_type,
+                    level_from=_level_from,
+                    max_attendees=_max_attendees,
+                    competition_id=_competition_id,
+                    rewards=json.dumps(_rewards, separators=(',', ':')) if _rewards else '',
+                    starts_at=convert_datetime(_starts_at),
+                    enrolment_available_to=convert_datetime(_enrolment_available_to),
+                    finishes_at=convert_datetime(_finishes_at),
+                    expires_at=convert_datetime(_expires_at),
+                    activated_at=convert_datetime(_activated_at),
+                    progress=json.dumps(_progress, separators=(',', ':')) if _progress else '',
+                    presentation_data_id=_presentation_data_id,
+                    guild_data=json.dumps(_guild_data, separators=(',', ':')) if _guild_data else '',
+                    content_category=_content_category,
+                    scope=_scope,
+                    created=now, modified=now
+                )
+                ret.append(instance)
+
+        return ret, _

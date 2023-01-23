@@ -267,7 +267,7 @@ def find_destination(version: RunVersion, destination_id: int) -> TSDestination:
 ###########################################################################
 # Job 우선순위 정하는 함수.
 ###########################################################################
-def find_job_materials(version: RunVersion, jobs: List[PlayerJob]) -> Dict[int, List[PlayerTrain]]:
+def find_job_sources(version: RunVersion, jobs: List[PlayerJob]) -> Dict[int, List]:
     now = get_curr_server_datetime(version=version)
 
     # 재료 수집이 가능한가 ? & expired 체크 & event expired 체크 & union expired 체크

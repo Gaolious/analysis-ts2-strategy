@@ -42,7 +42,7 @@ def test_server_import_endpoint(multidb, filename, fixture_crawling_get, fixture
     ###########################################################################
     # prepare
     user = User.objects.create_user(username='test', android_id='test')
-    version = RunVersion.objects.create(user_id=user.id)
+    version = RunVersion.objects.create(user_id=user.id, level_id=1)
 
     fixture_crawling_get.return_value = FakeResp()
 
@@ -90,7 +90,7 @@ def test_server_import_sql_definition(
     ###########################################################################
     # prepare
     user = User.objects.create_user(username='test', android_id='test', game_access_token='a', player_id='1')
-    version = RunVersion.objects.create(user_id=user.id)
+    version = RunVersion.objects.create(user_id=user.id, level_id=1)
     EndPoint.objects.create(name=EndPoint.ENDPOINT_DEFINITION, name_hash=hash10(EndPoint.ENDPOINT_DEFINITION), url='a')
 
     fixture_crawling_get.return_value = FakeResp()
@@ -134,7 +134,7 @@ def test_utils_login_helper(multidb, filename, remember_me_token, fixture_crawli
     ###########################################################################
     # prepare
     user = User.objects.create_user(username='test', android_id='test', remember_me_token=remember_me_token)
-    version = RunVersion.objects.create(user_id=user.id)
+    version = RunVersion.objects.create(user_id=user.id, level_id=1)
     EndPoint.objects.create(name=EndPoint.ENDPOINT_LOGIN, name_hash=hash10(EndPoint.ENDPOINT_LOGIN), url='a')
 
     fixture_crawling_post.return_value = FakeResp()

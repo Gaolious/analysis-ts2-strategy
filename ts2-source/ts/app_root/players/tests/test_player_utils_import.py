@@ -30,6 +30,7 @@ def fixture_download_file():
     with mock.patch('app_root.servers.utils_import.download_file') as p:
         yield p
 
+
 @pytest.mark.django_db
 @pytest.mark.parametrize('filename', [
     'gaolious1_2022.12.29.json',
@@ -51,10 +52,43 @@ def test_utils_initdata_helper(multidb, filename, fixture_crawling_get, fixture_
     ###########################################################################
     # prepare
     user = User.objects.create_user(username='test', android_id='test', game_access_token='1', player_id='1')
-    version = RunVersion.objects.create(user_id=user.id)
+    version = RunVersion.objects.create(user_id=user.id, level_id=1)
     EndPoint.objects.create(name=EndPoint.ENDPOINT_INIT_DATA_URLS, name_hash=hash10(EndPoint.ENDPOINT_INIT_DATA_URLS), url='a')
 
     fixture_crawling_get.return_value = FakeResp()
+
+    helper = InitdataHelper(version=version)
+    ###########################################################################
+    # call function
+    helper.run()
+
+    ###########################################################################
+    # assert
+    user.refresh_from_db()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('filename1, filename2', [
+    ('8_0.json', '8_1.json'),
+])
+def test_utils_initdata_competition(multidb, filename1, filename2, fixture_crawling_get, fixture_crawling_post):
+    class FakeResp1(AbstractFakeResp):
+        text = (settings.DJANGO_PATH / 'fixtures' / 'competitions' / filename1).read_text('utf-8')
+    class FakeResp2(AbstractFakeResp):
+        text = (settings.DJANGO_PATH / 'fixtures' / 'competitions' / filename2).read_text('utf-8')
+
+    ###########################################################################
+    # prepare
+    user = User.objects.create_user(username='test', android_id='test', game_access_token='1', player_id='1')
+    version = RunVersion.objects.create(user_id=user.id, level_id=1)
+
+    EndPoint.objects.create(name=EndPoint.ENDPOINT_INIT_DATA_URLS, name_hash=hash10(EndPoint.ENDPOINT_INIT_DATA_URLS), url='a')
+    EndPoint.objects.create(name=EndPoint.ENDPOINT_INIT_DATA_URLS, name_hash=hash10(EndPoint.ENDPOINT_INIT_DATA_URLS), url='b')
+
+    fixture_crawling_get.side_effect = [
+        FakeResp1(),
+        FakeResp2()
+    ]
 
     helper = InitdataHelper(version=version)
     ###########################################################################

@@ -3,7 +3,7 @@ from typing import List, Dict
 from django.conf import settings
 
 from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerWarehouse, \
-    PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward
+    PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle
 from app_root.servers.models import RunVersion, TSArticle
 from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, find_trains, find_jobs, \
     find_destination
@@ -347,6 +347,24 @@ def ts_dump_daily_reward(version: RunVersion):
     ret.append('')
     return ret
 
+def ts_dump_whistle(version: RunVersion):
+    ret = []
+    line = '-' * 80
+
+    ret.append('# [Whistle]')
+    ret.append(line)
+
+    now = get_curr_server_datetime(version=version)
+    queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
+    for whistle in queryset:
+        ret.append(f'''   category: {whistle.category} | Position: {whistle.position}''')
+        ret.append(f'''   spawn_time : {whistle.spawn_time} | remain : {get_remain_time(version=version, finish_at=whistle.spawn_time)}''')
+        ret.append(f'''   collectable_from : {whistle.collectable_from} | remain : {get_remain_time(version=version, finish_at=whistle.collectable_from)}''')
+        ret.append(f'''   expires_at : {whistle.expires_at} | remain : {get_remain_time(version=version, finish_at=whistle.expires_at)}''')
+        pass
+    ret.append('')
+    return ret
+
 
 def ts_dump(version: RunVersion):
     ret = []
@@ -371,6 +389,9 @@ def ts_dump(version: RunVersion):
 
     # daily reward
     ret += ts_dump_daily_reward(version=version)
+
+    # whistle
+    ret += ts_dump_whistle(version=version)
 
     base_path = settings.SITE_PATH / 'dump' / f'{version.user.username}'
     base_path.mkdir(0o755, True, exist_ok=True)

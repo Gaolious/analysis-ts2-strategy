@@ -13,9 +13,9 @@ def dump():
         if not version:
             continue
 
-        # with mock.patch('django.utils.timezone.now') as p:
-        #     p.return_value = version.init_server_1
-        ts_dump(version=version)
+        with mock.patch('django.utils.timezone.now') as p:
+            p.return_value = version.init_server_1
+            ts_dump(version=version)
 
 
 def run():
