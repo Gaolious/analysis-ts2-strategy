@@ -1,0 +1,54 @@
+{
+  "Success": true,
+  "RequestId": "ac9d7264-99c1-4d70-86be-c42b54f2d392",
+  "Time": "2023-01-23T02:50:28Z",
+  "Data": [
+    {
+      "Type": "ship_offers",
+      "Data": [
+        {
+          "DefinitionId": 4,
+          "Conditions": [
+            {
+              "Id": 117,
+              "Amount": 194
+            },
+            {
+              "Id": 105,
+              "Amount": 151
+            },
+            {
+              "Id": 125,
+              "Amount": 313
+            }
+          ],
+          "Reward": {
+            "Items": [
+              {
+                "Id": 8,
+                "Value": 3,
+                "Amount": 330
+              },
+              {
+                "Id": 8,
+                "Value": 12,
+                "Amount": 14
+              },
+              {
+                "Id": 8,
+                "Value": 11,
+                "Amount": 8
+              },
+              {
+                "Id": 8,
+                "Value": 10,
+                "Amount": 8
+              }
+            ]
+          },
+          "ArrivalAt": "2023-01-23T03:44:09Z"
+        }
+      ]
+    }
+  ]
+}
