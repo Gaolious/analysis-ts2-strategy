@@ -133,3 +133,5 @@ disk_cache/
 dump/
 
 download/
+
+fabfile.py
