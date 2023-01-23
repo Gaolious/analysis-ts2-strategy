@@ -22,12 +22,12 @@ CHOICE_RARITY = (
 )
 
 ERA_STEAM = 1
-ERA_DIESEL = 2
-ERA_ELECTRON = 3
+ERA_ELECTRON = 2
+ERA_DIESEL = 3
 CHOICE_ERA = (
     (ERA_STEAM, '스팀'),
-    (ERA_DIESEL, '디젤'),
     (ERA_ELECTRON, '전기'),
+    (ERA_DIESEL, '디젤'),
 )
 """
     Reward : 

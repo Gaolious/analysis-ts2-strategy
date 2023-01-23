@@ -30,7 +30,7 @@ class ImportHelperMixin:
 
     version: RunVersion
 
-    def __init__(self, version: RunVersion):
+    def __init__(self, version: RunVersion, **kwargs):
         self.version = version
 
     def get_headers(self, *, mask) -> Dict[str, str]:
@@ -53,7 +53,7 @@ class ImportHelperMixin:
             self.HEADER_REQUEST_ID: ('PXFD-Request-Id', str(uuid.uuid4())),
             self.HEADER_RETRY_NO: ('PXFD-Retry-No', '0'),
             self.HEADER_SENT_AT: ('PXFD-Sent-At', get_curr_server_str_datetime_ms(version=self.version)),
-            self.HEADER_CLIENT_INFORMATION: ('PXFD-Client-Information', json.dumps(client_info, separators=(',', ':'))),
+            self.HEADER_CLIENT_INFORMATION: ('PXFD-Client-Information', client_info),
             self.HEADER_CLIENT_VERSION: ('PXFD-Client-Version', str(settings.CLIENT_INFORMATION_VERSION)),
             self.HEADER_DEVICE_TOKEN: ('PXFD-Device-Token', self.version.user.device_token),
             self.HEADER_GAME_ACCESS_TOKEN: ('PXFD-Game-Access-Token', self.version.user.game_access_token),
@@ -72,7 +72,7 @@ class ImportHelperMixin:
         assert url
         assert headers
         Logger.info(
-            menu=cls.__name__, action='BeforeRequest',
+            menu=cls.__name__, action='Before GET',
             url=url, headers=headers
         )
         resp = CrawlingHelper.get(
@@ -88,7 +88,7 @@ class ImportHelperMixin:
         resp_cookies = {k: v for k, v in resp.cookies.items()}
 
         Logger.info(
-            menu=cls.__name__, action='AfterRequest',
+            menu=cls.__name__, action='After GET',
             status_code=str(resp_status_code),
             body=str(resp_body),
             headers=str(resp_headers),
@@ -102,7 +102,7 @@ class ImportHelperMixin:
         assert headers
 
         Logger.info(
-            menu=cls.__name__, action='BeforeRequest',
+            menu=cls.__name__, action='Before POST',
             url=url, headers=headers
         )
         resp = CrawlingHelper.post(
@@ -118,7 +118,7 @@ class ImportHelperMixin:
         resp_cookies = {k: v for k, v in resp.cookies.items()}
 
         Logger.info(
-            menu=cls.__name__, action='AfterRequest',
+            menu=cls.__name__, action='After POST',
             status_code=str(resp_status_code),
             body=str(resp_body),
             headers=str(resp_headers),
@@ -126,10 +126,10 @@ class ImportHelperMixin:
         )
         return resp_body
 
-    def get_data(self, url) -> str:
+    def get_data(self, url, **kwargs) -> str:
         raise NotImplementedError
 
-    def parse_data(self, data) -> str:
+    def parse_data(self, data, **kwargs) -> str:
         raise NotImplementedError
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
@@ -141,85 +141,24 @@ class ImportHelperMixin:
 
     def run(self):
         for url, req_field, server_field, resp_field in self.get_urls():
-            setattr(self.version, req_field, timezone.now())
+            update_fields = []
+            if req_field:
+                update_fields.append(req_field)
+                setattr(self.version, req_field, timezone.now())
             data = self.get_data(url=url)
-            setattr(self.version, resp_field, timezone.now())
+
+            if resp_field:
+                update_fields.append(resp_field)
+                setattr(self.version, resp_field, timezone.now())
+
             if data:
                 ret_time = self.parse_data(data=data)
 
                 server_resp_datetime = convert_datetime(ret_time)
-                setattr(self.version, server_field, server_resp_datetime)
+                if server_field:
+                    update_fields.append(server_field)
+                    setattr(self.version, server_field, server_resp_datetime)
 
-                self.version.save(update_fields=[req_field, server_field, resp_field])
+            if update_fields:
+                self.version.save(update_fields=update_fields)
 
-
-    #
-    # def _update_server_time(self, request_datetime, response_datetime, server_datetime):
-    #     mid = (response_datetime - request_datetime)/2
-    #     self.server_time.adjust_time(server_datetime=server_datetime, now=request_datetime + mid)
-    #
-    # def run(self, run_version, url, user: User, server_time: ServerTimeHelper):
-    #     self.run_version = run_version
-    #     self.user = user
-    #     self.server_time = server_time
-    #
-    #     request_datetime = timezone.now()
-    #     data = self.get_data(url=url)
-    #     response_datetime = timezone.now()
-    #     if data:
-    #         ret_time = self.parse_data(data=data)
-    #
-    #         server_resp_datetime = self.server_time.convert_strtime_to_datetime(ret_time)
-    #
-    #         self._update_server_time(
-    #             request_datetime=request_datetime,
-    #             response_datetime=response_datetime,
-    #             server_datetime=server_resp_datetime,
-    #         )
-    #
-    # def parse_data(self, data) -> str:
-    #     raise NotImplementedError
-    #
-    # def check_response(self, json_data):
-    #     """
-    #
-    #     :param json_data:
-    #     """
-    #     success = json_data.get('Success')
-    #
-    #     if not success:
-    #         error = json_data.get('Error')
-    #         if error:
-    #             msg = error.get('Message')
-    #             err_msg = error.get('ErrorMessage')
-    #             err_code = error.get('Code')
-    #             param = {
-    #                 'message': msg,
-    #                 'error_message': err_msg,
-    #                 'error_code': err_code
-    #             }
-    #             if err_msg == 'Invalid or expired session':
-    #                 raise TsRespInvalidOrExpiredSession(**param)
-    #             else:
-    #                 raise TSRespUnknownException(**param)
-    #
-    #                 # Logger.error(menu='BOT', action='Server Error', msg=msg, err_msg=err_msg, err_code=err_code)
-    #
-    #                 # self.user.player_id = ''
-    #                 # self.user.game_access_token = ''
-    #                 # self.user.authentication_token = ''
-    #                 # self.user.remember_me_token = ''
-    #                 # self.user.device_id = ''
-    #                 # self.user.support_url = ''
-    #                 # self.user.save(update_fields=[
-    #                 #     'player_id',
-    #                 #     'game_access_token',
-    #                 #     'authentication_token',
-    #                 #     'remember_me_token',
-    #                 #     'device_id',
-    #                 #     'support_url',
-    #                 # ])
-    #
-    #         # raise Exception('Login Error - Retry !')
-    #
-    #

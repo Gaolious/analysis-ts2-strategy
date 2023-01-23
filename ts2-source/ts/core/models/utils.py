@@ -156,11 +156,11 @@ def get_model_differs(src, dest) -> Dict[str, tuple]:
 #         last_pk = data_list[-1].id
 
 
-# def chunk_list(data, chunk_size):
-#     if not isinstance(data, list):
-#         data = list(data)
-#     for i in range(0, len(data), chunk_size):
-#         yield data[i:i + chunk_size]
+def chunk_list(data, chunk_size):
+    if not isinstance(data, list):
+        data = list(data)
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
 
 
 # def truncate_model(MODEL):

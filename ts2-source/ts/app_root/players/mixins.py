@@ -9,6 +9,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from app_root.servers.mixins import CHOICE_RARITY, CHOICE_ERA
 from app_root.servers.models import TSArticle
 from core.utils import convert_time, convert_datetime
 
@@ -183,6 +184,11 @@ class PlayerDestinationMixin(BaseVersionMixin):
         remain = next_event - now
         return remain.total_seconds()
 
+    def is_available(self, now) -> bool:
+        if self.train_limit_refresh_at and self.train_limit_refresh_at < now:
+            return True
+        return False
+
 
 class PlayerFactoryMixin(BaseVersionMixin):
     factory = models.ForeignKey(
@@ -356,6 +362,21 @@ class PlayerFactoryProductOrderMixin(BaseVersionMixin):
 
         return ret, _
 
+    def is_completed(self, now) -> bool:
+        if self.finish_time and self.finish_time <= now:
+            return True
+        return False
+
+    def is_processing(self, now) -> bool:
+        if self.finish_time and now < self.finish_time <= now + datetime.timedelta(seconds=self.craft_time):
+            return True
+        return False
+
+    def is_waiting(self, now) -> bool:
+        if not self.finish_time or now + datetime.timedelta(seconds=self.craft_time) < self.finish_time:
+            return True
+        return False
+
 
 class PlayerJobMixin(BaseVersionMixin):
     job_id = models.CharField(_('job id'), max_length=100, null=False, blank=False)
@@ -504,49 +525,88 @@ class PlayerJobMixin(BaseVersionMixin):
     # def current_guild_amount(self):
     #     return sum(PlayerLeaderBoardProgress.objects.filter(leader_board__player_job_id=self.id).values_list('progress', flat=True))
 
-    def is_completed(self, init_data_server_datetime: datetime):
-        return self.completed_at and self.completed_at <= init_data_server_datetime
+    @property
+    def is_event_job(self) -> bool:
+        if self.job_location.region.is_event:
+            return True
+        return False
 
-    def is_collectable(self, init_data_server_datetime: datetime):
-        return self.collectable_from and self.collectable_from <= init_data_server_datetime
+    @property
+    def is_union_job(self) -> bool:
+        if self.job_location.region.is_union:
+            return True
+        return False
 
-    def is_expired(self, init_data_server_datetime: datetime):
-        return self.expires_at and self.expires_at <= init_data_server_datetime
+    @property
+    def is_story_job(self) -> bool:
+        if self.job_location.region.is_basic and self.job_type != 1:
+            return True
+        return False
+
+    @property
+    def is_side_job(self) -> bool:
+        if self.job_location.region.is_basic and self.job_type == 1:
+            return True
+        return False
+
+    def is_completed(self, init_data_server_datetime: datetime) -> bool:
+        if self.completed_at and self.completed_at <= init_data_server_datetime:
+            return True
+        return False
+
+    def is_collectable(self, init_data_server_datetime: datetime) -> bool:
+        if self.collectable_from and self.collectable_from <= init_data_server_datetime:
+            return True
+        return False
+
+    def is_expired(self, init_data_server_datetime: datetime) -> bool:
+        if self.expires_at and self.expires_at <= init_data_server_datetime:
+            return True
+        return False
 
     @cached_property
-    def str_rewards(self):
-        """
-            {"Items": [{"Id": 8, "Value": 4, "Amount": 6}, {"Id": 8, "Value": 1, "Amount": 140}]}
-        :return:
-        """
+    def requirements_to_dict(self) -> Dict[str, List]:
+        json_data = json.loads(self.requirements)
+        ret = {
+            'available_region': set([]),
+            'available_rarity': set([]),
+            'available_era': set([]),
+            'available_min_power': 0,
+            'available_content_category': set([]),
+        }
+
+        for cond in json_data:
+            _type = cond.get('Type')
+            _value = cond.get('Value')
+
+            if _type == 'region':
+                ret['available_region'].add(_value)
+            elif _type == 'rarity':
+                ret['available_rarity'].add(_value)
+            elif _type == 'era':
+                ret['available_era'].add(_value)
+            elif _type == 'power':
+                ret['available_min_power'] = max(_value, ret['available_min_power'])
+            elif _type == 'content_category':
+                ret['available_content_category'].add(_value)
+        return ret
+
+    @property
+    def reward_to_article_dict(self) -> Dict:
+        ret = {}
         if self.reward:
-            json_data = json.loads(self.reward)
-            items = json_data.get('Items')
-            ret = []
-            if items:
-                for item in items:
-                    _id = item.get('Id')
-                    _value = item.get('Value')
-                    _amount = item.get('Amount')
-                    article = TSArticle.objects.filter(id=_value).first()
-                    if article:
-                        ret.append(f'{article}-{_amount}개')
-            return ' '.join(ret)
-        return ''
+            data = json.loads(self.reward, strict=False).get('Items', [])
+            for row in data:
+                _id = row.get('Id', 0)
+                if _id == 8:
+                    ret.update({row.get('Value'): row.get('Amount')})
+
+        return ret
 
     @cached_property
     def str_requirements(self):
-        rarity = {
-            1: 'common',
-            2: 'rare',
-            3: 'epic',
-            4: 'legendary',
-        }
-        era = {
-            1: 'STEAM',
-            2: 'DIESEL',
-            3: 'ELECTRON',
-        }
+        rarity = {k: v for (k, v) in CHOICE_RARITY}
+        era = {k: v for (k, v) in CHOICE_ERA}
         if self.requirements:
             json_data = json.loads(self.requirements)
             ret = []
@@ -572,12 +632,12 @@ class PlayerJobMixin(BaseVersionMixin):
 
 class PlayerContractListMixin(BaseVersionMixin):
     contract_list_id = models.IntegerField(_('contract list id'), null=False, blank=False, default=0)
-    available_to = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
-    next_replace_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
-    next_video_replace_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
-    next_video_rent_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
-    next_video_speed_up_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
-    expires_at = models.DateTimeField(_('AvailableTo'), null=True, blank=False, default=None)
+    available_to = models.DateTimeField(_('Available To'), null=True, blank=False, default=None)
+    next_replace_at = models.DateTimeField(_('Next Replace At'), null=True, blank=False, default=None)
+    next_video_replace_at = models.DateTimeField(_('Next Video Replace At'), null=True, blank=False, default=None)
+    next_video_rent_at = models.DateTimeField(_('Next Video Rent At'), null=True, blank=False, default=None)
+    next_video_speed_up_at = models.DateTimeField(_('Next Video SpeedUp At'), null=True, blank=False, default=None)
+    expires_at = models.DateTimeField(_('Expires At'), null=True, blank=False, default=None)
 
     class Meta:
         abstract = True
@@ -634,6 +694,13 @@ class PlayerContractListMixin(BaseVersionMixin):
 
         return ret, _
 
+    def is_available(self, now) -> bool:
+        if self.available_to and not (now < self.available_to):
+            return False
+        if self.expires_at and not (now < self.expires_at):
+            return False
+        return True
+
 
 class PlayerContractMixin(BaseVersionMixin):
     contract_list = models.ForeignKey(
@@ -653,6 +720,30 @@ class PlayerContractMixin(BaseVersionMixin):
 
     class Meta:
         abstract = True
+
+    @cached_property
+    def reward_to_article_dict(self) -> Dict:
+        ret = {}
+        if self.reward:
+            data = json.loads(self.reward, strict=False).get('Items', [])
+            for row in data:
+                _id = row.get('Id', 0)
+                if _id == 8:
+                    ret.update({row.get('Value'): row.get('Amount')})
+
+        return ret
+
+    @cached_property
+    def conditions_to_article_dict(self) -> Dict:
+        ret = {}
+        if self.conditions:
+            data = json.loads(self.conditions, strict=False)
+            for row in data:
+                _id = row.get('Id', 0)
+                _amount = row.get('Amount', 0)
+                ret.update({_id: _amount})
+
+        return ret
 
     @classmethod
     def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
@@ -703,6 +794,17 @@ class PlayerContractMixin(BaseVersionMixin):
 
         return ret, _
 
+    def is_available(self, now) -> bool:
+        if self.available_from and not (self.available_from < now):
+            return False
+        if self.usable_from and not (self.usable_from < now):
+            return False
+
+        if self.available_to and not (now < self.available_to):
+            return False
+        if self.expires_at and not (now < self.expires_at):
+            return False
+        return True
 
 class PlayerGiftMixin(BaseVersionMixin):
 
@@ -867,7 +969,10 @@ class PlayerTrainMixin(BaseVersionMixin):
         to='servers.TSTrain',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
-    level = models.IntegerField(_('level'), null=False, blank=False, default=0)
+    level = models.ForeignKey(
+        to='servers.TSTrainLevel',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
     region = models.IntegerField(_('region'), null=True, blank=True, default=None)
 
     has_route = models.BooleanField(_('has route'), null=False, blank=True, default=False)
@@ -903,23 +1008,22 @@ class PlayerTrainMixin(BaseVersionMixin):
     def get_region(self):
         return self.region or self.train.region
 
-    def get_region_id(self):
-        val = self.get_region()
-        mapping = {
-            1: 101,
-            2: 202,
-            3: 302,
-            4: 401,
+    def capacity(self):
+        ret = {
+            1: self.level.common,
+            2: self.level.rare,
+            3: self.level.epic,
+            4: self.level.legendary,
         }
-        return mapping.get(val) or val
+        return ret.get(self.train.rarity, 0)
 
-    def is_working(self, init_data_server_datetime):
-        if self.route_arrival_time and self.route_arrival_time >= init_data_server_datetime:
+    def is_working(self, now):
+        if self.route_arrival_time and self.route_arrival_time >= now:
             return True
         return False
 
-    def is_idle(self, init_data_server_datetime):
-        return not self.is_working(init_data_server_datetime)
+    def is_idle(self, now):
+        return not self.is_working(now)
 
     def __str__(self):
         return self.str_dump()
@@ -927,7 +1031,7 @@ class PlayerTrainMixin(BaseVersionMixin):
     def str_dump(self):
         ret = []
         ret.append(f'#{self.instance_id:3d}')
-        # ret.append(f'[{self.capacity:3d}]')
+        ret.append(f'[{self.capacity():3d}]')
         ret.append(f'{self.train.get_era_display():10s}')
         ret.append(f'{self.train.get_rarity_display():10s}')
         ret.append(f'{self.train.asset_name:25s}')
@@ -987,7 +1091,7 @@ class PlayerTrainMixin(BaseVersionMixin):
                     version_id=version_id,
                     instance_id=instance_id,
                     train_id=definition_id,
-                    level=level,
+                    level_id=level,
                     region=region,
                     has_route=has_route,
                     route_type=route_type,
@@ -1380,8 +1484,8 @@ class PlayerQuestMixin(BaseVersionMixin):
 
             for region in data:
                 job_location_id = region.pop('JobLocationId', 0)
-                milestone = region.get('Milestone', 0)
-                progress = region.get('Progress', 0)
+                milestone = region.pop('Milestone', 0)
+                progress = region.pop('Progress', 0)
                 instance = cls(
                     version_id=version_id,
                     job_location_id=job_location_id,
@@ -1415,8 +1519,8 @@ class PlayerVisitedRegionMixin(BaseVersionMixin):
             """
             'VisitedRegions' = {list: 1} [101]        
             """
-
-            for region_id in data:
+            while len(data) > 0:
+                region_id = data.pop(0)
                 instance = cls(
                     version_id=version_id,
                     region_id=region_id,
@@ -1425,3 +1529,78 @@ class PlayerVisitedRegionMixin(BaseVersionMixin):
                 ret.append(instance)
 
         return ret, _
+
+
+class PlayerShipOfferMixin(BaseVersionMixin):
+
+    definition_id = models.IntegerField(_('definition_id'), null=True, blank=False)
+    conditions = models.CharField(_('Conditions'), max_length=255, null=False, blank=False, default='')
+    reward = models.CharField(_('reward'), max_length=255, null=False, blank=False, default='')
+    arrival_at = models.DateTimeField(_('ArrivalAt'), null=True, blank=False)
+    expire_at = models.DateTimeField(_('ExpireAt'), null=True, blank=False)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+0 = {dict: 5} {'DefinitionId': 2, 'Conditions': [{'Id': 120, 'Amount': 91}, {'Id': 124, 'Amount': 140}, {'Id': 232, 'Amount': 406}], 'Reward': {'Items': [{'Id': 8, 'Value': 3, 'Amount': 320}, {'Id': 8, 'Value': 10, 'Amount': 12}, {'Id': 8, 'Value': 11, 'Amount': 11}, {'
+ 'DefinitionId' = {int} 2
+ 'Conditions' = {list: 3} [{'Id': 120, 'Amount': 91}, {'Id': 124, 'Amount': 140}, {'Id': 232, 'Amount': 406}]
+ 'Reward' = {dict: 1} {'Items': [{'Id': 8, 'Value': 3, 'Amount': 320}, {'Id': 8, 'Value': 10, 'Amount': 12}, {'Id': 8, 'Value': 11, 'Amount': 11}, {'Id': 8, 'Value': 12, 'Amount': 7}]}
+ 'ArrivalAt' = {str} '2022-12-30T04:56:11Z'
+ 'ExpireAt' = {str} '2022-12-30T09:08:24Z'
+ __len__ = {int} 5            
+            """
+            for ship in data:
+                definition_id = ship.pop('DefinitionId', 0)
+                conditions = ship.pop('Conditions', [])
+                reward = ship.pop('Reward', {})
+                arrival_at = ship.pop('ArrivalAt', None)
+                expire_at = ship.pop('ExpireAt', None)
+
+                instance = cls(
+                    version_id=version_id,
+                    definition_id=definition_id,
+                    conditions=json.dumps(conditions, separators=(',', ':')) if conditions else '',
+                    reward=json.dumps(reward, separators=(',', ':')) if reward else '',
+                    arrival_at=convert_datetime(arrival_at),
+                    expire_at=convert_datetime(expire_at),
+                    created=now, modified=now
+                )
+                ret.append(instance)
+
+        return ret, _
+
+
+    @cached_property
+    def reward_to_article_dict(self) -> Dict:
+        ret = {}
+        if self.reward:
+            data = json.loads(self.reward, strict=False).get('Items', [])
+            for row in data:
+                _id = row.get('Id', 0)
+                if _id == 8:
+                    ret.update({row.get('Value'): row.get('Amount')})
+
+        return ret
+
+    @cached_property
+    def conditions_to_article_dict(self) -> Dict:
+        ret = {}
+        if self.conditions:
+            data = json.loads(self.conditions, strict=False)
+            for row in data:
+                _id = row.get('Id', 0)
+                _amount = row.get('Amount', 0)
+                ret.update({_id: _amount})
+
+        return ret

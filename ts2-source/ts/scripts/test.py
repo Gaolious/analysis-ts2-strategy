@@ -1,26 +1,22 @@
-from app_root.bots.models import RunVersion, DbDefinition
-from app_root.bots.utils_definition import DefinitionHelper
-from app_root.bots.utils_dump import RunVersionDump
+from unittest import mock
+
+from app_root.servers.models import RunVersion
+from app_root.strategies.dumps import ts_dump
 from app_root.users.models import User
+
 
 def dump():
     for user in User.objects.all():
-        print(f"dump for user : {user.username} - {user.android_id}")
+        print(f"[dump for user : {user.username} - {user.android_id}]")
 
         version = RunVersion.objects.filter(user_id=user.id).order_by('-pk').first()
-        if version:
-            dumper = RunVersionDump(run_version_id=version.id)
-            dumper.dump()
+        if not version:
+            continue
 
-def test_run_command():
-    for user in User.objects.all():
-        print(f"run command for user : {user.username} - {user.android_id}")
+        # with mock.patch('django.utils.timezone.now') as p:
+        #     p.return_value = version.init_server_1
+        ts_dump(version=version)
 
-        version = RunVersion.objects.filter(user_id=user.id).order_by('-pk').first()
-        # CollectFromTrainCommandHelper(1)
 
 def run():
-    # dump()
-    helper = DefinitionHelper()
-    helper.instance = DbDefinition.objects.order_by('-pk').first()
-    helper.read_sqlite()
+    dump()

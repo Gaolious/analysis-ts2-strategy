@@ -1,6 +1,5 @@
 import json
-import uuid
-from hashlib import md5
+import sys
 from typing import Dict, Callable, Iterator, Tuple
 
 from django.conf import settings
@@ -10,16 +9,16 @@ from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, \
     PlayerJob, \
     PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
-    PlayerAchievement, PlayerDailyReward, PlayerMap, PlayerQuest, PlayerVisitedRegion
-from app_root.servers.models import TSWarehouseLevel, EndPoint
-
-# , , PlayerQuest, PlayerVisitedRegion,
-from core.utils import disk_cache, Logger
+    PlayerAchievement, PlayerDailyReward, PlayerMap, PlayerQuest, PlayerVisitedRegion, PlayerShipOffer, \
+    PlayerLeaderBoard, PlayerLeaderBoardProgress
+from app_root.servers.models import EndPoint, RunVersion
 
 LOGGING_MENU = 'plyaers.import'
 
 
 class InitdataHelper(ImportHelperMixin):
+    BASE_PATH = settings.SITE_PATH / 'download' / 'init_data'
+
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
 
         idx = 1
@@ -28,7 +27,7 @@ class InitdataHelper(ImportHelperMixin):
             yield url, f'init_sent_{idx}', f'init_server_{idx}', f'init_recv_{idx}'
             idx = 3 - idx
 
-    def get_data(self, url) -> str:
+    def get_data(self, url, **kwargs) -> str:
         """
         'PXFD-Request-Id': str(uuid.uuid4()),  # 'ed52b756-8c2f-4878-a5c0-5d249c36e0d3',
         'PXFD-Retry-No': '0',
@@ -60,45 +59,15 @@ class InitdataHelper(ImportHelperMixin):
             headers=headers,
             params={}
         )
-    
-    # def update_player_info(self):
-        # xp = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=1).first()
-        # gem = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=2).first()
-        # gold = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=3).first()
-        # key = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=4).first()
-        # 
-        # self.run_version.xp = xp.amount if xp else 0
-        # self.run_version.gem = gem.amount if gem else 0
-        # self.run_version.gold = gold.amount if gold else 0
-        # self.run_version.key = key.amount if key else 0
-        # 
-        # common_parts = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=6).first()
-        # rare_parts = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=7).first()
-        # epic_parts = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=8).first()
-        # legendary_parts = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=9).first()
-        # 
-        # self.run_version.train_parts_common = common_parts.amount if common_parts else 0
-        # self.run_version.train_parts_rare = rare_parts.amount if rare_parts else 0
-        # self.run_version.train_parts_epic = epic_parts.amount if epic_parts else 0
-        # self.run_version.train_parts_legendary = legendary_parts.amount if legendary_parts else 0
-        # 
-        # blue = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=10).first()
-        # yellow = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=11).first()
-        # red = PlayerWarehouse.objects.filter(version_id=self.version.id, article_id=12).first()
-        # 
-        # self.run_version.blue_city_plans = blue.amount if blue else 0
-        # self.run_version.yellow_city_plans = yellow.amount if yellow else 0
-        # self.run_version.red_city_plans = red.amount if red else 0
-        # 
-        # self.run_version.save()
 
-    def parse_data(self, data) -> str:
+    def parse_data(self, data, **kwargs) -> str:
         """
 
         :param data:
         :param user:
         :return:
         """
+
         mapping: Dict[str, Callable] = {
             'competitions': self._parse_init_competitions,
             'city_loop': self._parse_init_city_loop,
@@ -149,7 +118,24 @@ class InitdataHelper(ImportHelperMixin):
             'vouchers': self._parse_init_not_yet_implemented,
         }
         json_data = json.loads(data, strict=False)
-        # self.check_response(json_data=json_data)
+
+        try:
+            if "pytest" not in sys.modules:
+                account_path = self.BASE_PATH / f'{self.version.user.username}'
+                account_path.mkdir(0o755, True, exist_ok=True)
+
+                for i in range(4):
+                    out_filepath = account_path / f'{self.version.id}_{i}.json'
+                    if out_filepath.exists():
+                        continue
+
+                    out_filepath.write_text(
+                        data=json.dumps(json_data, indent=2),
+                        encoding='UTF-8'
+                    )
+                    break
+        except:
+            pass
 
         server_time = json_data.get('Time')
         server_data = json_data.get('Data', [])
@@ -487,17 +473,22 @@ class InitdataHelper(ImportHelperMixin):
                       2 = {dict: 2} {'Type': 'own_unique_trains', 'Progress': 500}
                       3 = {dict: 2} {'Type': 'population_max', 'Progress': 40}        
         """
-        player_level = data.pop('PlayerLevel')
-        player_id = data.pop('PlayerId')
-        player_name = data.pop('PlayerName')
-        avatar_id = data.pop('AvatarId')
+        player_level = data.pop('PlayerLevel', '')
+        player_id = data.pop('PlayerId', '')
+        player_name = data.pop('PlayerName', '')
+        avatar_id = data.pop('AvatarId', '')
+        guild_id = data.pop('GuildId', '')
+
         self.version.player_id = player_id or ''
         self.version.player_name = player_name or ''
-        self.version.level = player_level or 0
+        self.version.level_id = player_level or 0
+        self.version.guild_id = guild_id or ''
+
         self.version.save(update_fields=[
             'player_id',
             'player_name',
-            'level',
+            'level_id',
+            'guild_id',
         ])
 
     def _parse_init_regions(self, data):
@@ -677,9 +668,13 @@ class InitdataHelper(ImportHelperMixin):
         :return:
         """
 
-        """       
-        """
-        pass
+        if data:
+            bulk_list, _ = PlayerShipOffer.create_instance(data=data, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerShipOffer.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_ship_offers', data)
 
     def _parse_init_contracts(self, data):
         """
@@ -890,3 +885,73 @@ class InitdataHelper(ImportHelperMixin):
         data = self.reduce(data=data)
         if data:
             print('[REMAIN]', msg, data)
+
+
+class LeaderboardHelper(ImportHelperMixin):
+
+    player_job_id: int
+
+    def __init__(self, player_job_id: int, **kwargs):
+        super(LeaderboardHelper, self).__init__(**kwargs)
+        self.player_job_id = player_job_id
+
+    def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
+
+        for url in EndPoint.get_urls(EndPoint.ENDPOINT_LEADER_BOARD):
+            yield url, None, None, None
+
+    def get_data(self, url, **kwargs) -> str:
+        mask = self.HEADER_REQUEST_ID \
+               | self.HEADER_RETRY_NO \
+               | self.HEADER_SENT_AT \
+               | self.HEADER_CLIENT_INFORMATION \
+               | self.HEADER_CLIENT_VERSION \
+               | self.HEADER_DEVICE_TOKEN \
+               | self.HEADER_GAME_ACCESS_TOKEN \
+               | self.HEADER_PLAYER_ID
+
+        headers = self.get_headers(mask=mask)
+
+        job = PlayerJob.objects.filter(id=self.player_job_id).first()
+        assert job
+
+        param = {
+            'LeaderBoardId': job.job_id,
+            'Type': 'guild-job-contribution',
+            'Bracket': '1'
+        }
+        return self.get(
+            url=url,
+            headers=headers,
+            params=param
+        )
+
+    def parse_data(self, data, **kwargs) -> str:
+        """
+
+        :param user:
+        :param data:
+        :return:
+        """
+        json_data = json.loads(data, strict=False)
+
+        server_time = json_data.get('Time')
+        server_data = json_data.get('Data', {})
+
+        if server_data:
+            """
+                'LeaderboardId' = {str} '015bf3d8-d688-4cd0-b2c3-57b61f4e3373'
+                'LeaderboardGroupId' = {str} '3a3dfa63-2e0f-4a40-b36c-08d252db9c2b'
+            """
+            bulk_leader_board_list, bulk_leader_board_progress_list = PlayerLeaderBoard.create_instance(
+                data=server_data,
+                version_id=self.version.id,
+                player_job_id=self.player_job_id,
+            )
+
+            if bulk_leader_board_list:
+                PlayerLeaderBoard.objects.bulk_create(bulk_leader_board_list, 100)
+            if bulk_leader_board_list:
+                PlayerLeaderBoardProgress.objects.bulk_create(bulk_leader_board_progress_list, 100)
+
+        return server_time

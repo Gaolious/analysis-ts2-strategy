@@ -146,6 +146,7 @@ DATA_APPS = [
     'app_root.commands',
     'app_root.servers',
     'app_root.players',
+    'app_root.strategies',
 ]
 
 ADMIN_APPS = [

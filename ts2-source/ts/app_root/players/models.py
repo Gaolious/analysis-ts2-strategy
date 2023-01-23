@@ -7,7 +7,7 @@ from app_root.players.mixins import PlayerBuildingMixin, PlayerDestinationMixin,
     PlayerFactoryProductOrderMixin, PlayerJobMixin, PlayerContractListMixin, PlayerContractMixin, PlayerGiftMixin, \
     PlayerLeaderBoardMixin, PlayerLeaderBoardProgressMixin, PlayerTrainMixin, PlayerWarehouseMixin, \
     PlayerWhistleItemMixin, PlayerWhistleMixin, PlayerAchievementMixin, PlayerDailyRewardMixin, PlayerMapMixin, \
-    PlayerQuestMixin, PlayerVisitedRegionMixin
+    PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin
 from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
 
 """
@@ -52,8 +52,38 @@ class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
 
     @cached_property
     def current_guild_amount(self):
-        return sum(PlayerLeaderBoardProgress.objects.filter(leader_board__player_job_id=self.id).values_list('progress',
-                                                                                                             flat=True))
+        """
+            길드 이벤트의 총 진행율.
+        :return:
+        """
+        return sum(
+            PlayerLeaderBoardProgress.objects.filter(
+                leader_board__player_job_id=self.id
+            ).values_list(
+                'progress', flat=True
+            )
+        )
+
+    def __str__(self):
+        ret = []
+        ret.append(f'#{self.id}')
+        if self.is_story_job:
+            ret.append('StoryJob')
+        if self.is_side_job:
+            ret.append('SideJob')
+        if self.is_union_job:
+            ret.append('UnionJob')
+        if self.is_event_job:
+            ret.append('EventJob')
+
+        ret.append(self.str_requirements)
+
+        if self.is_union_job:
+            ret.append(f'Progress: {self.current_guild_amount}/{self.required_amount} ({self.current_guild_amount/self.required_amount*100:.2f} %)')
+        else:
+            ret.append(f'Progress: {self.current_article_amount}/{self.required_amount} ({self.current_article_amount/self.required_amount*100:.2f} %)')
+        return ' / '.join(ret)
+
 
 class PlayerContractList(PlayerContractListMixin, BaseModelMixin, TimeStampedMixin):
     class Meta:
@@ -96,13 +126,30 @@ class PlayerTrain(PlayerTrainMixin, BaseModelMixin, TimeStampedMixin):
 
 
 class PlayerWarehouse(PlayerWarehouseMixin, BaseModelMixin, TimeStampedMixin):
+    ARTICLE_XP = 1
+    ARTICLE_GEM = 2
+    ARTICLE_GOLD = 3
+    ARTICLE_KEY = 4
+
+    ARTICLE_TRAIN_PARTS_COMMON = 6
+    ARTICLE_TRAIN_PARTS_RARE = 7
+    ARTICLE_TRAIN_PARTS_EPIC = 8
+    ARTICLE_TRAIN_PARTS_LEGENDARY = 9
+    ARTICLE_TRAIN_PARTS_UNION = 5
+
+    ARTICLE_BLUE_CITY_PLANS = 10
+    ARTICLE_YELLOW_CITY_PLANS = 11
+    ARTICLE_RED_CITY_PLANS = 12
+
+    ARTICLE_GIFT = 14
+    ARTICLE_POPULATION = 15
+
     class Meta:
         verbose_name = 'Player Warehouse'
         verbose_name_plural = 'Player Warehouses'
 
 
 class PlayerWhistle(PlayerWhistleMixin, BaseModelMixin, TimeStampedMixin):
-
     class Meta:
         verbose_name = 'Player Whistle'
         verbose_name_plural = 'Player Whistles'
@@ -135,10 +182,12 @@ class PlayerMap(PlayerMapMixin, BaseModelMixin, TimeStampedMixin):
         verbose_name = 'Player Map'
         verbose_name_plural = 'Player Maps'
 
+
 class PlayerQuest(PlayerQuestMixin, BaseModelMixin, TimeStampedMixin):
     class Meta:
         verbose_name = 'Player Quest'
         verbose_name_plural = 'Player Quests'
+
 
 class PlayerVisitedRegion(PlayerVisitedRegionMixin, BaseModelMixin, TimeStampedMixin):
     class Meta:
@@ -146,4 +195,7 @@ class PlayerVisitedRegion(PlayerVisitedRegionMixin, BaseModelMixin, TimeStampedM
         verbose_name_plural = 'Player Visited Regions'
 
 
-
+class PlayerShipOffer(PlayerShipOfferMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player Ship Offer'
+        verbose_name_plural = 'Player Ship Offers'

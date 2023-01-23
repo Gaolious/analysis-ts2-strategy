@@ -1,10 +1,26 @@
-# from unittest import mock
-#
-# import pytest
-#
-# from core.utils import create_datetime as dt
-#
-#
+
+from unittest import mock
+
+import pytest
+
+from app_root.servers.models import RunVersion
+from core.utils import create_datetime as dt
+
+
+@pytest.mark.parametrize('srv_time, recv_time, expected', [
+    (dt(2022, 12, 29, 9, 0, 0, 0), dt(2022, 12, 29, 9, 0, 0, 0), 0.0),
+    (dt(2022, 12, 29, 9, 0, 0, 0), dt(2022, 12, 29, 9, 0, 0, 999999), -0.999999),
+    (dt(2022, 12, 29, 9, 0, 0, 999999), dt(2022, 12, 29, 9, 0, 0, 0), 0.999999),
+])
+def test_model_run_version_delta(srv_time, recv_time, expected):
+    version = RunVersion()
+    version.ep_sent = srv_time
+    version.ep_server = srv_time
+    version.ep_recv = recv_time
+
+    assert version.delta.total_seconds() == expected
+
+
 # @pytest.mark.parametrize('ret_time, now, diff, expected_curr_time', [
 #     ('2022-12-29T00:00:00.000Z', dt(2022, 12, 29, 9, 0, 0), 0, '2022-12-29T00:00:00.000Z'),
 #     ('2022-12-29T00:00:00.000Z', dt(2022, 12, 29, 9, 0, 0, 1), -0.000001, '2022-12-29T00:00:00.000Z'),

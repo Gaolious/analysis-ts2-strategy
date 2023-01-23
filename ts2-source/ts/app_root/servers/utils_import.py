@@ -19,7 +19,7 @@ class EndpointHelper(ImportHelperMixin):
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
         yield 'https://game.trainstation2.com/get-endpoints', 'ep_sent', 'ep_server', 'ep_recv'
 
-    def get_data(self, url) -> str:
+    def get_data(self, url, **kwargs) -> str:
         mask = self.HEADER_REQUEST_ID \
                | self.HEADER_RETRY_NO \
                | self.HEADER_SENT_AT \
@@ -34,7 +34,7 @@ class EndpointHelper(ImportHelperMixin):
             params={}
         )
 
-    def parse_data(self, data) -> str:
+    def parse_data(self, data, **kwargs) -> str:
         """
 
         :param user:
@@ -79,7 +79,7 @@ class LoginHelper(ImportHelperMixin):
         for url in EndPoint.get_login_urls():
             yield url, 'login_sent', 'login_server', 'login_recv'
 
-    def get_data(self, url) -> str:
+    def get_data(self, url, **kwargs) -> str:
         """
             "headers": {
                 "PXFD-Request-Id": "68d3d880-04ab-402c-bf96-1c19ef2e4152", 
@@ -119,7 +119,7 @@ class LoginHelper(ImportHelperMixin):
             payload=json.dumps(payload, separators=(',', ':')),
         )
 
-    def parse_data(self, data) -> str:
+    def parse_data(self, data, **kwargs) -> str:
         """
 
         :param user:
@@ -157,7 +157,7 @@ class SQLDefinitionHelper(ImportHelperMixin):
         for url in EndPoint.get_definition_urls():
             yield url, 'sd_sent', 'sd_server', 'sd_recv'
 
-    def get_data(self, url) -> str:
+    def get_data(self, url, **kwargs) -> str:
 
         """
             "headers": {
@@ -190,7 +190,7 @@ class SQLDefinitionHelper(ImportHelperMixin):
             params={}
         )
 
-    def parse_data(self, data) -> str:
+    def parse_data(self, data, **kwargs) -> str:
         """
 
         :param user:
@@ -256,6 +256,9 @@ class SQLDefinitionHelper(ImportHelperMixin):
             param = {
                 local_fields[i]: row[i] for i in range(len(local_fields))
             }
+            convert = getattr(model, 'convert_params', None)
+            if convert and callable(convert):
+                param = model.convert_params(**param)
             obj = model(**param, created=now, modified=now)
             bulk_list.append(obj)
 
@@ -347,10 +350,11 @@ class SQLDefinitionHelper(ImportHelperMixin):
         model = TSTrainLevel
         remote_table_name = 'train_level'
         mapping = {  # local DB field : remote db field
-            'train_level': 'train_level',
+            'id': 'train_level',
             'power': 'power',
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
 
     def _read_region(self, cur):
         model = TSRegion

@@ -23,7 +23,11 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
     # from _parse_init_player
     player_id = models.CharField(_('PlayerId'), max_length=50, null=False, blank=False)
     player_name = models.CharField(_('PlayerName'), max_length=50, null=False, blank=False)
-    level = models.IntegerField(_('level'), null=False, blank=False, default=0)
+    level = models.ForeignKey(
+        to='servers.TSUserLevel',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    guild_id = models.CharField(_('Guild ID'), max_length=50, null=False, blank=False)
 
     # from _parse_init_city_loop
     population = models.IntegerField(_('population'), null=False, blank=False, default=0)
@@ -41,9 +45,6 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
 
     # command no.
     command_no = models.IntegerField(_('Command No'), null=False, blank=True, default=1)
-
-    is_completed = models.BooleanField(_('is completed'), null=False, blank=True, default=False)
-    has_error = models.BooleanField(_('has error'), null=False, blank=True, default=False)
 
     # Step 1. Endpoint
     ep_sent = models.DateTimeField(_('Endpoint Sent Datetime'), null=True, blank=False, default=None)
@@ -75,6 +76,12 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
         verbose_name_plural = 'Versions'
 
     @property
+    def has_union(self) -> bool:
+        if self.guild_id:
+            return True
+        return False
+
+    @property
     def delta(self) -> timedelta:
         delta = []
         if self.ep_sent and self.ep_server and self.ep_recv:
@@ -92,7 +99,14 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
         if self.init_sent_2 and self.init_server_2 and self.init_recv_2:
             delta.append(self.init_server_2 - self.init_recv_2)
 
-        return sum(delta) / len(delta) if delta else timedelta(seconds=0)
+        s, us = 0, 0
+        if delta:
+            seconds = sum([a.total_seconds() for a in delta]) / len(delta)
+            s = int(seconds)
+            seconds = (seconds - s) * 1000000
+            us = int(seconds)
+
+        return timedelta(seconds=s, microseconds=us)
 
 
 class EndPoint(BaseModelMixin, TimeStampedMixin):
@@ -239,6 +253,9 @@ class TSArticle(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
     def __str__(self):
         return f'[{self.sprite}/{self.get_content_category_display()}]'  #/type:{self.type}/event:{self.event}]'
 
+    @cached_property
+    def name(self):
+        return self.sprite.split('article')[-1].strip('_')
 
 class TSFactory(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
     """
@@ -349,12 +366,28 @@ class TSTrainLevel(BaseModelMixin, TimeStampedMixin):
     """
     CREATE TABLE train_level (train_level INTEGER NOT NULL, power VARCHAR(255) NOT NULL, PRIMARY KEY(train_level))
     """
-    train_level = models.IntegerField(_('train_level'), null=False, blank=False, default=0)
-    power = models.CharField(_('power'), max_length=255, null=False, blank=False)
+    common = models.IntegerField(_('common'), null=False, blank=False, default=0)
+    rare = models.IntegerField(_('rare'), null=False, blank=False, default=0)
+    epic = models.IntegerField(_('epic'), null=False, blank=False, default=0)
+    legendary = models.IntegerField(_('legendary'), null=False, blank=False, default=0)
 
     class Meta:
         verbose_name = 'Train Level'
         verbose_name_plural = 'Train Levels'
+
+    @classmethod
+    def convert_params(cls, **kwargs):
+        if 'power' in kwargs:
+            power = kwargs.pop('power', '')
+            common, rare, epic, legendary = power.split(';')
+            kwargs.update({
+                'common': common,
+                'rare': rare,
+                'epic': epic,
+                'legendary': legendary
+            })
+
+        return kwargs
 
 
 class TSRegion(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):

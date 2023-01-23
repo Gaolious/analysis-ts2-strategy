@@ -1,0 +1,2029 @@
+{
+  "Success": true,
+  "RequestId": "6951c2d8-868c-4c71-b47f-6155a54d3dca",
+  "Time": "2023-01-21T06:23:53Z",
+  "Data": [
+    {
+      "Type": "ab_test",
+      "Data": {
+        "AbTests": []
+      }
+    },
+    {
+      "Type": "achievements",
+      "Data": {
+        "Achievements": [
+          {
+            "AchievementId": "complete_job",
+            "Level": 0,
+            "Progress": 10
+          },
+          {
+            "AchievementId": "daily_bonus_train",
+            "Level": 1,
+            "Progress": 2
+          },
+          {
+            "AchievementId": "open_train_container",
+            "Level": 1,
+            "Progress": 4
+          },
+          {
+            "AchievementId": "own_unique_trains",
+            "Level": 0,
+            "Progress": 5
+          },
+          {
+            "AchievementId": "population_max",
+            "Level": 0,
+            "Progress": 40
+          },
+          {
+            "AchievementId": "reach_player_level",
+            "Level": 0,
+            "Progress": 4
+          },
+          {
+            "AchievementId": "smelting_plant_production",
+            "Level": 0,
+            "Progress": 2
+          },
+          {
+            "AchievementId": "train_to_gold_destination",
+            "Level": 0,
+            "Progress": 1
+          },
+          {
+            "AchievementId": "train_to_material_destination",
+            "Level": 1,
+            "Progress": 24
+          },
+          {
+            "AchievementId": "upgrade_train",
+            "Level": 0,
+            "Progress": 1
+          },
+          {
+            "AchievementId": "warehouse_upgrade",
+            "Level": 1,
+            "Progress": 600
+          },
+          {
+            "AchievementId": "whistle_tap",
+            "Level": 0,
+            "Progress": 33
+          }
+        ],
+        "ReturnAsArray": false
+      }
+    },
+    {
+      "Type": "boosts",
+      "Data": {
+        "Boosts": []
+      }
+    },
+    {
+      "Type": "calendars",
+      "Data": {
+        "Calendars": []
+      }
+    },
+    {
+      "Type": "city_building_shop",
+      "Data": {
+        "Shops": [],
+        "Buildings": [],
+        "NextVideoReplaceAt": "2023-01-21T06:23:53Z",
+        "NextReplaceAt": "2023-01-21T06:23:53Z"
+      }
+    },
+    {
+      "Type": "city_loop",
+      "Data": {
+        "Population": {
+          "LastCalculatedCount": 25,
+          "LastCalculatedAt": "2022-08-27T06:02:48Z"
+        },
+        "UpgradeTaskNextReplaceAt": "2023-01-21T06:23:53Z",
+        "UpgradeTaskNextVideoReplaceAt": "2023-01-21T06:23:53Z",
+        "Parcels": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "ShopOffers": [],
+        "Buildings": [
+          {
+            "InstanceId": 1,
+            "DefinitionId": 100,
+            "ParcelNumber": 1,
+            "Rotation": 0,
+            "Level": 1
+          },
+          {
+            "InstanceId": 2,
+            "DefinitionId": 102,
+            "ParcelNumber": 2,
+            "Rotation": 0,
+            "Level": 1
+          },
+          {
+            "InstanceId": 3,
+            "DefinitionId": 104,
+            "ParcelNumber": 3,
+            "Rotation": 0,
+            "Level": 1
+          },
+          {
+            "InstanceId": 4,
+            "DefinitionId": 109,
+            "ParcelNumber": 4,
+            "Rotation": 0,
+            "Level": 1
+          },
+          {
+            "InstanceId": 5,
+            "DefinitionId": 106,
+            "ParcelNumber": 5,
+            "Rotation": 0,
+            "Level": 1
+          },
+          {
+            "InstanceId": 6,
+            "DefinitionId": 101,
+            "Rotation": 0,
+            "Level": 1
+          },
+          {
+            "InstanceId": 7,
+            "DefinitionId": 103,
+            "Rotation": 0,
+            "Level": 1
+          },
+          {
+            "InstanceId": 8,
+            "DefinitionId": 105,
+            "Rotation": 0,
+            "Level": 1
+          }
+        ]
+      }
+    },
+    {
+      "Type": "commodities",
+      "Data": {
+        "Commodities": []
+      }
+    },
+    {
+      "Type": "communities",
+      "Data": {
+        "SelectedCommunityTeams": [],
+        "ContestWinners": [
+          {
+            "Round": 1,
+            "CommunityId": 6000,
+            "CommunityTeamId": 6001
+          },
+          {
+            "Round": 2,
+            "CommunityId": 6000,
+            "CommunityTeamId": 6001
+          },
+          {
+            "Round": 3,
+            "CommunityId": 6000,
+            "CommunityTeamId": 6001
+          }
+        ]
+      }
+    },
+    {
+      "Type": "competitions",
+      "Data": {
+        "Competitions": [
+          {
+            "Type": "union",
+            "LevelFrom": 25,
+            "MaxAttendees": 15,
+            "CompetitionId": "0a96024d-fcee-4402-9f33-618eaf07ca5b",
+            "ContentCategory": 3,
+            "Rewards": [],
+            "StartsAt": "2022-12-05T12:00:00Z",
+            "EnrolmentAvailableTo": "2023-02-27T12:00:00Z",
+            "FinishesAt": "2023-02-27T12:00:00Z",
+            "ExpiresAt": "2023-03-03T12:00:00Z",
+            "PresentationDataId": 100001,
+            "GuildData": {
+              "Status": 0
+            },
+            "Scope": "global"
+          },
+          {
+            "Type": "union",
+            "LevelFrom": 25,
+            "MaxAttendees": 15,
+            "CompetitionId": "b7acc34f-e98a-4072-b739-493782fb01f3",
+            "ContentCategory": 3,
+            "Rewards": [],
+            "StartsAt": "2023-01-16T12:00:00Z",
+            "EnrolmentAvailableTo": "2023-01-22T12:00:00Z",
+            "FinishesAt": "2023-01-22T12:00:00Z",
+            "ExpiresAt": "2023-01-23T00:00:00Z",
+            "PresentationDataId": 100001,
+            "GuildData": {
+              "Status": 0
+            },
+            "Scope": "group"
+          },
+          {
+            "Type": "prestige",
+            "LevelFrom": 899,
+            "MaxAttendees": 15,
+            "CompetitionId": "ba117edd-1684-4b2f-8d20-bfd6b14373b2",
+            "ContentCategory": 4,
+            "Rewards": [
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 9,
+                    "Amount": 11
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 9,
+                    "Amount": 7
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 9,
+                    "Amount": 5
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 20
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 18
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 16
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 14
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 12
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 10
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 9
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 8
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 7
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 5
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 3
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 8,
+                    "Amount": 1
+                  }
+                ]
+              }
+            ],
+            "StartsAt": "2023-01-16T12:00:00Z",
+            "EnrolmentAvailableTo": "2023-01-22T12:00:00Z",
+            "FinishesAt": "2023-01-22T12:00:00Z",
+            "ExpiresAt": "2023-01-22T23:59:50Z",
+            "PresentationDataId": 33,
+            "Scope": "group"
+          },
+          {
+            "Type": "default",
+            "LevelFrom": 12,
+            "MaxAttendees": 25,
+            "CompetitionId": "1aa307af-1e09-4ec7-9c0e-5850e68b46c7",
+            "ContentCategory": 1,
+            "Rewards": [
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 350
+                  },
+                  {
+                    "Id": 6,
+                    "Value": 100058
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 250
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 200
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 180
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 160
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 120
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 100
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 90
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 80
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 70
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 60
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 50
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 50
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 40
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 40
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 30
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 30
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 30
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 20
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 20
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 20
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 10
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 10
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 10
+                  }
+                ]
+              },
+              {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 6009,
+                    "Amount": 10
+                  }
+                ]
+              }
+            ],
+            "StartsAt": "2023-01-20T12:00:00Z",
+            "EnrolmentAvailableTo": "2023-01-22T00:00:00Z",
+            "FinishesAt": "2023-01-23T12:00:00Z",
+            "ExpiresAt": "2023-01-23T23:59:50Z",
+            "PresentationDataId": 16,
+            "Scope": "group"
+          }
+        ]
+      }
+    },
+    {
+      "Type": "containers",
+      "Data": {
+        "Containers": []
+      }
+    },
+    {
+      "Type": "contracts",
+      "Data": {
+        "Contracts": [],
+        "ContractLists": []
+      }
+    },
+    {
+      "Type": "daily_reward",
+      "Data": {
+        "AvailableFrom": "2023-01-17T00:00:00Z",
+        "ExpireAt": "2023-01-17T23:59:59Z",
+        "Rewards": [
+          {
+            "Items": [
+              {
+                "Id": 8,
+                "Value": 4,
+                "Amount": 20
+              }
+            ]
+          },
+          {
+            "Items": [
+              {
+                "Id": 8,
+                "Value": 7,
+                "Amount": 20
+              }
+            ]
+          },
+          {
+            "Items": [
+              {
+                "Id": 8,
+                "Value": 3,
+                "Amount": 36
+              }
+            ]
+          },
+          {
+            "Items": [
+              {
+                "Id": 8,
+                "Value": 2,
+                "Amount": 10
+              }
+            ]
+          },
+          {
+            "Items": [
+              {
+                "Id": 1,
+                "Value": 13
+              }
+            ]
+          }
+        ],
+        "PoolId": 1,
+        "Day": 0
+      }
+    },
+    {
+      "Type": "destinations",
+      "Data": {
+        "Destinations": [
+          {
+            "LocationId": 152,
+            "DefinitionId": 152,
+            "TrainLimitCount": 0,
+            "TrainLimitRefreshTime": "2022-12-29T16:08:58Z",
+            "TrainLimitRefreshesAt": "2022-12-29T16:08:58Z",
+            "Multiplier": 0
+          }
+        ],
+        "ReturnAsArray": false
+      }
+    },
+    {
+      "Type": "dispatcher",
+      "Data": {
+        "PermanentLevel": 1,
+        "TemporaryDispatchers": [],
+        "Dispatchers": [
+          {
+            "TemporaryDispatchers": [],
+            "ContentCategory": 1,
+            "PermanentLevel": 1
+          },
+          {
+            "TemporaryDispatchers": [],
+            "ContentCategory": 3,
+            "PermanentLevel": 1
+          }
+        ]
+      }
+    },
+    {
+      "Type": "event",
+      "Data": {
+        "ActivationDate": "2023-01-09T12:00:00Z",
+        "StartDate": "2023-01-10T12:00:00Z",
+        "EndDate": "2023-01-30T12:00:00Z",
+        "ExpirationDate": "2023-02-01T12:00:00Z",
+        "EventId": 6,
+        "ActivatesAt": "2023-01-09T12:00:00Z",
+        "StartsAt": "2023-01-10T12:00:00Z",
+        "EndsAt": "2023-01-30T12:00:00Z",
+        "ExpiresAt": "2023-02-01T12:00:00Z",
+        "Shop": []
+      }
+    },
+    {
+      "Type": "events",
+      "Data": {
+        "Events": [
+          {
+            "UniqueId": "166c397f-c281-487b-a959-2de2f0f4c60c",
+            "EventId": 6,
+            "ActivatesAt": "2023-01-09T12:00:00Z",
+            "StartsAt": "2023-01-10T12:00:00Z",
+            "EndsAt": "2023-01-30T12:00:00Z",
+            "ExpiresAt": "2023-02-01T12:00:00Z",
+            "Shop": []
+          }
+        ]
+      }
+    },
+    {
+      "Type": "factories",
+      "Data": {
+        "Factories": [
+          {
+            "DefinitionId": 1,
+            "SlotCount": 2,
+            "ProductOrders": []
+          }
+        ],
+        "NextVideoSpeedUpAt": "2023-01-21T06:23:53Z"
+      }
+    },
+    {
+      "Type": "game_features",
+      "Data": {
+        "Features": [
+          {
+            "Name": "depot",
+            "DefinitionId": 1,
+            "LevelFrom": 3,
+            "Enabled": true
+          },
+          {
+            "Name": "warehouse",
+            "DefinitionId": 2,
+            "LevelFrom": 2,
+            "Enabled": true
+          },
+          {
+            "Name": "job_list",
+            "DefinitionId": 3,
+            "LevelFrom": 4,
+            "Enabled": true
+          },
+          {
+            "Name": "regions",
+            "DefinitionId": 4,
+            "LevelFrom": 4,
+            "Enabled": true
+          },
+          {
+            "Name": "city_shop",
+            "DefinitionId": 5,
+            "LevelFrom": 9,
+            "Enabled": true
+          },
+          {
+            "Name": "quest_log",
+            "DefinitionId": 6,
+            "LevelFrom": 10,
+            "Enabled": true
+          },
+          {
+            "Name": "message_board",
+            "DefinitionId": 7,
+            "LevelFrom": 5,
+            "Enabled": true
+          },
+          {
+            "Name": "event",
+            "DefinitionId": 8,
+            "LevelFrom": 12,
+            "Enabled": true
+          },
+          {
+            "Name": "competition",
+            "DefinitionId": 9,
+            "LevelFrom": 0,
+            "Enabled": true
+          },
+          {
+            "Name": "achievements",
+            "DefinitionId": 10,
+            "LevelFrom": 4,
+            "Enabled": true
+          },
+          {
+            "Name": "shop",
+            "DefinitionId": 11,
+            "LevelFrom": 2,
+            "Enabled": true
+          },
+          {
+            "Name": "special_offers",
+            "DefinitionId": 12,
+            "LevelFrom": 5,
+            "Enabled": true
+          },
+          {
+            "Name": "your_station",
+            "DefinitionId": 13,
+            "LevelFrom": 4,
+            "Enabled": true
+          },
+          {
+            "Name": "product_shortcut",
+            "DefinitionId": 14,
+            "LevelFrom": 5,
+            "Enabled": true
+          },
+          {
+            "Name": "offer_wall",
+            "DefinitionId": 15,
+            "LevelFrom": 10,
+            "Enabled": true
+          },
+          {
+            "Name": "headquarters",
+            "DefinitionId": 16,
+            "LevelFrom": 4,
+            "Enabled": true
+          },
+          {
+            "Name": "redeem_code",
+            "DefinitionId": 18,
+            "LevelFrom": 0,
+            "Enabled": true
+          },
+          {
+            "Name": "city_loop",
+            "DefinitionId": 19,
+            "LevelFrom": 7,
+            "Enabled": true
+          },
+          {
+            "Name": "ship_loop",
+            "DefinitionId": 20,
+            "LevelFrom": 11,
+            "Enabled": true
+          },
+          {
+            "Name": "prestige",
+            "DefinitionId": 21,
+            "LevelFrom": 699,
+            "Enabled": true
+          },
+          {
+            "Name": "population",
+            "DefinitionId": 22,
+            "LevelFrom": 7,
+            "Enabled": true
+          },
+          {
+            "Name": "guilds",
+            "DefinitionId": 24,
+            "LevelFrom": 25,
+            "Enabled": true
+          },
+          {
+            "Name": "seasons",
+            "DefinitionId": 25,
+            "LevelFrom": 25,
+            "Enabled": true
+          },
+          {
+            "Name": "region_progression_map",
+            "DefinitionId": 26,
+            "LevelFrom": 5,
+            "Enabled": true
+          }
+        ]
+      }
+    },
+    {
+      "Type": "game",
+      "Data": {
+        "Env": "prod",
+        "FirebaseEnv": "prod"
+      }
+    },
+    {
+      "Type": "gifts",
+      "Data": {
+        "Gifts": []
+      }
+    },
+    {
+      "Type": "guild",
+      "Data": {
+        "WasInGuild": false,
+        "Shops": []
+      }
+    },
+    {
+      "Type": "jobs",
+      "Data": {
+        "Jobs": [
+          {
+            "Id": "f1a6673b-343d-4c13-8cb1-af7cf994742d",
+            "JobLocationId": 158,
+            "JobLevel": 1,
+            "Sequence": 0,
+            "JobType": 5,
+            "Duration": 1800,
+            "ConditionMultiplier": 1,
+            "RewardMultiplier": 1,
+            "RequiredArticle": {
+              "Id": 104,
+              "Amount": 12
+            },
+            "CurrentArticleAmount": 0,
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 4,
+                  "Amount": 25
+                },
+                {
+                  "Id": 8,
+                  "Value": 1,
+                  "Amount": 10
+                },
+                {
+                  "Id": 8,
+                  "Value": 3,
+                  "Amount": 30
+                }
+              ]
+            },
+            "Bonus": {
+              "Reward": {
+                "Items": []
+              }
+            },
+            "Requirements": [
+              {
+                "Type": "region",
+                "Value": 1
+              },
+              {
+                "Type": "rarity",
+                "Value": 3
+              }
+            ]
+          },
+          {
+            "Id": "7b3ac11b-e040-4903-ab58-ea846c16d0b5",
+            "JobLocationId": 161,
+            "JobLevel": 1,
+            "Sequence": 0,
+            "JobType": 8,
+            "Duration": 20,
+            "ConditionMultiplier": 1,
+            "RewardMultiplier": 1,
+            "RequiredArticle": {
+              "Id": 100,
+              "Amount": 30
+            },
+            "CurrentArticleAmount": 22,
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 4,
+                  "Amount": 25
+                },
+                {
+                  "Id": 8,
+                  "Value": 1,
+                  "Amount": 10
+                }
+              ]
+            },
+            "Bonus": {
+              "Reward": {
+                "Items": []
+              }
+            },
+            "Requirements": [
+              {
+                "Type": "region",
+                "Value": 1
+              }
+            ]
+          },
+          {
+            "Id": "fee4f465-e72b-444e-bc42-f39006c40cab",
+            "JobLocationId": 162,
+            "JobLevel": 1,
+            "Sequence": 0,
+            "JobType": 8,
+            "Duration": 30,
+            "ConditionMultiplier": 1,
+            "RewardMultiplier": 1,
+            "RequiredArticle": {
+              "Id": 100,
+              "Amount": 30
+            },
+            "CurrentArticleAmount": 0,
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 4,
+                  "Amount": 25
+                },
+                {
+                  "Id": 8,
+                  "Value": 1,
+                  "Amount": 10
+                }
+              ]
+            },
+            "Bonus": {
+              "Reward": {
+                "Items": []
+              }
+            },
+            "Requirements": [
+              {
+                "Type": "region",
+                "Value": 1
+              }
+            ]
+          }
+        ],
+        "NextReplaceAt": "2023-01-21T06:23:53Z",
+        "NextVideoReplaceAt": "2023-01-21T06:23:53Z"
+      }
+    },
+    {
+      "Type": "locations",
+      "Data": {
+        "Skins": []
+      }
+    },
+    {
+      "Type": "login_profile",
+      "Data": {}
+    },
+    {
+      "Type": "maps",
+      "Data": {
+        "Maps": [
+          {
+            "Id": "region_101",
+            "Spots": [
+              {
+                "SpotId": 161,
+                "Position": {
+                  "X": 3,
+                  "Y": 0
+                },
+                "Connections": [
+                  164
+                ],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      161
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 164,
+                "Position": {
+                  "X": 5,
+                  "Y": 0
+                },
+                "Connections": [
+                  153
+                ],
+                "IsResolved": false,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      164
+                    ],
+                    "Reward": {
+                      "Items": [
+                        {
+                          "Id": 6,
+                          "Value": 100008
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 153,
+                "Position": {
+                  "X": 7,
+                  "Y": 0
+                },
+                "Connections": [],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      153
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 150,
+                "Position": {
+                  "X": 0,
+                  "Y": 1
+                },
+                "Connections": [
+                  159
+                ],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      150
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 159,
+                "Position": {
+                  "X": 1,
+                  "Y": 1
+                },
+                "Connections": [
+                  160
+                ],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      159
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 160,
+                "Position": {
+                  "X": 2,
+                  "Y": 1
+                },
+                "Connections": [
+                  161,
+                  162,
+                  152
+                ],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      160
+                    ],
+                    "Reward": {
+                      "Items": [
+                        {
+                          "Id": 1,
+                          "Value": 34
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 162,
+                "Position": {
+                  "X": 3,
+                  "Y": 1
+                },
+                "Connections": [
+                  163
+                ],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      162
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 163,
+                "Position": {
+                  "X": 4,
+                  "Y": 1
+                },
+                "Connections": [
+                  165
+                ],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      163
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 165,
+                "Position": {
+                  "X": 6,
+                  "Y": 1
+                },
+                "Connections": [
+                  153
+                ],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      165
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 152,
+                "Position": {
+                  "X": 3,
+                  "Y": 2
+                },
+                "Connections": [],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      152
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 158,
+                "Position": {
+                  "X": 4,
+                  "Y": 2
+                },
+                "Connections": [],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      158
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 155,
+                "Position": {
+                  "X": 5,
+                  "Y": 2
+                },
+                "Connections": [],
+                "IsResolved": true,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      155
+                    ],
+                    "Reward": {
+                      "Items": []
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 154,
+                "Position": {
+                  "X": 6,
+                  "Y": 2
+                },
+                "Connections": [],
+                "IsResolved": false,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      154
+                    ],
+                    "Reward": {
+                      "Items": [
+                        {
+                          "Id": 1,
+                          "Value": 34
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 157,
+                "Position": {
+                  "X": 7,
+                  "Y": 2
+                },
+                "Connections": [],
+                "IsResolved": false,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      157
+                    ],
+                    "Reward": {
+                      "Items": [
+                        {
+                          "Id": 2,
+                          "Value": 14,
+                          "Amount": 1
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "SpotId": 156,
+                "Position": {
+                  "X": 8,
+                  "Y": 2
+                },
+                "Connections": [],
+                "IsResolved": false,
+                "Content": {
+                  "Category": "quest",
+                  "Data": {
+                    "JobLocationIds": [
+                      156
+                    ],
+                    "Reward": {
+                      "Items": [
+                        {
+                          "Id": 8,
+                          "Value": 8,
+                          "Amount": 2
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "Type": "markets",
+      "Data": {
+        "Markets": []
+      }
+    },
+    {
+      "Type": "milestones",
+      "Data": {
+        "Milestones": []
+      }
+    },
+    {
+      "Type": "offer_wall",
+      "Data": {
+        "Promotion": {
+          "AvailableFrom": "2023-01-20T10:00:00Z",
+          "AvailableTo": "2023-01-23T10:00:00Z",
+          "Multiplier": 2.0
+        }
+      }
+    },
+    {
+      "Type": "placements",
+      "Data": {
+        "Competition": []
+      }
+    },
+    {
+      "Type": "player_feature",
+      "Data": {
+        "Features": []
+      }
+    },
+    {
+      "Type": "player",
+      "Data": {
+        "PlayerLevel": 4,
+        "PlayerId": 62794770,
+        "PlayerName": "Player_62794770",
+        "AvatarId": 1,
+        "Company": {
+          "Rank": 1,
+          "Value": 602,
+          "Stats": [
+            {
+              "Type": "complete_job",
+              "Progress": 30
+            },
+            {
+              "Type": "open_train_container",
+              "Progress": 32
+            },
+            {
+              "Type": "own_unique_trains",
+              "Progress": 500
+            },
+            {
+              "Type": "population_max",
+              "Progress": 40
+            }
+          ]
+        }
+      }
+    },
+    {
+      "Type": "prestige",
+      "Data": {
+        "Prestiges": [
+          {
+            "PrestigeId": "05b8e78a-f43a-4de6-b633-e20106101cf3",
+            "DefinitionId": 1,
+            "ActivationDate": "2023-01-16T12:00:00Z",
+            "ActivatesAt": "2023-01-16T12:00:00Z",
+            "StartDate": "2023-01-16T12:00:00Z",
+            "StartsAt": "2023-01-16T12:00:00Z",
+            "EndDate": "2023-01-23T12:00:00Z",
+            "EndsAt": "2023-01-23T12:00:00Z",
+            "ExpirationDate": "2023-01-23T12:00:00Z",
+            "ExpiresAt": "2023-01-23T12:00:00Z",
+            "HasJoined": false
+          }
+        ]
+      }
+    },
+    {
+      "Type": "regions",
+      "Data": {
+        "RegionProgressions": [],
+        "Quests": [
+          {
+            "JobLocationId": 150,
+            "Milestone": 1,
+            "Progress": 1
+          },
+          {
+            "JobLocationId": 152,
+            "Milestone": 2,
+            "Progress": 2
+          },
+          {
+            "JobLocationId": 159,
+            "Milestone": 3,
+            "Progress": 3
+          },
+          {
+            "JobLocationId": 160,
+            "Milestone": 4,
+            "Progress": 4
+          }
+        ],
+        "VisitedRegions": [
+          101
+        ]
+      }
+    },
+    {
+      "Type": "reminders",
+      "Data": {
+        "Reminders": []
+      }
+    },
+    {
+      "Type": "seasons",
+      "Data": {
+        "Seasons": [
+          {
+            "UniqueId": "8068a940-1de9-4230-bb0f-62238aa5cd28",
+            "DefinitionId": 100,
+            "ActivatesAt": "2022-12-05T11:00:00Z",
+            "StartsAt": "2022-12-05T12:00:00Z",
+            "EndsAt": "2023-02-27T12:00:00Z",
+            "ExpiresAt": "2023-03-03T12:00:00Z"
+          },
+          {
+            "UniqueId": "efadd4dd-5a58-4d0b-9ac0-743abda2637b",
+            "DefinitionId": 200,
+            "ActivatesAt": "2023-03-03T12:00:00Z",
+            "StartsAt": "2023-03-06T12:00:00Z",
+            "EndsAt": "2023-05-29T12:00:00Z",
+            "ExpiresAt": "2023-06-02T12:00:00Z"
+          }
+        ],
+        "Phases": [
+          {
+            "SeasonDefinitionId": 100,
+            "DefinitionId": 101,
+            "StartsAt": "2022-12-05T12:00:00Z",
+            "EndsAt": "2023-01-02T11:59:59Z"
+          },
+          {
+            "SeasonDefinitionId": 100,
+            "DefinitionId": 102,
+            "StartsAt": "2023-01-02T12:00:00Z",
+            "EndsAt": "2023-01-30T11:59:59Z"
+          },
+          {
+            "SeasonDefinitionId": 100,
+            "DefinitionId": 103,
+            "StartsAt": "2023-01-30T12:00:00Z",
+            "EndsAt": "2023-02-27T12:00:00Z"
+          },
+          {
+            "SeasonDefinitionId": 200,
+            "DefinitionId": 202,
+            "StartsAt": "2023-04-03T12:00:00Z",
+            "EndsAt": "2023-05-01T11:59:59Z"
+          },
+          {
+            "SeasonDefinitionId": 200,
+            "DefinitionId": 203,
+            "StartsAt": "2023-05-01T12:00:00Z",
+            "EndsAt": "2023-05-29T12:00:00Z"
+          },
+          {
+            "SeasonDefinitionId": 200,
+            "DefinitionId": 201,
+            "StartsAt": "2023-03-06T12:00:00Z",
+            "EndsAt": "2023-04-03T11:59:59Z"
+          }
+        ]
+      }
+    },
+    {
+      "Type": "shop",
+      "Data": {
+        "OfferContainers": [
+          {
+            "DefinitionId": 1,
+            "LastBoughtAt": "2022-08-27T05:35:42Z",
+            "Count": 2
+          },
+          {
+            "DefinitionId": 2,
+            "LastBoughtAt": "2022-08-27T06:02:12Z",
+            "Count": 4
+          },
+          {
+            "DefinitionId": 6,
+            "LastBoughtAt": "2022-08-27T05:36:39Z",
+            "Count": 1
+          }
+        ],
+        "SpecialOffers": [],
+        "DailyOffer": {
+          "ExpireAt": "2023-01-18T00:00:00Z",
+          "ExpiresAt": "2023-01-18T00:00:00Z",
+          "OfferItems": [
+            {
+              "Slot": 11,
+              "Price": {
+                "Id": 16,
+                "Amount": 1
+              },
+              "Reward": {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 7,
+                    "Amount": 30
+                  }
+                ]
+              },
+              "Purchased": false,
+              "PurchaseCount": 0,
+              "DefinitionId": 49
+            },
+            {
+              "Slot": 12,
+              "Price": {
+                "Id": 3,
+                "Amount": 40
+              },
+              "Reward": {
+                "Items": [
+                  {
+                    "Id": 1,
+                    "Value": 34
+                  }
+                ]
+              },
+              "Purchased": false,
+              "PurchaseCount": 0,
+              "DefinitionId": 50
+            },
+            {
+              "Slot": 13,
+              "Price": {
+                "Id": 3,
+                "Amount": 100
+              },
+              "Reward": {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 7,
+                    "Amount": 100
+                  }
+                ]
+              },
+              "Purchased": false,
+              "PurchaseCount": 0,
+              "DefinitionId": 51
+            },
+            {
+              "Slot": 14,
+              "Price": {
+                "Id": 2,
+                "Amount": 40
+              },
+              "Reward": {
+                "Items": [
+                  {
+                    "Id": 1,
+                    "Value": 35
+                  }
+                ]
+              },
+              "Purchased": false,
+              "PurchaseCount": 0,
+              "DefinitionId": 52
+            },
+            {
+              "Slot": 15,
+              "Price": {
+                "Id": 2,
+                "Amount": 200
+              },
+              "Reward": {
+                "Items": [
+                  {
+                    "Id": 8,
+                    "Value": 7,
+                    "Amount": 550
+                  }
+                ]
+              },
+              "Purchased": false,
+              "PurchaseCount": 0,
+              "DefinitionId": 53
+            },
+            {
+              "Slot": 16,
+              "Price": {
+                "Id": 2,
+                "Amount": 80
+              },
+              "Reward": {
+                "Items": [
+                  {
+                    "Id": 1,
+                    "Value": 68
+                  }
+                ]
+              },
+              "Purchased": false,
+              "PurchaseCount": 0,
+              "DefinitionId": 54
+            }
+          ]
+        },
+        "OfferWall": {
+          "Claimed": [],
+          "Unclaimed": []
+        },
+        "PaymentData": {
+          "Verified": []
+        }
+      }
+    },
+    {
+      "Type": "task_lists",
+      "Data": {
+        "TaskLists": [],
+        "ReturnAsArray": false
+      }
+    },
+    {
+      "Type": "tickets",
+      "Data": {
+        "Tickets": []
+      }
+    },
+    {
+      "Type": "trains",
+      "Data": {
+        "Trains": [
+          {
+            "InstanceId": 1,
+            "DefinitionId": 3,
+            "Level": 1,
+            "Route": {
+              "RouteType": "job",
+              "DefinitionId": 161,
+              "DepartureTime": "2023-01-15T16:13:42Z",
+              "ArrivalTime": "2023-01-15T16:14:02Z"
+            }
+          },
+          {
+            "InstanceId": 2,
+            "DefinitionId": 5,
+            "Level": 1,
+            "Route": {
+              "RouteType": "job",
+              "DefinitionId": 161,
+              "DepartureTime": "2023-01-15T16:13:40Z",
+              "ArrivalTime": "2023-01-15T16:14:00Z"
+            }
+          },
+          {
+            "InstanceId": 3,
+            "DefinitionId": 4,
+            "Level": 2,
+            "Route": {
+              "RouteType": "job",
+              "DefinitionId": 161,
+              "DepartureTime": "2023-01-15T16:13:41Z",
+              "ArrivalTime": "2023-01-15T16:14:01Z"
+            }
+          },
+          {
+            "InstanceId": 4,
+            "DefinitionId": 2,
+            "Level": 1
+          },
+          {
+            "InstanceId": 5,
+            "DefinitionId": 1,
+            "Level": 1
+          }
+        ],
+        "ReturnAsArray": false
+      }
+    },
+    {
+      "Type": "tutorial",
+      "Data": {
+        "Groups": [
+          "GoToBritain_LVL2_0",
+          "introduction1C",
+          "introduction2C",
+          "introduction3C",
+          "job_listC",
+          "trigger_100_keysC",
+          "trigger_player_stationC",
+          "trigger_send_2_trainsC",
+          "trigger_shopC",
+          "trigger_train_upgradeC",
+          "TriggerCloseJobC"
+        ]
+      }
+    },
+    {
+      "Type": "unlocked_contents",
+      "Data": {
+        "UnlockedContents": [
+          {
+            "DefinitionId": 150,
+            "UnlockedAt": "2022-08-25T10:00:47Z"
+          },
+          {
+            "DefinitionId": 151,
+            "UnlockedAt": "2022-08-27T05:14:23Z"
+          },
+          {
+            "DefinitionId": 152,
+            "UnlockedAt": "2022-12-29T12:08:16Z"
+          },
+          {
+            "DefinitionId": 154,
+            "UnlockedAt": "2022-08-25T10:00:47Z"
+          }
+        ]
+      }
+    },
+    {
+      "Type": "vouchers",
+      "Data": {
+        "Vouchers": []
+      }
+    },
+    {
+      "Type": "warehouse",
+      "Data": {
+        "Level": 2,
+        "Articles": [
+          {
+            "Id": 1,
+            "Amount": 50
+          },
+          {
+            "Id": 2,
+            "Amount": 28
+          },
+          {
+            "Id": 3,
+            "Amount": 317
+          },
+          {
+            "Id": 4,
+            "Amount": 98
+          },
+          {
+            "Id": 6,
+            "Amount": 180
+          },
+          {
+            "Id": 7,
+            "Amount": 47
+          },
+          {
+            "Id": 100,
+            "Amount": 25
+          },
+          {
+            "Id": 101,
+            "Amount": 45
+          },
+          {
+            "Id": 104,
+            "Amount": 56
+          }
+        ]
+      }
+    },
+    {
+      "Type": "whistles",
+      "Data": {
+        "Whistles": [
+          {
+            "Category": 1,
+            "Position": 4,
+            "SpawnTime": "2023-01-17T04:46:20Z",
+            "CollectableFrom": "2023-01-17T04:46:20Z",
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 4,
+                  "Amount": 1
+                }
+              ]
+            },
+            "IsForVideoReward": false
+          },
+          {
+            "Category": 1,
+            "Position": 3,
+            "SpawnTime": "2023-01-17T04:40:20Z",
+            "CollectableFrom": "2023-01-17T04:40:20Z",
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 101,
+                  "Amount": 2
+                }
+              ]
+            },
+            "IsForVideoReward": false
+          },
+          {
+            "Category": 1,
+            "Position": 1,
+            "SpawnTime": "2023-01-17T04:54:20Z",
+            "CollectableFrom": "2023-01-17T04:54:20Z",
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 104,
+                  "Amount": 1
+                }
+              ]
+            },
+            "IsForVideoReward": false
+          },
+          {
+            "Category": 1,
+            "Position": 2,
+            "SpawnTime": "2023-01-17T04:36:20Z",
+            "CollectableFrom": "2023-01-17T04:36:20Z",
+            "Reward": {
+              "Items": [
+                {
+                  "Id": 8,
+                  "Value": 4,
+                  "Amount": 1
+                }
+              ]
+            },
+            "IsForVideoReward": false
+          }
+        ]
+      }
+    }
+  ]
+}

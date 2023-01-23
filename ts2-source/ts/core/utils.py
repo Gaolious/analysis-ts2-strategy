@@ -630,7 +630,7 @@ def convert_money(text: str, unit: int = 1, default=None):
     return default
 
 
-def create_datetime(y=0, m=0, d=0, h=0, i=0, s=0, ms=0):
+def create_datetime(y=0, m=0, d=0, h=0, i=0, s=0, us=0):
     """
         KST datetime 생성
 
@@ -641,13 +641,13 @@ def create_datetime(y=0, m=0, d=0, h=0, i=0, s=0, ms=0):
         h: hour
         i: minute
         s: second
-        ms: microsecond
+        us: microsecond
 
     Returns:
         datetime: datetime with KST timezone
 
     """
-    ret = datetime(year=y, month=m, day=d, hour=h, minute=i, second=s, microsecond=ms)
+    ret = datetime(year=y, month=m, day=d, hour=h, minute=i, second=s, microsecond=us)
     return settings.KST.localize(ret)
 
 #
