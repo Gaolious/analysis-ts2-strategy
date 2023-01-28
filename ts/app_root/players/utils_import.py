@@ -10,7 +10,7 @@ from app_root.players.models import PlayerBuilding, PlayerDestination, PlayerFac
     PlayerJob, \
     PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
     PlayerAchievement, PlayerDailyReward, PlayerMap, PlayerQuest, PlayerVisitedRegion, PlayerShipOffer, \
-    PlayerLeaderBoard, PlayerLeaderBoardProgress, PlayerCompetition
+    PlayerLeaderBoard, PlayerLeaderBoardProgress, PlayerCompetition, PlayerUnlockedContent
 from app_root.servers.models import EndPoint, RunVersion
 
 LOGGING_MENU = 'plyaers.import'
@@ -95,11 +95,11 @@ class InitdataHelper(ImportHelperMixin):
             'offer_wall': self._parse_init_offer_wall,
             'containers': self._parse_init_containers,
             'maps': self._parse_init_maps,
+            'unlocked_contents': self._parse_init_unlocked_contents,
 
             'ab_test': self._parse_init_not_yet_implemented,
             'login_profile': self._parse_init_not_yet_implemented,
             'game_features': self._parse_init_not_yet_implemented,
-            'unlocked_contents': self._parse_init_not_yet_implemented,
             'shop': self._parse_init_not_yet_implemented,
             'reminders': self._parse_init_not_yet_implemented,
             'markets': self._parse_init_not_yet_implemented,
@@ -859,6 +859,16 @@ class InitdataHelper(ImportHelperMixin):
 
     def _parse_init_containers(self, data):
         pass
+
+    def _parse_init_unlocked_contents(self, data):
+        maps = data.get('UnlockedContents')
+        if maps:
+            bulk_list, _ = PlayerUnlockedContent.create_instance(data=maps, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerUnlockedContent.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_unlocked_contents', data)
 
     def _parse_init_maps(self, data):
         maps = data.get('Maps')

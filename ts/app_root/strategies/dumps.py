@@ -5,8 +5,8 @@ from django.conf import settings
 from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerWarehouse, \
     PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle
 from app_root.servers.models import RunVersion, TSArticle
-from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, find_trains, find_jobs, \
-    find_destination
+from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, trains_find, jobs_find, \
+    find_destination, warehouse_used_capacity, warehouse_max_capacity
 from app_root.utils import get_curr_server_datetime, get_remain_time
 from core.models.utils import chunk_list
 
@@ -22,10 +22,11 @@ def ts_dump_default(version: RunVersion) -> List[str]:
     key = f'Key: {find_key(version):,d}'
     gem = f'Gem: {find_gem(version):,d}'
     gold = f'Gold: {find_gold(version):,d}'
-
+    warehouse = f'Warehouse : {warehouse_used_capacity(version)} / {warehouse_max_capacity(version)}'
     ret.append('# [Default]')
     ret.append(line)
     ret.append(f'{lv:10s} | {xp:20s} | {key:10s} | {gem:10s} | {gold:10s}')
+    ret.append(warehouse)
     ret.append('')
     return ret
 
@@ -37,7 +38,7 @@ def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
     ##########################################################################################
     # dispatcher
     ##########################################################################################
-    trains = list(find_trains(version=version, available_only=False))
+    trains = list(trains_find(version=version, is_idle=False))
 
     normal_dispatchers: Dict[str, Dict[int, List]] = {}
     union_dispatchers: Dict[str, Dict[int, List]] = {}
@@ -75,7 +76,7 @@ def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
         data = None
 
         if train.is_job_route:
-            ret_list = list(find_jobs(version=version, job_location_id=train.route_definition_id))
+            ret_list = list(jobs_find(version=version, job_location_id=train.route_definition_id))
             if ret_list:
                 data = ret_list[0]
                 is_union = data.job_location.region.is_union
@@ -135,7 +136,7 @@ def ts_dump_jobs(version: RunVersion) -> List[str]:
 
     ret.append(f'# [Jobs]')
     ret.append(line)
-    union_jobs = list(find_jobs(version=version, union_jobs=True))
+    union_jobs = list(jobs_find(version=version, union_jobs=True))
     if len(union_jobs) > 0:
         ret.append('Union Jobs')
         for job in union_jobs:
@@ -143,7 +144,7 @@ def ts_dump_jobs(version: RunVersion) -> List[str]:
     else:
         ret.append('Union Jobs 없음')
 
-    event_jobs = list(find_jobs(version=version, event_jobs=True))
+    event_jobs = list(jobs_find(version=version, event_jobs=True))
     if len(event_jobs) > 0:
         ret.append('Event Jobs')
         for job in event_jobs:
@@ -151,7 +152,7 @@ def ts_dump_jobs(version: RunVersion) -> List[str]:
     else:
         ret.append('Event Jobs 없음')
 
-    story_jobs = list(find_jobs(version=version, story_jobs=True))
+    story_jobs = list(jobs_find(version=version, story_jobs=True))
     if len(story_jobs) > 0:
         ret.append('Story Jobs')
         for job in story_jobs:
@@ -245,7 +246,7 @@ def ts_dump_warehouse(version: RunVersion) -> List[str]:
     for article_type in countable:
         ret.append(f'  + [Article Type : {article_type}]')
         for rows in chunk_list(countable[article_type], chunk_size=6):
-            s = [f'[{o.article_id:5d}|{o.article.name:15s}:{o.amount:5d}]' for o in rows]
+            s = [f'[{o.article_id:6d}|{o.article.name:18s}:{o.amount:5d}]' for o in rows]
 
             ret.append(f'''    {' '.join(s)}''')
 

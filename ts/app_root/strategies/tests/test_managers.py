@@ -8,16 +8,20 @@ from django.conf import settings
 
 from app_root.players.models import PlayerShipOffer
 from app_root.players.utils_import import InitdataHelper
-from app_root.servers.models import RunVersion, SQLDefinition
+from app_root.servers.models import RunVersion, SQLDefinition, EndPoint
 from app_root.servers.utils_import import SQLDefinitionHelper
 from app_root.strategies.dumps import ts_dump
-from app_root.strategies.managers import find_jobs, find_trains_by_job, find_job_sources
+from app_root.strategies.managers import jobs_find, trains_find_match_with_job, find_job_sources
+from app_root.strategies.utils import Strategy
 from app_root.users.models import User
-from core.utils import convert_datetime
+from core.tests.factory import AbstractFakeResp
+from core.utils import convert_datetime, hash10
 
 
 def prepare(initdata_filepath: Union[List[Path], Path]):
-    user = User.objects.create_user(username='test', android_id='test')
+    user = User.objects.create_user(
+        username='test', android_id='test', game_access_token='1', player_id='1'
+    )
     version = RunVersion.objects.create(user_id=user.id, level_id=1)
 
     db_helper = SQLDefinitionHelper(version=version)
@@ -37,6 +41,9 @@ def prepare(initdata_filepath: Union[List[Path], Path]):
         init_helper.parse_data(
             data=filepath.read_text(encoding='UTF-8')
         )
+
+    EndPoint.objects.create(name=EndPoint.ENDPOINT_COMMAND_PROCESSING, name_hash=hash10(EndPoint.ENDPOINT_COMMAND_PROCESSING), url='a')
+
     return version
 
 
@@ -68,9 +75,12 @@ def test_ship_offer(multidb, init_filenames):
         'strategies/contract_check/2_3.json',
     ]
 ])
-def test_contract_check(multidb, init_filenames):
+def test_strategy(multidb, init_filenames):
     ###########################################################################
     # prepare
+    class FakeResp(AbstractFakeResp):
+        text = """{"Success":true,"RequestId":"0a645537-2b6d-4c99-81ef-d968877ca303","Time":"2023-01-23T12:43:06Z","Data":{"CollectionId":1,"Commands":[]}}"""
+
     paths = [
         settings.DJANGO_PATH / 'fixtures' / path for path in init_filenames
     ]
@@ -83,6 +93,11 @@ def test_contract_check(multidb, init_filenames):
     with mock.patch('django.utils.timezone.now') as p:
         p.return_value = now
         ts_dump(version=version)
+
+        with mock.patch('app_root.mixins.CrawlingHelper.post') as post:
+            post.side_effect = FakeResp
+            strategy = Strategy(user_id=version.user_id)
+            strategy.run()
 
 
 @pytest.mark.django_db
@@ -105,28 +120,28 @@ def test_prepare_material(multidb, init_filename, event_count, union_count, stor
 
     version = prepare(initdata_filepath=initdata_filepath)
 
-    jobs = list(find_jobs(version, event_jobs=True))
+    jobs = list(jobs_find(version, event_jobs=True))
     assert len(jobs) == event_count, "event only"
     for job in jobs:
-        trains = list(find_trains_by_job(version=version, job=job))
+        trains = list(trains_find_match_with_job(version=version, job=job))
         assert trains
 
-    jobs = list(find_jobs(version, union_jobs=True))
+    jobs = list(jobs_find(version, union_jobs=True))
     assert len(jobs) == union_count, "union only"
     for job in jobs:
-        trains = list(find_trains_by_job(version=version, job=job))
+        trains = list(trains_find_match_with_job(version=version, job=job))
         assert trains
 
-    jobs = list(find_jobs(version, story_jobs=True))
+    jobs = list(jobs_find(version, story_jobs=True))
     assert len(jobs) == story_count, "story only"
     for job in jobs:
-        trains = list(find_trains_by_job(version=version, job=job))
+        trains = list(trains_find_match_with_job(version=version, job=job))
         assert trains
 
-    jobs = list(find_jobs(version, side_jobs=True))
+    jobs = list(jobs_find(version, side_jobs=True))
     assert len(jobs) == side_count, "side only"
     for job in jobs:
-        trains = list(find_trains_by_job(version=version, job=job))
+        trains = list(trains_find_match_with_job(version=version, job=job))
         assert trains
 
 
@@ -145,6 +160,7 @@ def test_prepare_material(multidb, init_filename, event_count, union_count, stor
 def test_find_job_materials(multidb, init_filename, event_count, union_count, story_count, side_count):
     ###########################################################################
     # prepare
+
     initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
 
     version = prepare(initdata_filepath=initdata_filepath)
@@ -156,7 +172,7 @@ def test_find_job_materials(multidb, init_filename, event_count, union_count, st
     with mock.patch('django.utils.timezone.now') as p:
         p.return_value = now
 
-        jobs = list(find_jobs(version=version))
+        jobs = list(jobs_find(version=version))
 
         materials = find_job_sources(version=version, jobs=jobs)
 

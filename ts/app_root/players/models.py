@@ -7,7 +7,7 @@ from app_root.players.mixins import PlayerBuildingMixin, PlayerDestinationMixin,
     PlayerFactoryProductOrderMixin, PlayerJobMixin, PlayerContractListMixin, PlayerContractMixin, PlayerGiftMixin, \
     PlayerLeaderBoardMixin, PlayerLeaderBoardProgressMixin, PlayerTrainMixin, PlayerWarehouseMixin, \
     PlayerWhistleItemMixin, PlayerWhistleMixin, PlayerAchievementMixin, PlayerDailyRewardMixin, PlayerMapMixin, \
-    PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin, PlayerCompetitionMixin
+    PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin, PlayerCompetitionMixin, PlayerUnlockedContentMixin
 from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
 
 """
@@ -206,3 +206,8 @@ class PlayerCompetition(PlayerCompetitionMixin, BaseModelMixin, TimeStampedMixin
         verbose_name = 'Player Competition'
         verbose_name_plural = 'Player Competitions'
 
+
+class PlayerUnlockedContent(PlayerUnlockedContentMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player Competition'
+        verbose_name_plural = 'Player Competitions'

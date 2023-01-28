@@ -40,4 +40,3 @@ def run():
         print(f"run for user : {user.username} - {user.android_id}")
         strategy = Strategy(user_id=user.id)
         strategy.run()
-        ts_dump(strategy.version)

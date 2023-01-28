@@ -11,6 +11,7 @@ from django.utils.translation import gettext_lazy as _
 
 from app_root.servers.mixins import CHOICE_RARITY, CHOICE_ERA, ContentCategoryMixin
 from app_root.servers.models import TSArticle
+from app_root.strategies.managers import warehouse_can_add
 from core.utils import convert_time, convert_datetime
 
 
@@ -1375,6 +1376,35 @@ class PlayerDailyRewardMixin(BaseVersionMixin):
 
         return ret, _
 
+    def get_today_reward(self) -> dict:
+        ret = {}
+        rewards = json.loads(self.rewards, strict=False)
+        day = self.day
+        if len(rewards) >= day:
+            reward = rewards[day]
+            return reward
+
+    @property
+    def can_claim_with_video(self) -> bool:
+        reward = self.get_today_reward()
+        if reward:
+            cnt, has_amount_cnt = 0, 0
+
+            for item in reward.get('Items', []):
+                _id = item.get('Id', None)
+                _value = item.get('Value', None)
+                _amount = item.get('Amount', None)
+                cnt += 1
+                if _amount is not None:
+                    has_amount_cnt += 1
+
+                if _id == 8 and not warehouse_can_add(version=self.version, article_id=_value, amount=_amount * 2):
+                    return False
+
+            if 0 < cnt == has_amount_cnt:
+                return True
+
+        return False
 
 class PlayerMapMixin(BaseVersionMixin):
     region_name = models.CharField(_('region name'), max_length=20, null=False, blank=False, default='')
@@ -1686,6 +1716,46 @@ class PlayerCompetitionMixin(BaseVersionMixin, ContentCategoryMixin):
                     guild_data=json.dumps(_guild_data, separators=(',', ':')) if _guild_data else '',
                     content_category=_content_category,
                     scope=_scope,
+                    created=now, modified=now
+                )
+                ret.append(instance)
+
+        return ret, _
+
+
+class PlayerUnlockedContentMixin(BaseVersionMixin):
+    job_location = models.ForeignKey(
+        to='servers.TSJobLocation',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    unlocked_at = models.DateTimeField(_('UnlockedAt'), null=True, blank=False)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+                {
+                    'DefinitionId': 150, 
+                    'UnlockedAt': '2022-07-30T08:31:20Z'
+                }
+            """
+            for unlocked_content in data:
+                job_location_id = unlocked_content.pop('DefinitionId', 0)
+                unlocked_at = unlocked_content.pop('UnlockedAt', None)
+
+                instance = cls(
+                    version_id=version_id,
+                    job_location_id=job_location_id,
+                    unlocked_at=convert_datetime(unlocked_at),
                     created=now, modified=now
                 )
                 ret.append(instance)

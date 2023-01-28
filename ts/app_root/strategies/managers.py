@@ -1,16 +1,16 @@
 from datetime import timedelta
-from typing import Iterator, List, Set, Dict
+from typing import Iterator, List, Set, Dict, Type
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
-    PlayerWarehouse
-from app_root.servers.models import RunVersion, TSProduct, TSDestination
+    PlayerWarehouse, PlayerDailyReward
+from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle
 from app_root.utils import get_curr_server_datetime
 
 
 ###########################################################################
 # Job 검색
 ###########################################################################
-def find_jobs(
+def jobs_find(
         version: RunVersion,
         event_jobs: bool = None,
         union_jobs: bool = None,
@@ -24,6 +24,7 @@ def find_jobs(
     """
         Job를 검색 합니다.
 
+    :param job_location_id:
     :param version:
     :param event_jobs:
     :param union_jobs:
@@ -61,14 +62,15 @@ def find_jobs(
 ###########################################################################
 # 기차 검색
 ###########################################################################
-def find_trains(
+def trains_find(
         version: RunVersion,
         available_region: Set[int] = None,
         available_rarity: Set[int] = None,
         available_era: Set[int] = None,
         available_min_power: int = None,
         available_content_category: Set[int] = None,
-        available_only: bool = None,
+        is_idle: bool = None,
+        has_load: bool = None
 ) -> Iterator[PlayerTrain]:
     """
         가용 가능한 기차를 검색 합니다.
@@ -79,7 +81,8 @@ def find_trains(
     :param available_era:
     :param available_min_power:
     :param available_content_category:
-    :param available_only
+    :param is_idle
+    :param has_load:
     :return:
     """
 
@@ -118,13 +121,16 @@ def find_trains(
         # if available_content_category and player_train.train.content_category not in available_content_category:
         #     continue
 
-        if available_only is not None and player_train.is_idle(now=now) != available_only:
+        if is_idle is not None and player_train.is_idle(now=now) != is_idle:
+            continue
+
+        if has_load is not None and player_train.has_load != has_load:
             continue
 
         yield player_train
 
 
-def find_trains_by_job(version: RunVersion, job: PlayerJob) -> Iterator[PlayerTrain]:
+def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> Iterator[PlayerTrain]:
     """
         job에 맞는 기차를 검색 합니다.
 
@@ -134,13 +140,24 @@ def find_trains_by_job(version: RunVersion, job: PlayerJob) -> Iterator[PlayerTr
     """
     requirements = job.requirements_to_dict
 
-    iter_train = find_trains(
+    iter_train = trains_find(
         version=version,
         **requirements,
-        available_only=True
+        is_idle=True
     )
     for train in iter_train:
         yield train
+
+
+def trains_unload(version: RunVersion, train: PlayerTrain):
+    """
+    기차에서 싣고 온 article을 unload합니다.
+
+    :param version:
+    :param train:
+    :return:
+    """
+    pass
 
 
 ###########################################################################
@@ -270,13 +287,6 @@ def find_destination(version: RunVersion, destination_id: int) -> TSDestination:
 def find_job_sources(version: RunVersion, jobs: List[PlayerJob]) -> Dict[int, List]:
     now = get_curr_server_datetime(version=version)
 
-    # 재료 수집이 가능한가 ? & expired 체크 & event expired 체크 & union expired 체크
-    # job의 travel time (1hour) 고려해서
-
-    # job 우선순위를 정하고.
-
-    # 재료 수집에 걸리는 시간
-    #
     material_sources = {}
 
     for job in jobs:
@@ -301,28 +311,133 @@ def find_job_sources(version: RunVersion, jobs: List[PlayerJob]) -> Dict[int, Li
 
 
 def find_job_priority(version: RunVersion) -> List[PlayerJob]:
+
+    # 재료 수집이 가능한가 ? & expired 체크 & event expired 체크 & union expired 체크
+    # job의 travel time (1hour) 고려해서
+
+    # job 우선순위를 정하고.
+
+    # 재료 수집에 걸리는 시간
+    #
     if version.has_union:
-        jobs = list(find_jobs(version, union_jobs=True, expired_jobs=False))
+        jobs = list(jobs_find(version, union_jobs=True, expired_jobs=False))
         if jobs:
             return jobs
 
 
-def find_xp(version: RunVersion) -> int :
+###########################################################################
+# warehouse
+###########################################################################
+def warehouse_add_article(version: RunVersion, article_id: Type[int], amount: int) -> bool:
+    """
+        article 추가, 삭제
+    :param version:
+    :param article_id:
+    :param amount:
+    :return:
+    """
+    instance = PlayerWarehouse.objects.filter(version_id=version.id, article_id=article_id).first()
+    if not instance:
+        instance = PlayerWarehouse.objects.create(version_id=version.id, article_id=article_id, amount=0)
+
+    instance.amount += amount
+    if instance.amount >= 0:
+        instance.save(update_fields=['amount'])
+        return True
+
+
+def warehouse_can_add(version: RunVersion, article_id: Type[int], amount: int) -> bool:
+    article = TSArticle.objects.filter(id=article_id).first()
+    if article:
+        used = warehouse_used_capacity(version=version)
+        max_capacity = warehouse_max_capacity(version=version)
+
+        if article.type in (2, 3):
+            if 0 <= used + amount <= max_capacity:
+                return True
+            else:
+                return False
+        else:
+            return True
+
+    return False
+
+
+def warehouse_max_capacity(version: RunVersion) -> int:
+    instance = TSWarehouseLevel.objects.filter(id=version.warehouse_level).first()
+    if instance:
+        return instance.capacity
+
+
+def warehouse_used_capacity(version: RunVersion):
+    queryset = PlayerWarehouse.objects.filter(version_id=version.id)
+    data_list = list(queryset.filter(article__type__in=[2, 3]).values_list('amount', flat=True))
+    capacity = sum(data_list) if data_list else 0
+    return capacity
+
+
+def find_xp(version: RunVersion) -> int:
     instance = PlayerWarehouse.objects.filter(version_id=version.id, article_id=PlayerWarehouse.ARTICLE_XP).first()
     return instance.amount
 
 
-def find_key(version: RunVersion) -> int :
+def find_key(version: RunVersion) -> int:
     instance = PlayerWarehouse.objects.filter(version_id=version.id, article_id=PlayerWarehouse.ARTICLE_KEY).first()
     return instance.amount
 
 
-def find_gem(version: RunVersion) -> int :
+def find_gem(version: RunVersion) -> int:
     instance = PlayerWarehouse.objects.filter(version_id=version.id, article_id=PlayerWarehouse.ARTICLE_GEM).first()
     return instance.amount
 
 
-def find_gold(version: RunVersion) -> int :
+def find_gold(version: RunVersion) -> int:
     instance = PlayerWarehouse.objects.filter(version_id=version.id, article_id=PlayerWarehouse.ARTICLE_GOLD).first()
     return instance.amount
 
+
+###########################################################################
+# Daily Reward
+###########################################################################
+def daily_reward_get_reward(version: RunVersion) -> PlayerDailyReward:
+    """
+        # 5일짜리 일일 보상 첫번째
+        Before
+                "AvailableFrom": "2023-01-23T00:00:00Z",
+                "ExpireAt": "2023-01-23T23:59:59Z",
+                "Rewards": [
+                    {"Items": [{"Id": 8,"Value": 4,"Amount": 20}]},
+                    {"Items": [{"Id": 8,"Value": 7,"Amount": 20}]},
+                    {"Items": [{"Id": 8,"Value": 3,"Amount": 36}]},
+                    {"Items": [{"Id": 8,"Value": 2,"Amount": 10}]},
+                    {"Items": [{"Id": 1,"Value": 13}]}
+                ],
+                "PoolId": 1,
+                "Day": 0
+        After
+                available_from : 2023-01-24 00:00:00+00:00 | remain : -1 day, 15:49:04.023994
+                expire_at : 2023-01-24 23:59:59+00:00 | remain : 15:49:03.023963
+                rewards : [
+                    {"Items":[{"Id":8,"Value":4,"Amount":20}]},
+                    {"Items":[{"Id":8,"Value":7,"Amount":20}]},
+                    {"Items":[{"Id":8,"Value":3,"Amount":36}]},
+                    {"Items":[{"Id":8,"Value":2,"Amount":10}]},
+                    {"Items":[{"Id":1,"Value":13}]}
+                ]
+                pool_id : 1
+                day : 1
+
+    :param version:
+    :return:
+    """
+    now = get_curr_server_datetime(version=version)
+
+    if version.login_server and (now - version.login_server).total_seconds() > 12 * 60:
+        # 12분 후
+
+        for reward in PlayerDailyReward.objects.filter(version_id=version.id).all():
+            if reward.available_from and reward.available_from > now:
+                continue
+            if reward.expire_at and reward.expire_at <= now:
+                continue
+            return reward

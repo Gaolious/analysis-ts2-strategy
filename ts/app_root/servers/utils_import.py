@@ -409,6 +409,10 @@ class SQLDefinitionHelper(ImportHelperMixin):
             'local_key': 'loca_key',
             'name_local_key': 'name_loca_key',
             'contractor_id': 'contractor_id',
+            'unlocked_by': 'unlocked_by',
+            'level_from': 'level_from',
+            'available_from': 'available_from',
+            'available_to': 'available_to',
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 

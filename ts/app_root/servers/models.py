@@ -1,9 +1,13 @@
+import json
+import sys
 from datetime import timedelta
 from decimal import Decimal
 from functools import cached_property
+from pathlib import Path
 from typing import List, Dict, Tuple
 
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -108,6 +112,23 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
 
         return timedelta(seconds=s, microseconds=us)
 
+    def add_log(self, msg, **kwargs):
+        account_path = settings.SITE_PATH / 'log' / f'{self.user.username}' / f'{self.id}'
+        account_path.mkdir(0o755, True, exist_ok=True)
+        now = timezone.now()
+        elapse = (now - self.login_server) if self.login_server else '-'
+
+        if "pytest" not in sys.modules:
+            log_filepath: Path = account_path / f'{self.__class__.__name__}.log'
+
+            with open(log_filepath, 'at', encoding='UTF-8') as fout:
+                fout.write('\n############################################################\n')
+                fout.write(f'# Time : Now[{now}] | Login[{self.login_server}] | Elapsed[{elapse}] | Command No[{self.command_no}]\n')
+                fout.write(f'# {msg}\n')
+                fout.write('############################################################\n')
+                fout.write(
+                    json.dumps(kwargs, indent=2, cls=DjangoJSONEncoder)
+                )
 
 class EndPoint(BaseModelMixin, TimeStampedMixin):
 
@@ -256,6 +277,17 @@ class TSArticle(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
     @cached_property
     def name(self):
         return self.sprite.split('article')[-1].strip('_')
+
+    @property
+    def is_take_up_space(self) -> bool:
+        """
+            창고 공간을 차지 하는가 ?
+        :return:
+        """
+        if self.type in (2, 3):
+            return True
+        return False
+
 
 class TSFactory(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
     """
@@ -474,6 +506,10 @@ class TSJobLocation(BaseModelMixin, TimeStampedMixin):
     local_key = models.CharField(_('local key'), max_length=255, null=False, blank=False, default='')
     name_local_key = models.CharField(_('local key'), max_length=255, null=True, blank=False, default='')
     contractor_id = models.IntegerField(_('Contractor ID'), null=False, blank=False, default=0)
+    unlocked_by = models.CharField(_('unlocked by'), max_length=255, null=True, blank=False, default='')
+    level_from = models.IntegerField(_('level from'), null=False, blank=False, default=0)
+    available_from = models.DateTimeField(_('available_from'), null=True, blank=False, default=None)
+    available_to = models.DateTimeField(_('available_to'), null=True, blank=False, default=None)
 
     class Meta:
         verbose_name = 'Job Location'
