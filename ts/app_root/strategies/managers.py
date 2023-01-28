@@ -2,7 +2,7 @@ from datetime import timedelta
 from typing import Iterator, List, Set, Dict, Type
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
-    PlayerWarehouse, PlayerDailyReward
+    PlayerWarehouse, PlayerDailyReward, PlayerWhistle
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle
 from app_root.utils import get_curr_server_datetime
 
@@ -340,6 +340,13 @@ def warehouse_add_article(version: RunVersion, article_id: Type[int], amount: in
     if not instance:
         instance = PlayerWarehouse.objects.create(version_id=version.id, article_id=article_id, amount=0)
 
+    version.add_log(
+        msg='[Add Article]',
+        article_id=article_id,
+        before_amount=instance.amount,
+        after_amount=instance.amount + amount,
+    )
+
     instance.amount += amount
     if instance.amount >= 0:
         instance.save(update_fields=['amount'])
@@ -430,14 +437,58 @@ def daily_reward_get_reward(version: RunVersion) -> PlayerDailyReward:
     :param version:
     :return:
     """
+    INTERVAL_SECOND = 12 * 60
     now = get_curr_server_datetime(version=version)
+    queryset = PlayerDailyReward.objects.filter(version_id=version.id).all()
 
-    if version.login_server and (now - version.login_server).total_seconds() > 12 * 60:
+    if version.login_server and (now - version.login_server).total_seconds() > INTERVAL_SECOND:
         # 12분 후
 
-        for reward in PlayerDailyReward.objects.filter(version_id=version.id).all():
-            if reward.available_from and reward.available_from > now:
+        for reward in queryset:
+            if reward.available_from and now < reward.available_from:
                 continue
             if reward.expire_at and reward.expire_at <= now:
                 continue
             return reward
+
+
+###########################################################################
+# Whistle
+###########################################################################
+def whistle_get_collectable_list(version: RunVersion) -> Iterator[PlayerWhistle]:
+    INTERVAL_SECOND = 2 * 60
+    now = get_curr_server_datetime(version=version)
+    queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
+
+    if version.login_server and (now - version.login_server).total_seconds() > INTERVAL_SECOND:
+        for whistle in queryset:
+            if whistle.spawn_time and now < whistle.spawn_time:
+                continue
+            if whistle.collectable_from and now < whistle.collectable_from:
+                continue
+            if whistle.expires_at and whistle.expires_at <= now:
+                continue
+            if whistle.is_for_video_reward:
+                continue
+
+            yield whistle
+
+
+def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:
+    if whistle:
+        now = version.login_server
+
+        version.add_log(
+            msg='[whistle_remove]',
+            whistle_id=whistle.id,
+            before_expires_at=whistle.expires_at,
+            after_expires_at=now,
+        )
+
+        whistle.expires_at = now
+        whistle.save(update_fields=[
+            'expires_at'
+        ])
+        return True
+
+    return False

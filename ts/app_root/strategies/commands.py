@@ -1,16 +1,16 @@
 import json
 import random
-from datetime import timedelta
+from datetime import timedelta, datetime
 from time import sleep
-from typing import List, Iterator, Tuple, Dict
+from typing import List, Iterator, Tuple, Dict, Optional, Callable
 
 from django.conf import settings
 
 from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
-from app_root.players.models import PlayerTrain, PlayerDailyReward
+from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem
 from app_root.servers.models import RunVersion, EndPoint
-from app_root.strategies.managers import warehouse_add_article
+from app_root.strategies.managers import warehouse_add_article, whistle_remove
 from app_root.utils import get_curr_server_str_datetime_s
 from core.utils import convert_datetime
 
@@ -44,61 +44,21 @@ class BaseCommand(object):
     def duration(self) -> int:
         return 0
 
+    def get_next_event_time(self) -> Optional[datetime]:
+        return None
+
     def __str__(self):
         return f'''[{self.COMMAND}] / parameters: {self.get_parameters()}'''
 
     def post_processing(self, server_data: Dict):
         pass
 
-
+###################################################################
+# COMMAND - common
+###################################################################
 class HeartBeat(BaseCommand):
     COMMAND = 'Game:Heartbeat'
     SLEEP_RANGE = (0.0, 0.2)
-
-
-class TrainUnloadCommand(BaseCommand):
-    """
-    기차에서 수집
-    {
-        "Command":"Train:Unload",
-        "Time":"2023-01-11T01:01:44Z",
-        "Parameters":{
-            "TrainId":10
-        }
-    }
-    """
-
-    COMMAND = 'Train:Unload'
-    train: PlayerTrain
-    SLEEP_RANGE = (0.2, 0.5)
-
-    def __init__(self, *, train: PlayerTrain, **kwargs):
-        super(TrainUnloadCommand, self).__init__(**kwargs)
-        self.train = train
-
-    def get_parameters(self) -> dict:
-        """
-
-        :return:
-        """
-        return {
-            'TrainId': self.train.instance_id
-        }
-
-    def post_processing(self, server_data: Dict):
-        warehouse_add_article(
-            version=self.version,
-            article_id=self.train.load_id,
-            amount=self.train.load_amount
-        )
-        self.train.has_load = False
-        self.train.load_amount = 0
-        self.train.load_id = None
-        self.train.save(update_fields=[
-            'has_load',
-            'load_amount',
-            'load_id',
-        ])
 
 
 class GameSleep(BaseCommand):
@@ -175,6 +135,57 @@ class GameWakeup(BaseCommand):
     SLEEP_RANGE = (0.0, 0.2)
 
 
+###################################################################
+# COMMAND - Train
+###################################################################
+class TrainUnloadCommand(BaseCommand):
+    """
+    기차에서 수집
+    {
+        "Command":"Train:Unload",
+        "Time":"2023-01-11T01:01:44Z",
+        "Parameters":{
+            "TrainId":10
+        }
+    }
+    """
+
+    COMMAND = 'Train:Unload'
+    train: PlayerTrain
+    SLEEP_RANGE = (0.2, 0.5)
+
+    def __init__(self, *, train: PlayerTrain, **kwargs):
+        super(TrainUnloadCommand, self).__init__(**kwargs)
+        self.train = train
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {
+            'TrainId': self.train.instance_id
+        }
+
+    def post_processing(self, server_data: Dict):
+        warehouse_add_article(
+            version=self.version,
+            article_id=self.train.load_id,
+            amount=self.train.load_amount
+        )
+        self.train.has_load = False
+        self.train.load_amount = 0
+        self.train.load_id = None
+        self.train.save(update_fields=[
+            'has_load',
+            'load_amount',
+            'load_id',
+        ])
+
+
+###################################################################
+# Daily Reward
+###################################################################
 class DailyRewardClaimCommand(BaseCommand):
     """
         "Rewards": [
@@ -218,6 +229,37 @@ class DailyRewardClaimCommand(BaseCommand):
         {"Command":"PlayerCompany:ChangeValue","Data":{"Value":180860}}]}}
     """
     COMMAND = 'DailyReward:Claim'
+    reward: PlayerDailyReward
+
+    def __init__(self, reward, **kwargs):
+        super(DailyRewardClaimCommand, self).__init__(**kwargs)
+        self.reward = reward
+
+    def post_processing(self, server_data: Dict):
+        if self.reward:
+            today_reward = self.reward.get_today_reward()
+            if today_reward:
+                _id = today_reward.get('Id', None)
+                _value = today_reward.get('Value', None)
+                _amount = today_reward.get('Amount', None)
+
+                if _id == 8 and _amount:
+                    warehouse_add_article(
+                        version=self.version,
+                        article_id=_value,
+                        amount=_amount
+                    )
+
+            self.reward.day = (self.reward.day + 1) % 5
+            self.reward.available_from = self.reward.available_from + timedelta(days=1)
+            self.reward.expire_at = self.reward.expire_at + timedelta(days=1)
+            self.reward.save(
+                update_fields=[
+                    'day',
+                    'available_from',
+                    'expire_at',
+                ]
+            )
 
 
 class DailyRewardClaimWithVideoCommand(BaseCommand):
@@ -271,8 +313,8 @@ class DailyRewardClaimWithVideoCommand(BaseCommand):
     """
     COMMAND = 'DailyReward:ClaimWithVideoReward'
     video_started_at: str
-    video_reference: str
     reward: PlayerDailyReward
+
     def __init__(self, reward, video_started_datetime_s: str, **kwargs):
         super(DailyRewardClaimWithVideoCommand, self).__init__(**kwargs)
         self.reward = reward
@@ -292,7 +334,7 @@ class DailyRewardClaimWithVideoCommand(BaseCommand):
                 _value = today_reward.get('Value', None)
                 _amount = today_reward.get('Amount', None)
 
-                if _id == 8:
+                if _id == 8 and _amount:
                     warehouse_add_article(
                         version=self.version,
                         article_id=_value,
@@ -309,6 +351,65 @@ class DailyRewardClaimWithVideoCommand(BaseCommand):
                     'expire_at',
                 ]
             )
+
+###################################################################
+# Whistle
+###################################################################
+class CollectWhistle(BaseCommand):
+    """
+{'buffer': 'POST /api/v2/command-processing/run-collection HTTP/1.1\r\nPXFD-Request-Id: 06ec734c-466b-4c2b-a1c1-37352444b819\r\nPXFD-Retry-No: 0\r\nPXFD-Sent-At: 2023-01-12T02:14:44.124Z\r\nPXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}\r\nPXFD-Client-Version: 2.6.3.4068\r\nPXFD-Device-Token: 662461905988ab8a7fade82221cce64b\r\nPXFD-Game-Access-Token: 80e1e3c6-28f8-5d50-8047-a9284469d1ef\r\nPXFD-Player-Id: 61561146\r\nContent-Type: application/json\r\nContent-Length: 175\r\nHost: game.trainstation2.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n'}
+
+{'buffer': '{"Id":10,"Time":"2023-01-12T02:14:44Z","Commands":[{"Command":"Whistle:Collect","Time":"2023-01-12T02:14:43Z","Parameters":{"Category":1,"Position":1}}],"Transactional":false}'}
+
+{"Success":true,"RequestId":"06ec734c-466b-4c2b-a1c1-37352444b819","Time":"2023-01-12T02:14:44Z",
+"Data":{
+    "CollectionId":10,
+    "Commands":[
+        {
+            "Command":"Whistle:Spawn",
+            "Data":{
+                "Whistle":{
+                "Category":1,"Position":1,"SpawnTime":"2023-01-12T02:20:43Z","CollectableFrom":"2023-01-12T02:20:43Z",
+                    "Reward":{
+                    "Items":[
+                        {"Id":8,"Value":103,"Amount":4}
+                    ]
+                },
+                "IsForVideoReward":false
+            }
+        }
+    },
+    {"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"whistle_tap","Level":5,"Progress":16413}}}]}}
+    """
+
+    COMMAND = 'Whistle:Collect'
+    whistle: PlayerWhistle
+    SLEEP_RANGE = (0.5, 1)
+    # {"Command":"Whistle:Collect","Time":"2023-01-16T03:10:39Z","Parameters":{"Category":1,"Position":3}}
+
+    def __init__(self, *, whistle: PlayerWhistle, **kwargs):
+        super(CollectWhistle, self).__init__(**kwargs)
+        self.whistle = whistle
+
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "Category": self.whistle.category,
+            "Position": self.whistle.position,
+        }
+
+    def post_processing(self, server_data: Dict):
+        for item in PlayerWhistleItem.objects.filter(player_whistle=self.whistle).all():
+            if item.item_id == 8 and item.amount:
+                warehouse_add_article(
+                    version=self.version,
+                    article_id=item.value,
+                    amount=item.amount
+                )
+
+        whistle_remove(version=self.version, whistle=self.whistle)
 
 
 class StartGame(ImportHelperMixin):
@@ -427,6 +528,72 @@ class RunCommand(ImportHelperMixin):
             payload=json.dumps(payload, separators=(',', ':'))
         )
 
+    def preprocessing_server_response(self, server_data: Dict):
+        """
+            "CollectionId":10,
+            "Commands":[
+                {
+                    "Command":"Whistle:Spawn",
+                    "Data":{
+                        "Whistle":{
+                        "Category":1,"Position":1,"SpawnTime":"2023-01-12T02:20:43Z","CollectableFrom":"2023-01-12T02:20:43Z",
+                            "Reward":{
+                            "Items":[
+                                {"Id":8,"Value":103,"Amount":4}
+                            ]
+                        },
+                        "IsForVideoReward":false
+                    }
+                }
+            },
+            {"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"whistle_tap","Level":5,"Progress":16413}}}]}}
+        """
+        mapping: Dict[str, Callable] = {
+            'Whistle:Spawn': self._parse_command_whistle_spawn
+        }
+        commands = server_data.pop('Commands', [])
+        if commands:
+            for command in commands:
+                cmd = command.pop('Command', None)
+                data = command.pop('Data', None)
+                if cmd in mapping:
+                    mapping[cmd](data=data)
+
+    def _parse_command_whistle_spawn(self, data):
+        whistles = data.get('Whistle')
+        if whistles:
+            bulk_list, bulk_item_list = PlayerWhistle.create_instance(data=whistles, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerWhistle.objects.bulk_create(bulk_list, 100)
+
+            if bulk_item_list:
+                PlayerWhistleItem.objects.bulk_create(bulk_item_list, 100)
+
+        self.print_remain('_parse_init_whistles', data)
+
+    def reduce(self, data):
+        if isinstance(data, list):
+            ret = []
+            for v in data:
+                v = self.reduce(v)
+                if v:
+                    ret.append(v)
+            return ret
+        if isinstance(data, dict):
+            ret = {}
+            for f, v in data.items():
+                v = self.reduce(v)
+                if v:
+                    ret.update({f: v})
+            return ret
+        return data
+
+    def print_remain(self, msg, data):
+        data = self.reduce(data=data)
+        if data:
+            print('[REMAIN]', msg, data)
+
     def parse_data(self, data, **kwargs) -> str:
 
         json_data = json.loads(data, strict=False)
@@ -435,10 +602,12 @@ class RunCommand(ImportHelperMixin):
 
         server_time = json_data.get('Time')
         server_data = json_data.get('Data', {})
-
         if server_data:
+            if not isinstance(server_data, list):
+                server_data = [server_data]
             for cmd, data in zip(self.commands, server_data):
                 cmd.post_processing(server_data=data)
+                self.preprocessing_server_response(data)
 
         return server_time
 

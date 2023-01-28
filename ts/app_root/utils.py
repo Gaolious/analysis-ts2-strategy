@@ -43,4 +43,3 @@ def get_remain_time(version: RunVersion, finish_at: datetime) -> timedelta:
     if finish_at:
         now = get_curr_server_datetime(version=version)
         return finish_at - now
-    return ''

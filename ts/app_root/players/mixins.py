@@ -1,6 +1,5 @@
 import datetime
 import json
-from decimal import Decimal
 from functools import cached_property
 from typing import List, Tuple, Dict, Optional, Type
 
@@ -10,8 +9,6 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from app_root.servers.mixins import CHOICE_RARITY, CHOICE_ERA, ContentCategoryMixin
-from app_root.servers.models import TSArticle
-from app_root.strategies.managers import warehouse_can_add
 from core.utils import convert_time, convert_datetime
 
 
@@ -1154,24 +1151,22 @@ class PlayerWhistleMixin(BaseVersionMixin):
     is_for_video_reward = models.BooleanField(_('IsForVideoReward'), null=True, blank=True, default=None)
     expires_at = models.DateTimeField(_('ExpiresAt'), null=True, blank=True, default=None)
 
-    INTERVAL_SECONDS = 60 * 2
-
     class Meta:
         abstract = True
 
-    def is_collectable(self, login_dt, now) -> bool:
-        login_dt = login_dt + datetime.timedelta(seconds=self.INTERVAL_SECONDS)
-
-        dt = min(login_dt, now)
-        if self.spawn_time and self.spawn_time < dt:
-            return False
-        if self.collectable_from and self.collectable_from < dt:
-            return False
-        if self.expires_at and now <= self.expires_at:
-            return False
-        if self.is_for_video_reward:
-            return False
-        return True
+    # def is_collectable(self, login_dt, now) -> bool:
+    #     login_dt = login_dt + datetime.timedelta(seconds=self.INTERVAL_SECONDS)
+    #
+    #     dt = min(login_dt, now)
+    #     if self.spawn_time and self.spawn_time < dt:
+    #         return False
+    #     if self.collectable_from and self.collectable_from < dt:
+    #         return False
+    #     if self.expires_at and now <= self.expires_at:
+    #         return False
+    #     if self.is_for_video_reward:
+    #         return False
+    #     return True
 
 
     @classmethod
@@ -1234,10 +1229,7 @@ class PlayerWhistleItemMixin(BaseVersionMixin):
         to='players.PlayerWhistle',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
     )
-    article = models.ForeignKey(
-        to='servers.TSArticle',
-        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
-    )
+    item_id = models.IntegerField(_('value'), null=False, blank=False, default=0)
     value = models.IntegerField(_('value'), null=False, blank=False, default=0)
     amount = models.IntegerField(_('amount'), null=False, blank=False, default=0)
 
@@ -1270,7 +1262,7 @@ class PlayerWhistleItemMixin(BaseVersionMixin):
                     cls(
                         version_id=version_id,
                         player_whistle=player_whistle,
-                        article_id=item_id,
+                        item_id=item_id,
                         value=value,
                         amount=amount,
                         created=now, modified=now,
@@ -1397,9 +1389,6 @@ class PlayerDailyRewardMixin(BaseVersionMixin):
                 cnt += 1
                 if _amount is not None:
                     has_amount_cnt += 1
-
-                if _id == 8 and not warehouse_can_add(version=self.version, article_id=_value, amount=_amount * 2):
-                    return False
 
             if 0 < cnt == has_amount_cnt:
                 return True
