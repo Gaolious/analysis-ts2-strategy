@@ -568,38 +568,27 @@ class TSDestination(BaseModelMixin, TimeStampedMixin):
         verbose_name_plural = 'Destinations'
 
     @cached_property
-    def split_requirements(self) -> Dict[str, int]:
-        ret = {}
+    def requirements_to_dict(self) -> Dict[str, set]:
+        ret = {
+            'available_region': set([]),
+            'available_rarity': set([]),
+            'available_era': set([]),
+            'available_min_power': 0,
+            'available_content_category': set([]),
+        }
 
-        arr = self.requirements.split('|')
-        for a in arr:
-            t = a.split(';')
-            if len(t) == 2:
-                k, v = t
-
-                if k not in ret:
-                    ret.update({k: []})
-
-                ret[k].append(int(v))
+        for cond in self.requirements.split('|'):
+            _type, _value = cond.split(';')
+            _value = int(_value)
+            if _type == 'region':
+                ret['available_region'].add(_value)
+            elif _type == 'rarity':
+                ret['available_rarity'].add(_value)
+            elif _type == 'era':
+                ret['available_era'].add(_value)
+            elif _type == 'power':
+                ret['available_min_power'] = max(_value, ret['available_min_power'])
+            elif _type == 'content_category':
+                ret['available_content_category'].add(_value)
 
         return ret
-
-    def get_rarity_requirements(self) -> List:
-        """
-        rarity;3|rarity;4|region;1
-        rarity;3|rarity;4|region;2
-        rarity;4|region;3
-        rarity;4|region;4
-        :return:
-        """
-        return self.split_requirements.get('rarity', [])
-
-    def get_region_requirements(self) -> List:
-        """
-        rarity;3|rarity;4|region;1
-        rarity;3|rarity;4|region;2
-        rarity;4|region;3
-        rarity;4|region;4
-        :return:
-        """
-        return self.split_requirements.get('region', [])

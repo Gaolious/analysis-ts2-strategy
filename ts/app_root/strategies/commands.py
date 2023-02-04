@@ -8,10 +8,11 @@ from django.conf import settings
 
 from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
-from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem
-from app_root.servers.models import RunVersion, EndPoint
-from app_root.strategies.managers import warehouse_add_article, whistle_remove
-from app_root.utils import get_curr_server_str_datetime_s
+from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination
+from app_root.servers.models import RunVersion, EndPoint, TSDestination
+from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, find_destination, \
+    trains_set_destination
+from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
 
@@ -43,9 +44,6 @@ class BaseCommand(object):
 
     def duration(self) -> int:
         return 0
-
-    def get_next_event_time(self) -> Optional[datetime]:
-        return None
 
     def __str__(self):
         return f'''[{self.COMMAND}] / parameters: {self.get_parameters()}'''
@@ -168,19 +166,76 @@ class TrainUnloadCommand(BaseCommand):
         }
 
     def post_processing(self, server_data: Dict):
+        # if self.train.is_destination_route:
+        #     dest = find_destination(version=self.version, destination_id=self.train.route_definition_id)
+        #     article_id = dest.definition.article_id
+        #     multiplier = int(dest.definition.multiplier or 0)
+        #     capacity = self.train.capacity()
+        #     warehouse_add_article(
+        #         version=self.version,
+        #         article_id=article_id,
+        #         amount=capacity * multiplier
+        #     )
+        # else:
         warehouse_add_article(
             version=self.version,
             article_id=self.train.load_id,
             amount=self.train.load_amount
         )
-        self.train.has_load = False
-        self.train.load_amount = 0
-        self.train.load_id = None
-        self.train.save(update_fields=[
-            'has_load',
-            'load_amount',
-            'load_id',
-        ])
+
+        trains_unload(version=self.version, train=self.train)
+
+
+class TrainSendToDestinationCommand(BaseCommand):
+    """
+        기차 보내기
+        {
+            "Id":2,
+            "Time":"2023-01-13T03:19:45Z",
+            "Commands":[
+                {
+                    "Command":"Train:DispatchToDestination",
+                    "Time":"2023-01-13T03:19:43Z",
+                    "Parameters":{
+                        "TrainId":9,   (PlayerTrain.instance_id)
+                        "DestinationId":150
+                    }
+                }
+            ],
+            "Transactional":false
+        }
+    """
+
+    COMMAND = 'Train:DispatchToDestination'
+    train: PlayerTrain
+    dest: PlayerDestination
+    SLEEP_RANGE = (1.0, 1.5)
+
+    def __init__(self, *, train: PlayerTrain, dest: PlayerDestination, **kwargs):
+        super(TrainSendToDestinationCommand, self).__init__(**kwargs)
+        self.train = train
+        self.dest = dest
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {
+            'TrainId': self.train.instance_id,
+            'DestinationId': self.dest.definition_id,
+        }
+
+    def post_processing(self, server_data: Dict):
+        departure_at = get_curr_server_datetime(version=self.version)
+        arrival_at = departure_at + timedelta(seconds=self.dest.definition.travel_duration)
+        trains_set_destination(
+            version=self.version,
+            train=self.train,
+            definition_id=self.dest.definition_id,
+            departure_at=departure_at,
+            arrival_at=arrival_at
+        )
 
 
 ###################################################################
@@ -237,7 +292,7 @@ class DailyRewardClaimCommand(BaseCommand):
 
     def post_processing(self, server_data: Dict):
         if self.reward:
-            today_reward = self.reward.get_today_reward()
+            today_reward = self.reward.get_today_rewards()
             if today_reward:
                 _id = today_reward.get('Id', None)
                 _value = today_reward.get('Value', None)
@@ -328,11 +383,11 @@ class DailyRewardClaimWithVideoCommand(BaseCommand):
 
     def post_processing(self, server_data: Dict):
         if self.reward:
-            today_reward = self.reward.get_today_reward()
-            if today_reward:
-                _id = today_reward.get('Id', None)
-                _value = today_reward.get('Value', None)
-                _amount = today_reward.get('Amount', None)
+            today_reward = self.reward.get_today_rewards()
+            for reward in today_reward:
+                _id = reward.get('Id', None)
+                _value = reward.get('Value', None)
+                _amount = reward.get('Amount', None)
 
                 if _id == 8 and _amount:
                     warehouse_add_article(
@@ -351,6 +406,7 @@ class DailyRewardClaimWithVideoCommand(BaseCommand):
                     'expire_at',
                 ]
             )
+
 
 ###################################################################
 # Whistle
@@ -411,6 +467,91 @@ class CollectWhistle(BaseCommand):
 
         whistle_remove(version=self.version, whistle=self.whistle)
 
+
+###################################################################
+# Daily Offer
+###################################################################
+"""
+Table [Offer Container] 와 관련 있는지 확인 필요.
+
+# server time (2023-01-23T12:43:04Z)
+# 게임화면 - 우하단 메뉴 - dialy offer 에서 부품상자 1회 구매 (일반부품 65개 수령)
+        "DailyOffer": {
+          "ExpireAt": "2023-01-24T00:00:00Z",
+          "ExpiresAt": "2023-01-24T00:00:00Z",
+          "OfferItems": [
+            {"Slot": 11,"Price": {"Id": 16,"Amount": 1},"Reward": {"Items": [{"Id": 8,"Value": 6,"Amount": 75}]},"Purchased": false,"PurchaseCount": 0,"DefinitionId": 43},
+            {"Slot": 12,"Price": {"Id": 3,"Amount": 40},"Reward": {"Items": [{"Id": 1,"Value": 34}]},"Purchased": false,"PurchaseCount": 0,"DefinitionId": 44},
+            {"Slot": 13,"Price": {"Id": 3,"Amount": 120},"Reward": {"Items": [{"Id": 8,"Value": 6,"Amount": 300}]},"Purchased": false,"PurchaseCount": 0,"DefinitionId": 45},
+            {"Slot": 14,"Price": {"Id": 2,"Amount": 20},"Reward": {"Items": [{"Id": 1,"Value": 34}]},"Purchased": false,"PurchaseCount": 0,"DefinitionId": 46},
+            {"Slot": 15,"Price": {"Id": 2,"Amount": 200},"Reward": {"Items": [{"Id": 8,"Value": 6,"Amount": 2500}]},"Purchased": false,"PurchaseCount": 0,"DefinitionId": 47},
+            {"Slot": 16,"Price": {"Id": 2,"Amount": 40},"Reward": {"Items": [{"Id": 1,"Value": 71}]},"Purchased": false,"PurchaseCount": 0,"DefinitionId": 48}]
+        }        
+    POST /api/v2/command-processing/run-collection HTTP/1.1
+    PXFD-Request-Id: 91494cc5-48e5-4ef4-a346-cbfcce1942e5
+    PXFD-Retry-No: 0
+    PXFD-Sent-At: 2023-01-23T12:44:06.198Z
+    PXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}
+    PXFD-Client-Version: 2.6.3.4068
+    PXFD-Device-Token: 30b270ca64e80bbbf4b186f251ba358a
+    PXFD-Game-Access-Token: f5019986-472e-52ca-b95a-aa520bdbfbca
+    PXFD-Player-Id: 62794770
+    Content-Type: application/json
+    Content-Length: 233
+    Host: game.trainstation2.com
+    Accept-Encoding: gzip, deflate
+    
+    
+    {"Id":3,"Time":"2023-01-23T12:44:06Z","Commands":[
+        {"Command":"Shop:BuyContainer","Time":"2023-01-23T12:44:06Z","Parameters":{"OfferId":1,"Amount":1},
+        "Debug":{"CollectionsInQueue":0,"CollectionsInQueueIds":""}}],"Transactional":false
+    }
+    {
+        "Success":true,"RequestId":"91494cc5-48e5-4ef4-a346-cbfcce1942e5","Time":"2023-01-23T12:44:07Z",
+        "Data":{"CollectionId":3,"Commands":[
+            {"Command":"Container:ShowContent","Data":{"Containers":[
+            {"ContainerId":34,"Reward":{"Items":[{"Id":8,"Value":6,"Amount":65}]}}]}}]}
+    }
+
+    광고와 함께 돌리기
+23 21:49:57 | T: 3830 | I | SSL_AsyncWrite  | POST /api/v2/command-processing/run-collection HTTP/1.1
+PXFD-Request-Id: fe34f47c-7f7e-4274-b923-c1b5fa656a96
+PXFD-Retry-No: 0
+PXFD-Sent-At: 2023-01-23T12:49:57.641Z
+PXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}
+PXFD-Client-Version: 2.6.3.4068
+PXFD-Device-Token: 30b270ca64e80bbbf4b186f251ba358a
+PXFD-Game-Access-Token: f5019986-472e-52ca-b95a-aa520bdbfbca
+PXFD-Player-Id: 62794770
+Content-Type: application/json
+Content-Length: 205
+Host: game.trainstation2.com
+Accept-Encoding: gzip, deflate
+
+23 21:49:57 | T: 4635 | I | SSL_AsyncWrite  | {"Id":29,"Time":"2023-01-23T12:49:20Z","Commands":[{"Command":"Game:Sleep","Time":"2023-01-23T12:49:20Z","Parameters":{},"Debug":{"CollectionsInQueue":0,"CollectionsInQueueIds":""}}],"Transactional":false}
+23 21:49:58 | T: 4636 | I | IO.Mem.Write    | {"Success":true,"RequestId":"fe34f47c-7f7e-4274-b923-c1b5fa656a96","Time":"2023-01-23T12:49:58Z","Data":{"CollectionId":29,"Commands":[]}}
+
+
+
+23 21:49:58 | T: 4635 | I | SSL_AsyncWrite  | POST /api/v2/command-processing/run-collection HTTP/1.1
+PXFD-Request-Id: a068b216-9bb8-415c-a04b-1fa1651bb4a7
+PXFD-Retry-No: 0
+PXFD-Sent-At: 2023-01-23T12:49:58.093Z
+PXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}
+PXFD-Client-Version: 2.6.3.4068
+PXFD-Device-Token: 30b270ca64e80bbbf4b186f251ba358a
+PXFD-Game-Access-Token: f5019986-472e-52ca-b95a-aa520bdbfbca
+PXFD-Player-Id: 62794770
+Content-Type: application/json
+Content-Length: 310
+Host: game.trainstation2.com
+Accept-Encoding: gzip, deflate
+
+
+23 21:49:58 | T: 3808 | I | SSL_AsyncWrite  | {"Id":30,"Time":"2023-01-23T12:49:58Z","Commands":[{"Command":"Game:WakeUp","Time":"2023-01-23T12:49:20Z","Parameters":{}},
+{"Command":"Shop:BuyContainer","Time":"2023-01-23T12:49:57Z","Parameters":{"OfferId":6,"Amount":1},"Debug":{"CollectionsInQueue":1,"CollectionsInQueueIds":"29-1"}}],"Transactional":false}
+23 21:49:58 | T: 3830 | I | IO.Mem.Write    | {"Success":true,"RequestId":"a068b216-9bb8-415c-a04b-1fa1651bb4a7","Time":"2023-01-23T12:49:58Z","Data":{"CollectionId":30,"Commands":[{"Command":"Container:ShowContent","Data":{"Containers":[{"ContainerId":34,"Reward":{"Items":[{"Id":8,"Value":6,"Amount":65}]}}]}}]}}
+"""
 
 class StartGame(ImportHelperMixin):
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
@@ -513,15 +654,14 @@ class RunCommand(ImportHelperMixin):
             'Commands': [cmd.get_command() for cmd in self.commands],
             'Transactional': False,
         }
+
+        print(payload)
+
         for cmd in self.commands:
             dbg = cmd.get_debug()
             if dbg and isinstance(dbg, dict):
                 payload.update(**dbg)
 
-        self.version.command_no += 1
-        self.version.save(
-            update_fields=['command_no']
-        )
         return self.post(
             url=url,
             headers=headers,
@@ -600,8 +740,14 @@ class RunCommand(ImportHelperMixin):
 
         check_response(json_data=json_data)
 
+        self.version.command_no += 1
+        self.version.save(
+            update_fields=['command_no']
+        )
+        
         server_time = json_data.get('Time')
         server_data = json_data.get('Data', {})
+
         if server_data:
             if not isinstance(server_data, list):
                 server_data = [server_data]

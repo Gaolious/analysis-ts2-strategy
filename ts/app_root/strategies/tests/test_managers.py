@@ -11,7 +11,7 @@ from app_root.players.utils_import import InitdataHelper
 from app_root.servers.models import RunVersion, SQLDefinition, EndPoint
 from app_root.servers.utils_import import SQLDefinitionHelper
 from app_root.strategies.dumps import ts_dump
-from app_root.strategies.managers import jobs_find, trains_find_match_with_job, find_job_sources
+from app_root.strategies.managers import jobs_find, trains_find_match_with_job, find_job_sources, trains_max_capacity
 from app_root.strategies.utils import Strategy
 from app_root.users.models import User
 from core.tests.factory import AbstractFakeResp
@@ -181,6 +181,7 @@ def test_find_job_materials(multidb, init_filename, event_count, union_count, st
         for job_pk, possible_sources in materials.items():
             assert possible_sources, f"for job pk = {job_pk}"
 
+
 @pytest.mark.django_db
 @pytest.mark.parametrize('init_filename, event_count, union_count, story_count, side_count', [
     ('strategies/6/6_0.json', 0,  0, 3, 0),
@@ -208,3 +209,33 @@ def test_dump(multidb, init_filename, event_count, union_count, story_count, sid
         p.return_value = now
 
         ts_dump(version=version)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('init_filename', [
+    'strategies/6/6_0.json',
+    'init_data/gaolious1_2022.12.29.json',
+    'init_data/gaolious_2022.12.30-1.json',
+    'init_data/gaolious_2023.01.09_contract.json',
+    'init_data/gaolious_2023.01.09_gifts.json',
+    'init_data/gaolious_2023.01.11_jobs.json',
+    'init_data/gaolious_2023.01.14_fulltest.json',
+    'init_data/gaolious_2023.01.14_idle_destinations.json',
+    'init_data/gaolious_2023.01.14_results.json',
+])
+def test_available_max_capacity(multidb, init_filename):
+    ###########################################################################
+    # prepare
+    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
+
+    version = prepare(initdata_filepath=initdata_filepath)
+
+    txt = initdata_filepath.read_text(encoding='utf-8')
+    json_data = json.loads(txt, strict=False)
+    now = convert_datetime(json_data['Time'])
+
+    with mock.patch('django.utils.timezone.now') as p:
+        p.return_value = now
+
+        ret = trains_max_capacity(version=version, region=1)
+        assert len(ret) >= 1

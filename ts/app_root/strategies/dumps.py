@@ -178,6 +178,7 @@ def ts_dump_destination(version: RunVersion) -> List[str]:
         else:
             remain_time = f'{get_remain_time(version=version, finish_at=destination.train_limit_refresh_at)}'
         ret.append(f' - Location : {destination.location_id} / remain: {remain_time}')
+    ret.append('')
     return ret
 
 

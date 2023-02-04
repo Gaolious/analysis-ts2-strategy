@@ -1,10 +1,25 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Iterator, List, Set, Dict, Type
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
-    PlayerWarehouse, PlayerDailyReward, PlayerWhistle
+    PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle
 from app_root.utils import get_curr_server_datetime
+
+
+def update_next_event_time(previous: datetime, event_time: datetime) -> datetime:
+    """
+        이벤트 발생시간 계산.
+
+    :param previous:
+    :param event_time:
+    :return:
+    """
+    if not previous or not event_time:
+        return previous or event_time
+    if previous > event_time:
+        return event_time
+    return previous
 
 
 ###########################################################################
@@ -71,21 +86,21 @@ def trains_find(
         available_content_category: Set[int] = None,
         is_idle: bool = None,
         has_load: bool = None
-) -> Iterator[PlayerTrain]:
+) -> List[PlayerTrain]:
     """
         가용 가능한 기차를 검색 합니다.
 
     :param version:
-    :param available_region:
-    :param available_rarity:
-    :param available_era:
-    :param available_min_power:
-    :param available_content_category:
-    :param is_idle
-    :param has_load:
+    :param available_region: {1,2,3, ...}
+    :param available_rarity: {1,2,3,4}
+    :param available_era: {1,2,3}
+    :param available_min_power: {30}
+    :param available_content_category: {1, 2, 3}
+    :param is_idle: True/False
+    :param has_load: True/False
     :return:
     """
-
+    ret = []
     now = get_curr_server_datetime(version=version)
 
     queryset = PlayerTrain.objects.filter(
@@ -96,30 +111,21 @@ def trains_find(
 
     # if available_region:
     #     queryset = queryset.filter(train__region__in=available_region)
-    if available_rarity is not None:
+    if available_rarity:
         queryset = queryset.filter(train__rarity__in=available_rarity)
-    if available_era is not None:
+    if available_era:
         queryset = queryset.filter(train__era__in=available_era)
-    if available_content_category is not None:
+    if available_content_category:
         queryset = queryset.filter(train__content_category__in=available_content_category)
 
     for player_train in queryset.all():
         player_train: PlayerTrain
 
-        if available_region is not None and player_train.get_region() not in available_region:
+        if available_region and player_train.get_region() not in available_region:
             continue
-
-        # if available_rarity and player_train.train.rarity not in available_rarity:
-        #     continue
-        #
-        # if available_era and player_train.train.era not in available_era:
-        #     continue
 
         if available_min_power is not None and player_train.capacity() < available_min_power:
             continue
-
-        # if available_content_category and player_train.train.content_category not in available_content_category:
-        #     continue
 
         if is_idle is not None and player_train.is_idle(now=now) != is_idle:
             continue
@@ -127,8 +133,9 @@ def trains_find(
         if has_load is not None and player_train.has_load != has_load:
             continue
 
-        yield player_train
+        ret.append(player_train)
 
+    return ret
 
 def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> Iterator[PlayerTrain]:
     """
@@ -140,13 +147,11 @@ def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> Iterator[
     """
     requirements = job.requirements_to_dict
 
-    iter_train = trains_find(
+    yield from trains_find(
         version=version,
         **requirements,
         is_idle=True
     )
-    for train in iter_train:
-        yield train
 
 
 def trains_unload(version: RunVersion, train: PlayerTrain):
@@ -157,13 +162,85 @@ def trains_unload(version: RunVersion, train: PlayerTrain):
     :param train:
     :return:
     """
-    pass
+    version.add_log(
+        msg='[Train Unload]',
+        train_id=train.id,
+        has_load=[train.has_load, False],
+        load_amount=[train.load_amount, 0],
+        load_id=[train.load_id, None],
+    )
+    train.has_load = False
+    train.load_amount = 0
+    train.load_id = None
+    train.save(update_fields=[
+        'has_load',
+        'load_amount',
+        'load_id',
+    ])
 
+
+def trains_set_destination(version: RunVersion, train: PlayerTrain, definition_id: Type[int], departure_at: datetime, arrival_at: datetime):
+    """
+        기차를 목적지에 셋팅 합니다.
+     2 = {dict: 4} {'InstanceId': 3, 'DefinitionId': 4, 'Level': 1,
+     'Route': {
+     'RouteType': 'destination',
+     'DefinitionId': 151,
+     'DepartureTime': '2022-12-27T10:04:46Z',
+     'ArrivalTime': '2022-12-27T10:05:16Z'}}
+
+    :param version:
+    :param train:
+    :param definition_id:
+    :param departure_at:
+    :param arrival_at:
+    """
+    version.add_log(
+        msg='[Train SendDestination]',
+        train_id=train.id,
+        route_type=[train.route_type, 'destination'],
+        route_definition_id=[train.route_definition_id, definition_id],
+        route_departure_time=[train.route_departure_time, departure_at],
+        route_arrival_time=[train.route_arrival_time, arrival_at],
+    )
+    train.route_type = 'destination'
+    train.route_definition_id = definition_id
+    train.route_departure_time = departure_at
+    train.route_arrival_time = arrival_at
+    train.save(update_fields=[
+        'route_type',
+        'route_definition_id',
+        'route_departure_time',
+        'route_arrival_time',
+    ])
+
+
+def trains_get_next_unload_event_time(version: RunVersion):
+    ret = None
+
+    for train in trains_find(version=version, is_idle=False):
+        ret = update_next_event_time(previous=ret, event_time=train.route_arrival_time)
+
+    return ret
+
+
+def trains_max_capacity(version: RunVersion, **kwargs) -> List[PlayerTrain]:
+    capacity = -1
+    ret = []
+
+    for train in trains_find(version=version, **kwargs):
+        if train.capacity() > capacity:
+            capacity = train.capacity()
+            ret = [train]
+        elif train.capacity() == capacity:
+            ret.append(train)
+
+    return ret
 
 ###########################################################################
 # article을 구하기 위한 source 검색 (factory, destination, contractor, job)
 ###########################################################################
-def find_article_source_factory(version: RunVersion, article_id: int) -> Iterator[TSProduct]:
+def article_source_find_factory(version: RunVersion, article_id: int) -> Iterator[TSProduct]:
     """
         article id에 해당하는 product 검색
     :param version:
@@ -180,7 +257,7 @@ def find_article_source_factory(version: RunVersion, article_id: int) -> Iterato
         yield src
 
 
-def find_article_source_destination(version: RunVersion, article_id: int) -> Iterator[TSDestination]:
+def article_source_find_destination(version: RunVersion, article_id: int) -> Iterator[TSDestination]:
     """
         article id에 해당하는 destination 검색
     :param version:
@@ -200,7 +277,7 @@ def find_article_source_destination(version: RunVersion, article_id: int) -> Ite
         yield src
 
 
-def find_article_source_contractor(version: RunVersion, article_id: int) -> Iterator[PlayerContract]:
+def article_source_find_contractor(version: RunVersion, article_id: int) -> Iterator[PlayerContract]:
     """
         article id에 해당하는 contractor 검색
     :param version:
@@ -253,7 +330,7 @@ def find_article_source_contractor(version: RunVersion, article_id: int) -> Iter
                 yield contract
 
 
-def find_article_source_jobs(version: RunVersion, article_id: int) -> Iterator[PlayerJob]:
+def article_source_find_jobs(version: RunVersion, article_id: int) -> Iterator[PlayerJob]:
     """
         article id에 해당하는 다른 job 검색
     :param version:
@@ -277,9 +354,15 @@ def find_article_source_jobs(version: RunVersion, article_id: int) -> Iterator[P
 # Destination 검색 함수
 ###########################################################################
 def find_destination(version: RunVersion, destination_id: int) -> TSDestination:
-    instance = TSDestination.objects.filter(id=destination_id).first()
-    return instance
+    return TSDestination.objects.filter(id=destination_id).first()
 
+
+###########################################################################
+# Gold Destination 검색 함수
+###########################################################################
+def gold_destination_find_iter(version: RunVersion) -> Iterator[PlayerDestination]:
+    for destination in PlayerDestination.objects.filter(version_id=version.id).order_by('pk').all():
+        yield destination
 
 ###########################################################################
 # Job 우선순위 정하는 함수.
@@ -293,10 +376,10 @@ def find_job_sources(version: RunVersion, jobs: List[PlayerJob]) -> Dict[int, Li
         amouunt = job.required_amount
         article = job.required_article
 
-        from_factory = list(find_article_source_factory(version=version, article_id=article.id))
-        from_destination = list(find_article_source_destination(version=version, article_id=article.id))
-        from_contract = list(find_article_source_contractor(version=version, article_id=article.id))
-        from_jobs = list(find_article_source_jobs(version=version, article_id=article.id))
+        from_factory = list(article_source_find_factory(version=version, article_id=article.id))
+        from_destination = list(article_source_find_destination(version=version, article_id=article.id))
+        from_contract = list(article_source_find_contractor(version=version, article_id=article.id))
+        from_jobs = list(article_source_find_jobs(version=version, article_id=article.id))
 
         possibles = []
         possibles += from_factory
@@ -370,6 +453,34 @@ def warehouse_can_add(version: RunVersion, article_id: Type[int], amount: int) -
     return False
 
 
+def warehouse_can_add_with_rewards(version: RunVersion, reward: List[Dict], multiply: int = 1) -> bool:
+
+    used = warehouse_used_capacity(version=version)
+    max_capacity = warehouse_max_capacity(version=version)
+
+    for item in reward:
+        _id = item.get('Id', None)
+        article_id = item.get('Value', None)
+        amount = item.get('Amount', None)
+        if _id != 8:
+            continue
+
+        pw = PlayerWarehouse.objects.filter(version_id=version.id, article_id=article_id).first()
+        article = TSArticle.objects.filter(id=article_id).first()
+
+        cnt = pw.amount if pw else 0
+
+        if article.is_take_up_space:
+            if 0 > (cnt + amount * multiply):
+                return False
+            if (used + amount * multiply) < 0 or (used + amount * multiply) > max_capacity:
+                return False
+
+            used += amount * multiply
+
+    return True
+
+
 def warehouse_max_capacity(version: RunVersion) -> int:
     instance = TSWarehouseLevel.objects.filter(id=version.warehouse_level).first()
     if instance:
@@ -404,7 +515,7 @@ def find_gold(version: RunVersion) -> int:
 
 
 ###########################################################################
-# Daily Reward
+# Daily Reward (일일 보상. 5일간 연속 로그인시 보상)
 ###########################################################################
 def daily_reward_get_reward(version: RunVersion) -> PlayerDailyReward:
     """
@@ -452,19 +563,33 @@ def daily_reward_get_reward(version: RunVersion) -> PlayerDailyReward:
             return reward
 
 
+def daily_reward_get_next_event_time(version: RunVersion) -> datetime:
+    queryset = PlayerDailyReward.objects.filter(version_id=version.id).all()
+
+    for reward in queryset:
+        if not reward.available_from:
+            return reward.available_from
+
+###########################################################################
+# Daily Offer (일일 제공. 4시간? 5시간? 마다 제공)
+###########################################################################
+def daily_offer(version: RunVersion):
+    pass
+
+
 ###########################################################################
 # Whistle
 ###########################################################################
 def whistle_get_collectable_list(version: RunVersion) -> Iterator[PlayerWhistle]:
-    INTERVAL_SECOND = 2 * 60
+    INTERVAL_SECOND = 4 * 60
     now = get_curr_server_datetime(version=version)
     queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
-
+    delta = timedelta(seconds=INTERVAL_SECOND)
     if version.login_server and (now - version.login_server).total_seconds() > INTERVAL_SECOND:
         for whistle in queryset:
-            if whistle.spawn_time and now < whistle.spawn_time:
+            if whistle.spawn_time and now < whistle.spawn_time + delta:
                 continue
-            if whistle.collectable_from and now < whistle.collectable_from:
+            if whistle.collectable_from and now < whistle.collectable_from + delta:
                 continue
             if whistle.expires_at and whistle.expires_at <= now:
                 continue
@@ -492,3 +617,23 @@ def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:
         return True
 
     return False
+
+
+def whistle_get_next_event_time(version: RunVersion) -> datetime:
+    now = get_curr_server_datetime(version=version)
+    ret = None
+
+    for whistle in PlayerWhistle.objects.filter(version_id=version.id).all():
+        if not whistle.spawn_time:
+            continue
+        if not whistle.collectable_from:
+            continue
+        if whistle.expires_at and whistle.expires_at <= now:
+            continue
+        if whistle.is_for_video_reward:
+            continue
+
+        ret = update_next_event_time(previous=ret, event_time=whistle.spawn_time)
+        ret = update_next_event_time(previous=ret, event_time=whistle.collectable_from)
+
+    return ret

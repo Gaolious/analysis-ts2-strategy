@@ -10,7 +10,8 @@ from app_root.players.models import PlayerBuilding, PlayerDestination, PlayerFac
     PlayerJob, \
     PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
     PlayerAchievement, PlayerDailyReward, PlayerMap, PlayerQuest, PlayerVisitedRegion, PlayerShipOffer, \
-    PlayerLeaderBoard, PlayerLeaderBoardProgress, PlayerCompetition, PlayerUnlockedContent
+    PlayerLeaderBoard, PlayerLeaderBoardProgress, PlayerCompetition, PlayerUnlockedContent, PlayerDailyOfferContainer, \
+    PlayerDailyOffer, PlayerDailyOfferItem
 from app_root.servers.models import EndPoint, RunVersion
 
 LOGGING_MENU = 'plyaers.import'
@@ -96,11 +97,11 @@ class InitdataHelper(ImportHelperMixin):
             'containers': self._parse_init_containers,
             'maps': self._parse_init_maps,
             'unlocked_contents': self._parse_init_unlocked_contents,
+            'shop': self._parse_init_shop,
 
             'ab_test': self._parse_init_not_yet_implemented,
             'login_profile': self._parse_init_not_yet_implemented,
             'game_features': self._parse_init_not_yet_implemented,
-            'shop': self._parse_init_not_yet_implemented,
             'reminders': self._parse_init_not_yet_implemented,
             'markets': self._parse_init_not_yet_implemented,
             'guild': self._parse_init_not_yet_implemented,
@@ -869,6 +870,25 @@ class InitdataHelper(ImportHelperMixin):
                 PlayerUnlockedContent.objects.bulk_create(bulk_list, 100)
 
         self.print_remain('_parse_init_unlocked_contents', data)
+
+    def _parse_init_shop(self, data):
+        containers = data.get('OfferContainers')
+        if containers:
+            bulk_list, _ = PlayerDailyOfferContainer.create_instance(data=containers, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerDailyOfferContainer.objects.bulk_create(bulk_list, 100)
+
+        daily_offer = data.get('DailyOffer')
+        if daily_offer:
+            bulk_list, sub_bulk_list = PlayerDailyOffer.create_instance(data=daily_offer, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerDailyOffer.objects.bulk_create(bulk_list, 100)
+            if sub_bulk_list:
+                PlayerDailyOfferItem.objects.bulk_create(sub_bulk_list, 100)
+
+        self.print_remain('_parse_init_shop', data)
 
     def _parse_init_maps(self, data):
         maps = data.get('Maps')

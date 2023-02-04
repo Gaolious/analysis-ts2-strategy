@@ -1368,21 +1368,25 @@ class PlayerDailyRewardMixin(BaseVersionMixin):
 
         return ret, _
 
-    def get_today_reward(self) -> dict:
+    def get_today_rewards(self) -> List[Dict]:
+        """
+            [ { "Id": 8, "Value": 3, "Amount": 450 } ]
+        :return:
+        """
         ret = {}
         rewards = json.loads(self.rewards, strict=False)
         day = self.day
         if len(rewards) >= day:
             reward = rewards[day]
-            return reward
+            return reward.get('Items', [])
 
     @property
     def can_claim_with_video(self) -> bool:
-        reward = self.get_today_reward()
-        if reward:
+        rewards = self.get_today_rewards()
+        if rewards:
             cnt, has_amount_cnt = 0, 0
 
-            for item in reward.get('Items', []):
+            for item in rewards:
                 _id = item.get('Id', None)
                 _value = item.get('Value', None)
                 _amount = item.get('Amount', None)
@@ -1747,6 +1751,155 @@ class PlayerUnlockedContentMixin(BaseVersionMixin):
                     unlocked_at=convert_datetime(unlocked_at),
                     created=now, modified=now
                 )
+                ret.append(instance)
+
+        return ret, _
+
+
+class PlayerOfferContainerMixin(BaseVersionMixin):
+    definition_id = models.IntegerField(_('DefinitionId'), null=True, blank=False)
+    last_bought_at = models.DateTimeField(_('LastBoughtAt'), null=True, blank=False)
+    count = models.IntegerField(_('Count'), null=True, blank=False)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+                {'DefinitionId': 1, 'LastBoughtAt': '2022-08-27T05:35:42Z', 'Count': 2}
+            """
+            for offer in data:
+                definition_id = offer.pop('DefinitionId', 0)
+                last_bought_at = offer.pop('LastBoughtAt', None)
+                count = offer.pop('Count', None)
+
+                instance = cls(
+                    version_id=version_id,
+                    definition_id=definition_id,
+                    last_bought_at=last_bought_at,
+                    count=count,
+                    created=now, modified=now
+                )
+                ret.append(instance)
+
+        return ret, _
+
+
+class PlayerDailyOfferMixin(BaseVersionMixin):
+    expire_at = models.DateTimeField(_('ExpireAt'), null=True, blank=False)
+    expires_at = models.DateTimeField(_('ExpiresAt'), null=True, blank=False)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        sub_ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+                'ExpireAt' = {str} '2023-01-18T00:00:00Z'
+                'ExpiresAt' = {str} '2023-01-18T00:00:00Z'
+                'OfferItems' = [{'Slot': 11, 'Price': {'Id': 16, 'Amount': 1}, 'Reward': {'Items': [{'Id': 8, 'Value': 7, 'Amount': 30}]}, 'Purchased': False, 'PurchaseCount': 0, 'DefinitionId': 49}, {'Slot': 12, 'Price': {'Id': 3, 'Amount': 40}, 'Reward': {'Items': [{'Id': 1, 'Value': 34}]}, 'Purchased': False, 'PurchaseCount': 0, 'DefinitionId': 50}, {'Slot': 13, 'Price': {'Id': 3, 'Amount': 100}, 'Reward': {'Items': [{'Id': 8, 'Value': 7, 'Amount': 100}]}, 'Purchased': False, 'PurchaseCount': 0, 'DefinitionId': 51}, {'Slot': 14, 'Price': {'Id': 2, 'Amount': 40}, 'Reward': {'Items': [{'Id': 1, 'Value': 35}]}, 'Purchased': False, 'PurchaseCount': 0, 'DefinitionId': 52}, {'Slot': 15, 'Price': {'Id': 2, 'Amount': 200}, 'Reward': {'Items': [{'Id': 8, 'Value': 7, 'Amount': 550}]}, 'Purchased': False, 'PurchaseCount': 0, 'DefinitionId': 53}, {'Slot': 16, 'Price': {'Id': 2, 'Amount': 80}, 'Reward': {'Items': [{'Id': 1, 'Value': 68}]}, 'Purchased': False, 'PurchaseCount': 0, 'DefinitionId': 54}]
+            """
+            for offer in data:
+                expire_at = offer.pop('ExpireAt', None)
+                expires_at = offer.pop('ExpiresAt', None)
+                offer_items = offer.get('OfferItems', [])
+                instance = cls(
+                    version_id=version_id,
+                    expire_at=expire_at,
+                    expires_at=expires_at,
+                    created=now, modified=now
+                )
+                ret.append(instance)
+
+                sub, _ = cls.sub_model().create_instance(
+                    data=offer_items,
+                    daily_offer=instance,
+                    version_id=version_id,
+                )
+                sub_ret += sub
+
+        return ret, sub_ret
+
+
+class PlayerDailyOfferItemMixin(BaseVersionMixin):
+    """
+    {'Slot': 13, 'Price': {'Id': 3, 'Amount': 100},
+    'Reward': {'Items': [{'Id': 8, 'Value': 7, 'Amount': 100}]},
+    'Purchased': False, 'PurchaseCount': 0, 'DefinitionId': 51}
+    """
+    slot = models.IntegerField(_('slot'), null=False, blank=False, default=0)
+    daily_offer = models.ForeignKey(
+        to='players.PlayerDailyOffer',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    price = models.ForeignKey(
+        to='servers.TSArticle',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    price_amount = models.IntegerField(_('Price Amount'), null=False, blank=False, default=0)
+    reward = models.CharField(_('reward'), max_length=255, null=False, blank=False, default='')
+    purchased = models.BooleanField(_('Purchased'), null=False, blank=False, default=False)
+    purchase_count = models.IntegerField(_('PurchaseCount'), null=False, blank=False, default=0)
+    definition_id = models.IntegerField(_('DefinitionId'), null=False, blank=False, default=0)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+            """
+            {'Slot': 13, 'Price': {'Id': 3, 'Amount': 100},
+            'Reward': {'Items': [{'Id': 8, 'Value': 7, 'Amount': 100}]},
+            'Purchased': False, 'PurchaseCount': 0, 'DefinitionId': 51}
+            """
+            daily_offer = kwargs.get('daily_offer')
+
+            for offer in data:
+                slot = offer.pop('Slot', None)
+                price = offer.get('Price', None)
+                price_id = price.pop('Id', 0)
+                price_amount = price.pop('Amount', 0)
+                reward = offer.pop('Reward', {})
+                purchased = offer.pop('Purchased', {})
+                purchase_count = offer.pop('PurchaseCount', 0)
+                definition_id = offer.pop('DefinitionId', 0)
+
+                instance = cls(
+                    version_id=version_id,
+                    slot=slot,
+                    daily_offer=daily_offer,
+                    price_id=price_id,
+                    price_amount=price_amount,
+                    reward=json.dumps(reward, separators=(',', ':')) if reward else '',
+                    purchased=purchased,
+                    purchase_count=purchase_count,
+                    definition_id=definition_id,
+                    created=now, modified=now
+                )
+
                 ret.append(instance)
 
         return ret, _

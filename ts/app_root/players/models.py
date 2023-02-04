@@ -7,7 +7,8 @@ from app_root.players.mixins import PlayerBuildingMixin, PlayerDestinationMixin,
     PlayerFactoryProductOrderMixin, PlayerJobMixin, PlayerContractListMixin, PlayerContractMixin, PlayerGiftMixin, \
     PlayerLeaderBoardMixin, PlayerLeaderBoardProgressMixin, PlayerTrainMixin, PlayerWarehouseMixin, \
     PlayerWhistleItemMixin, PlayerWhistleMixin, PlayerAchievementMixin, PlayerDailyRewardMixin, PlayerMapMixin, \
-    PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin, PlayerCompetitionMixin, PlayerUnlockedContentMixin
+    PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin, PlayerCompetitionMixin, \
+    PlayerUnlockedContentMixin, PlayerOfferContainerMixin, PlayerDailyOfferMixin, PlayerDailyOfferItemMixin
 from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
 
 """
@@ -209,5 +210,32 @@ class PlayerCompetition(PlayerCompetitionMixin, BaseModelMixin, TimeStampedMixin
 
 class PlayerUnlockedContent(PlayerUnlockedContentMixin, BaseModelMixin, TimeStampedMixin):
     class Meta:
-        verbose_name = 'Player Competition'
-        verbose_name_plural = 'Player Competitions'
+        verbose_name = 'Player Unlocked Content'
+        verbose_name_plural = 'Player Unlocked Contents'
+
+
+class PlayerDailyOfferContainer(PlayerOfferContainerMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player DailyOffer Container'
+        verbose_name_plural = 'Player DailyOffer Containers'
+
+
+class PlayerDailyOffer(PlayerDailyOfferMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player DailyOffer'
+        verbose_name_plural = 'Player DailyOffers'
+
+    @classmethod
+    def sub_model(cls) -> Optional[Type['models.Model']]:
+        """
+
+        :return:
+        """
+        return PlayerDailyOfferItem
+
+
+class PlayerDailyOfferItem(PlayerDailyOfferItemMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player DailyOffer Item'
+        verbose_name_plural = 'Player DailyOffer Items'
+
