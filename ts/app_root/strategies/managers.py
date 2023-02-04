@@ -2,7 +2,7 @@ from datetime import timedelta, datetime
 from typing import Iterator, List, Set, Dict, Type
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
-    PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination
+    PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle
 from app_root.utils import get_curr_server_datetime
 
@@ -353,14 +353,14 @@ def article_source_find_jobs(version: RunVersion, article_id: int) -> Iterator[P
 ###########################################################################
 # Destination 검색 함수
 ###########################################################################
-def find_destination(version: RunVersion, destination_id: int) -> TSDestination:
+def destination_find(version: RunVersion, destination_id: int) -> TSDestination:
     return TSDestination.objects.filter(id=destination_id).first()
 
 
 ###########################################################################
 # Gold Destination 검색 함수
 ###########################################################################
-def gold_destination_find_iter(version: RunVersion) -> Iterator[PlayerDestination]:
+def destination_gold_find_iter(version: RunVersion) -> Iterator[PlayerDestination]:
     for destination in PlayerDestination.objects.filter(version_id=version.id).order_by('pk').all():
         yield destination
 
@@ -565,10 +565,13 @@ def daily_reward_get_reward(version: RunVersion) -> PlayerDailyReward:
 
 def daily_reward_get_next_event_time(version: RunVersion) -> datetime:
     queryset = PlayerDailyReward.objects.filter(version_id=version.id).all()
+    now = get_curr_server_datetime(version=version)
+    target_dt = version.login_server + timedelta(seconds=12*60)
 
     for reward in queryset:
         if not reward.available_from:
-            return reward.available_from
+            continue
+        return max(target_dt, reward.available_from)
 
 ###########################################################################
 # Daily Offer (일일 제공. 4시간? 5시간? 마다 제공)
@@ -637,3 +640,38 @@ def whistle_get_next_event_time(version: RunVersion) -> datetime:
         ret = update_next_event_time(previous=ret, event_time=whistle.collectable_from)
 
     return ret
+
+###########################################################################
+# Container Offer
+###########################################################################
+def container_offer_find_iter(version: RunVersion, available_only: bool) -> List[PlayerDailyOfferContainer]:
+    now = get_curr_server_datetime(version=version)
+    queryset = PlayerDailyOfferContainer.objects.filter(version_id=version.id).order_by('id').all()
+    ret = []
+    for offer in queryset.all():
+        container = offer.offer_container
+        if container.min_player_level > version.level_id:
+            continue
+        if container.offer_presentation_id != 1:
+            continue
+
+        if container.price_article_id not in (16, 17):
+            continue
+
+        if available_only:
+            if offer.last_bought_at and offer.last_bought_at + timedelta(seconds=container.cooldown_duration) >= now:
+                continue
+
+        ret.append(offer)
+
+    return ret
+
+
+def container_offer_set_used(version: RunVersion, offer: PlayerDailyOfferContainer):
+    now = get_curr_server_datetime(version=version)
+    offer.last_bought_at = now
+    offer.count += 1
+    offer.save(update_fields=[
+        'last_bought_at',
+        'count',
+    ])

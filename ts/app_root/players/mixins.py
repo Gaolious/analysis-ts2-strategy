@@ -1757,7 +1757,10 @@ class PlayerUnlockedContentMixin(BaseVersionMixin):
 
 
 class PlayerOfferContainerMixin(BaseVersionMixin):
-    definition_id = models.IntegerField(_('DefinitionId'), null=True, blank=False)
+    offer_container = models.ForeignKey(
+        to='servers.TSOfferContainer',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
     last_bought_at = models.DateTimeField(_('LastBoughtAt'), null=True, blank=False)
     count = models.IntegerField(_('Count'), null=True, blank=False)
 
@@ -1783,7 +1786,7 @@ class PlayerOfferContainerMixin(BaseVersionMixin):
 
                 instance = cls(
                     version_id=version_id,
-                    definition_id=definition_id,
+                    offer_container_id=definition_id,
                     last_bought_at=last_bought_at,
                     count=count,
                     created=now, modified=now
@@ -1792,6 +1795,11 @@ class PlayerOfferContainerMixin(BaseVersionMixin):
 
         return ret, _
 
+    @property
+    def is_video_reward(self) -> bool:
+        if self.offer_container.price_article_id == 16:
+            return True
+        return False
 
 class PlayerDailyOfferMixin(BaseVersionMixin):
     expire_at = models.DateTimeField(_('ExpireAt'), null=True, blank=False)

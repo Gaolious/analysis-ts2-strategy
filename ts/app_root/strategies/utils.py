@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Iterator, Tuple, List, Optional
 
 from django.conf import settings
@@ -11,12 +11,12 @@ from app_root.servers.models import RunVersion
 from app_root.servers.utils_import import EndpointHelper, LoginHelper, SQLDefinitionHelper
 from app_root.strategies.commands import HeartBeat, RunCommand, BaseCommand, TrainUnloadCommand, StartGame, \
     DailyRewardClaimWithVideoCommand, GameSleep, GameWakeup, DailyRewardClaimCommand, CollectWhistle, \
-    TrainSendToDestinationCommand
+    TrainSendToDestinationCommand, ShopBuyContainer
 from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, warehouse_used_capacity, warehouse_add_article, \
     daily_reward_get_reward, warehouse_can_add, whistle_get_collectable_list, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, trains_get_next_unload_event_time, whistle_get_next_event_time, \
-    update_next_event_time, trains_max_capacity, gold_destination_find_iter
+    update_next_event_time, trains_max_capacity, destination_gold_find_iter, container_offer_find_iter
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 
 
@@ -44,18 +44,18 @@ class Strategy(object):
         elif instance.is_processing_task:
             now = get_curr_server_datetime(version=instance)
 
-            if instance.next_event_datetime and instance.next_event_datetime > now:
-                print(f"""[CreateVersion] Status=processing. waiting for next event. Next event time is[{instance.next_event_datetime.astimezone(settings.KST)}] / Now is {now.astimezone(settings.KST)}""")
-                return None
+            now_format = now.astimezone(settings.KST).strftime('%Y-%m-%d %H')
+            srv_format = instance.login_server.astimezone(settings.KST).strftime('%Y-%m-%d %H')
 
-            elif instance.login_server:
-                now_format = now.astimezone(settings.KST).strftime('%Y-%m-%d %H')
-                srv_format = instance.login_server.astimezone(settings.KST).strftime('%Y-%m-%d %H')
+            if now_format != srv_format:
+                print(f"""[CreateVersion] Status=processing. passed over 1hour. start with new instance""")
+                instance = RunVersion.objects.create(user_id=self.user_id, level_id=1)
+                return instance
 
-                if now_format != srv_format:
-                    print(f"""[CreateVersion] Status=processing. passed over 1hour. start with new instance""")
-                    instance = RunVersion.objects.create(user_id=self.user_id, level_id=1)
-                    return instance
+            if (now - instance.login_server).total_seconds() >= 20 * 60:
+                if instance.next_event_datetime and instance.next_event_datetime > now:
+                    print(f"""[CreateVersion] Status=processing. waiting for next event. Next event time is[{instance.next_event_datetime.astimezone(settings.KST)}] / Now is {now.astimezone(settings.KST)}""")
+                    return None
 
             print(f"""[CreateVersion] Status=processing. start with previous instance""")
             return instance
@@ -153,6 +153,36 @@ class Strategy(object):
         #
         # return whistle_get_next_event_time(version=self.version)
 
+    def _command_offer_container(self) -> Optional[datetime]:
+        ret = None
+
+        for offer in container_offer_find_iter(version=self.version, available_only=True):
+
+            cmd_no = None
+
+            if offer.is_video_reward:
+                cmd_no = self.version.command_no
+                cmd = GameSleep(version=self.version, sleep_seconds=30)
+                self._send_commands(commands=[cmd])
+
+                cmd = GameWakeup(version=self.version)
+                self._send_commands(commands=[cmd])
+
+            cmd = ShopBuyContainer(
+                version=self.version,
+                offer=offer,
+                sleep_command_no=cmd_no,
+            )
+            self._send_commands(commands=[cmd])
+
+
+        for offer in container_offer_find_iter(version=self.version, available_only=False):
+            container = offer.offer_container
+            next_dt = offer.last_bought_at + timedelta(seconds=container.cooldown_duration)
+            ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        return ret
+
     def collectable_commands(self) -> Optional[datetime]:
         """
 
@@ -174,12 +204,16 @@ class Strategy(object):
         # gift
 
         # ship
+
+        # offer container
+        next_dt = self._command_offer_container()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
         return ret
 
     def _command_send_gold_destination(self) -> Optional[datetime]:
         now = get_curr_server_datetime(version=self.version)
         ret = None
-        for destination in gold_destination_find_iter(version=self.version):
+        for destination in destination_gold_find_iter(version=self.version):
             if destination.is_available(now=now):
                 requirerments = destination.definition.requirements_to_dict
                 possibles = []

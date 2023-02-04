@@ -592,3 +592,30 @@ class TSDestination(BaseModelMixin, TimeStampedMixin):
                 ret['available_content_category'].add(_value)
 
         return ret
+
+
+class TSOfferContainer(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
+    """
+        CREATE TABLE offer_container (
+                  offer_rarity INTEGER NOT NULL,
+                   min_player_level INTEGER NOT NULL,
+                    level_from INTEGER NOT NULL,
+                    in_app_purchase_id INTEGER NOT NULL
+                    , PRIMARY KEY(id))
+    """
+    offer_presentation_id = models.IntegerField(_('offer_presentation_id'), null=True, blank=False, default=0)
+    priority = models.IntegerField(_('priority'), null=False, blank=False, default=0)
+    price_article_id = models.IntegerField(_('price_article_id'), null=False, blank=False, default=0)
+    price_article_amount = models.IntegerField(_('price_article_amount'), null=False, blank=False, default=0)
+    cool_down_duration = models.IntegerField(_('cool_down_duration'), null=False, blank=False, default=0)
+    cooldown_duration = models.IntegerField(_('cooldown_duration'), null=False, blank=False, default=0)
+    availability_count = models.IntegerField(_('availability_count'), null=False, blank=False, default=0)
+    containers = models.IntegerField(_('containers'), null=False, blank=False, default=0)
+    offer_rarity = models.IntegerField(_('offer_rarity'), null=False, blank=False, default=0)
+    min_player_level = models.IntegerField(_('min_player_level'), null=False, blank=False, default=0)
+    level_from = models.IntegerField(_('level_from'), null=False, blank=False, default=0)
+    in_app_purchase_id = models.IntegerField(_('in_app_purchase_id'), null=False, blank=False, default=0)
+
+    class Meta:
+        verbose_name = 'Offer Container'
+        verbose_name_plural = 'Offer Containers'

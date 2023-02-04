@@ -1,12 +1,13 @@
+import datetime
 from typing import List, Dict
 
 from django.conf import settings
 
 from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerWarehouse, \
-    PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle
+    PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle, PlayerDailyOfferContainer
 from app_root.servers.models import RunVersion, TSArticle
 from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, trains_find, jobs_find, \
-    find_destination, warehouse_used_capacity, warehouse_max_capacity
+    destination_find, warehouse_used_capacity, warehouse_max_capacity, container_offer_find_iter
 from app_root.utils import get_curr_server_datetime, get_remain_time
 from core.models.utils import chunk_list
 
@@ -83,7 +84,7 @@ def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
                 jobs.setdefault(data.id, data)
 
         elif train.is_destination_route:
-            data = find_destination(version=version, destination_id=train.route_definition_id)
+            data = destination_find(version=version, destination_id=train.route_definition_id)
             is_union = data.region.is_union
             destinations.setdefault(data.id, data)
 
@@ -349,6 +350,24 @@ def ts_dump_daily_reward(version: RunVersion):
     ret.append('')
     return ret
 
+
+def ts_dump_offer_container(version: RunVersion):
+    ret = []
+    line = '-' * 80
+
+    ret.append('# [Offer Container]')
+    ret.append(line)
+
+    now = get_curr_server_datetime(version=version)
+    for offer in container_offer_find_iter(version=version, available_only=False):
+
+        next_event = offer.last_bought_at + datetime.timedelta(seconds=offer.offer_container.cooldown_duration)
+        ret.append(f'''   offer_container: {offer.offer_container_id}, Cnt:{offer.count}, Last Bought: {offer.last_bought_at}, Next : {next_event}|remain:{get_remain_time(version=version, finish_at=next_event)}''')
+        pass
+    ret.append('')
+    return ret
+
+
 def ts_dump_whistle(version: RunVersion):
     ret = []
     line = '-' * 80
@@ -391,6 +410,9 @@ def ts_dump(version: RunVersion):
 
     # daily reward
     ret += ts_dump_daily_reward(version=version)
+
+    # offer container
+    ret += ts_dump_offer_container(version=version)
 
     # whistle
     ret += ts_dump_whistle(version=version)
