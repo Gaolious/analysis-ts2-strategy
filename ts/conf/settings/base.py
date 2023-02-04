@@ -273,7 +273,7 @@ LANGUAGES = [
 
 LANGUAGE_CODE = 'ko-kr'
 # TIME_ZONE = 'Asia/Seoul'
-TIME_ZONE = 'utc'
+TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_L10N = False
 USE_TZ = True
