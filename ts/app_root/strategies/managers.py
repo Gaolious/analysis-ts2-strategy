@@ -566,12 +566,9 @@ def daily_reward_get_reward(version: RunVersion) -> PlayerDailyReward:
 def daily_reward_get_next_event_time(version: RunVersion) -> datetime:
     queryset = PlayerDailyReward.objects.filter(version_id=version.id).all()
     now = get_curr_server_datetime(version=version)
-    target_dt = version.login_server + timedelta(seconds=12*60)
 
     for reward in queryset:
-        if not reward.available_from:
-            continue
-        return max(target_dt, reward.available_from)
+        return max(now, reward.available_from)
 
 ###########################################################################
 # Daily Offer (일일 제공. 4시간? 5시간? 마다 제공)

@@ -52,10 +52,9 @@ class Strategy(object):
                 instance = RunVersion.objects.create(user_id=self.user_id, level_id=1)
                 return instance
 
-            if (now - instance.login_server).total_seconds() >= 20 * 60:
-                if instance.next_event_datetime and instance.next_event_datetime > now:
-                    print(f"""[CreateVersion] Status=processing. waiting for next event. Next event time is[{instance.next_event_datetime.astimezone(settings.KST)}] / Now is {now.astimezone(settings.KST)}""")
-                    return None
+            if instance.next_event_datetime and instance.next_event_datetime > now:
+                print(f"""[CreateVersion] Status=processing. waiting for next event. Next event time is[{instance.next_event_datetime.astimezone(settings.KST)}] / Now is {now.astimezone(settings.KST)}""")
+                return None
 
             print(f"""[CreateVersion] Status=processing. start with previous instance""")
             return instance
@@ -174,7 +173,6 @@ class Strategy(object):
                 sleep_command_no=cmd_no,
             )
             self._send_commands(commands=[cmd])
-
 
         for offer in container_offer_find_iter(version=self.version, available_only=False):
             container = offer.offer_container
