@@ -198,16 +198,19 @@ def trains_set_destination(version: RunVersion, train: PlayerTrain, definition_i
     version.add_log(
         msg='[Train SendDestination]',
         train_id=train.id,
+        has_load=[train.has_load, True],
         route_type=[train.route_type, 'destination'],
         route_definition_id=[train.route_definition_id, definition_id],
         route_departure_time=[train.route_departure_time, departure_at],
         route_arrival_time=[train.route_arrival_time, arrival_at],
     )
     train.route_type = 'destination'
+    train.has_load = True
     train.route_definition_id = definition_id
     train.route_departure_time = departure_at
     train.route_arrival_time = arrival_at
     train.save(update_fields=[
+        'has_load',
         'route_type',
         'route_definition_id',
         'route_departure_time',
