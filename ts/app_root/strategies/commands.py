@@ -12,7 +12,7 @@ from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistl
     PlayerDailyOfferContainer
 from app_root.servers.models import RunVersion, EndPoint, TSDestination
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, destination_find, \
-    trains_set_destination, container_offer_set_used
+    trains_set_destination, container_offer_set_used, destination_set_used
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -236,6 +236,10 @@ class TrainSendToDestinationCommand(BaseCommand):
             definition_id=self.dest.definition_id,
             departure_at=departure_at,
             arrival_at=arrival_at
+        )
+        destination_set_used(
+            version=self.version,
+            dest=self.dest
         )
 
 

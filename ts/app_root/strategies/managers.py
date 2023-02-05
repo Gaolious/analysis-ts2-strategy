@@ -364,6 +364,16 @@ def destination_gold_find_iter(version: RunVersion) -> Iterator[PlayerDestinatio
     for destination in PlayerDestination.objects.filter(version_id=version.id).order_by('pk').all():
         yield destination
 
+def destination_set_used(version: RunVersion, dest: PlayerDestination):
+    if dest and dest.definition.refresh_time > 0:
+        now = get_curr_server_datetime(version=version)
+        dest.train_limit_refresh_at = now + timedelta(seconds=dest.definition.refresh_time)
+        dest.train_limit_refresh_time = now + timedelta(seconds=dest.definition.refresh_time)
+        dest.save(update_fields=[
+            'train_limit_refresh_at',
+            'train_limit_refresh_time',
+        ])
+
 ###########################################################################
 # Job 우선순위 정하는 함수.
 ###########################################################################
