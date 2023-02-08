@@ -288,6 +288,24 @@ class TSArticle(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
             return True
         return False
 
+    @property
+    def is_video_reward_article(self):
+        if self.id == 16:
+            return True
+        return False
+
+    @property
+    def is_gem_article(self):
+        if self.id == 2:
+            return True
+        return False
+
+    @property
+    def is_gold_article(self):
+        if self.id == 3:
+            return True
+        return False
+
 
 class TSFactory(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
     """

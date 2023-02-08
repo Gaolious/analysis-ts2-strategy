@@ -11,12 +11,13 @@ from app_root.servers.models import RunVersion
 from app_root.servers.utils_import import EndpointHelper, LoginHelper, SQLDefinitionHelper
 from app_root.strategies.commands import HeartBeat, RunCommand, BaseCommand, TrainUnloadCommand, StartGame, \
     DailyRewardClaimWithVideoCommand, GameSleep, GameWakeup, DailyRewardClaimCommand, CollectWhistle, \
-    TrainSendToDestinationCommand, ShopBuyContainer
+    TrainSendToDestinationCommand, ShopBuyContainer, ShopPurchaseItem
 from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, warehouse_used_capacity, warehouse_add_article, \
     daily_reward_get_reward, warehouse_can_add, whistle_get_collectable_list, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, trains_get_next_unload_event_time, whistle_get_next_event_time, \
-    update_next_event_time, trains_max_capacity, destination_gold_find_iter, container_offer_find_iter
+    update_next_event_time, trains_max_capacity, destination_gold_find_iter, container_offer_find_iter, \
+    warehouse_max_capacity, daily_offer_get_next_event_time, daily_offer_get_slots
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 
 
@@ -41,6 +42,17 @@ class Strategy(object):
             # do next something...
             return instance
 
+        elif instance.is_error_task:
+            version_list = RunVersion.objects.filter(user_id=self.user_id).order_by('-pk').all()[:5]
+            for v in version_list:
+                if not v.is_error_task:
+                    instance = RunVersion.objects.create(user_id=self.user_id, level_id=1)
+                    return instance
+
+            print(f"""[CreateVersion] Status=Error. Stop""")
+            # do nothing.
+            return None
+
         elif instance.is_processing_task:
             now = get_curr_server_datetime(version=instance)
 
@@ -58,11 +70,6 @@ class Strategy(object):
 
             print(f"""[CreateVersion] Status=processing. start with previous instance""")
             return instance
-
-        elif instance.is_error_task:
-            print(f"""[CreateVersion] Status=Error. Stop""")
-            # do nothing.
-            return None
 
         elif instance.is_completed_task:
             now = get_curr_server_datetime(version=instance)
@@ -144,13 +151,26 @@ class Strategy(object):
 
         return daily_reward_get_next_event_time(version=self.version)
 
+    def _command_daily_offer(self) -> Optional[datetime]:
+        daily_offer_items = daily_offer_get_slots(
+            version=self.version,
+            available_video=True,
+            availble_gem=False,
+            available_gold=False,
+        )
+
+        for offer_item in daily_offer_items:
+            cmd = ShopPurchaseItem(version=self.version, offer_item=offer_item)
+            self._send_commands(commands=[cmd])
+
+        return daily_offer_get_next_event_time(version=self.version)
+
     def _command_whistle(self) -> Optional[datetime]:
-        pass
-        # for whistle in whistle_get_collectable_list(version=self.version):
-        #     cmd = CollectWhistle(version=self.version, whistle=whistle)
-        #     self._send_commands(commands=[cmd])
-        #
-        # return whistle_get_next_event_time(version=self.version)
+        for whistle in whistle_get_collectable_list(version=self.version):
+            cmd = CollectWhistle(version=self.version, whistle=whistle)
+            self._send_commands(commands=[cmd])
+
+        return whistle_get_next_event_time(version=self.version)
 
     def _command_offer_container(self) -> Optional[datetime]:
         ret = None
@@ -158,6 +178,7 @@ class Strategy(object):
         for offer in container_offer_find_iter(version=self.version, available_only=True):
 
             cmd_no = None
+            cmd_list = []
 
             if offer.is_video_reward:
                 cmd_no = self.version.command_no
@@ -165,14 +186,15 @@ class Strategy(object):
                 self._send_commands(commands=[cmd])
 
                 cmd = GameWakeup(version=self.version)
-                self._send_commands(commands=[cmd])
+                cmd_list.append(cmd)
 
             cmd = ShopBuyContainer(
                 version=self.version,
                 offer=offer,
                 sleep_command_no=cmd_no,
             )
-            self._send_commands(commands=[cmd])
+            cmd_list.append(cmd)
+            self._send_commands(commands=cmd_list)
 
         for offer in container_offer_find_iter(version=self.version, available_only=False):
             container = offer.offer_container
@@ -180,7 +202,6 @@ class Strategy(object):
             ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         return ret
-
     def collectable_commands(self) -> Optional[datetime]:
         """
 
@@ -206,6 +227,7 @@ class Strategy(object):
         # offer container
         next_dt = self._command_offer_container()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
+
         return ret
 
     def _command_send_gold_destination(self) -> Optional[datetime]:
@@ -225,10 +247,15 @@ class Strategy(object):
                         dest=destination,
                     )
                     self._send_commands(commands=[cmd])
-                    ret = update_next_event_time(previous=ret, event_time=possibles[0].route_arrival_time)
-
-            else:
+            elif destination.train_limit_refresh_at and destination.train_limit_refresh_at > now:
                 ret = update_next_event_time(previous=ret, event_time=destination.train_limit_refresh_at)
+
+        return ret
+
+    def _command_prepare_materials(self) -> Optional[datetime]:
+        ret = None
+
+        warehouse_capacity = warehouse_max_capacity(version=self.version)
 
         return ret
 
@@ -237,6 +264,19 @@ class Strategy(object):
 
         next_dt = self._command_send_gold_destination()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        next_dt = self._command_prepare_materials()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+        return ret
+
+    def on_finally(self) -> Optional[datetime]:
+        ret = None
+        now = get_curr_server_datetime(version=self.version)
+
+        for train in trains_find(version=self.version, is_idle=False):
+            if train.route_arrival_time and train.route_arrival_time > now:
+                ret = update_next_event_time(previous=ret, event_time=train.route_arrival_time)
+
         return ret
 
     def on_processing_status(self) -> Optional[datetime]:
@@ -274,6 +314,7 @@ class Strategy(object):
             return
 
         try:
+            ret = None
 
             if self.version.is_queued_task:
                 self.on_queued_status()
@@ -281,11 +322,15 @@ class Strategy(object):
 
             if self.version.is_processing_task:
                 next_dt = self.on_processing_status()
+                ret = update_next_event_time(previous=ret, event_time=next_dt)
 
-                self.version.next_event_datetime = next_dt
-                self.version.save(
-                    update_fields=['next_event_datetime']
-                )
+            next_dt = self.on_finally()
+            ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+            self.version.next_event_datetime = ret
+            self.version.save(
+                update_fields=['next_event_datetime']
+            )
 
         except Exception as e:
             if self.version:

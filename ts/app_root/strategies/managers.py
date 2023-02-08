@@ -1,13 +1,17 @@
+import math
 from datetime import timedelta, datetime
-from typing import Iterator, List, Set, Dict, Type
+from typing import List, Set, Dict, Type, Optional, Tuple
+
+from django.conf import settings
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
-    PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer
+    PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
+    PlayerDailyOfferItem
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle
 from app_root.utils import get_curr_server_datetime
 
 
-def update_next_event_time(previous: datetime, event_time: datetime) -> datetime:
+def update_next_event_time(previous: Optional[datetime], event_time: Optional[datetime]) -> datetime:
     """
         이벤트 발생시간 계산.
 
@@ -35,7 +39,7 @@ def jobs_find(
         completed_jobs: bool = None,
         expired_jobs: bool = None,
         job_location_id: int = None,
-) -> Iterator[PlayerJob]:
+) -> List[PlayerJob]:
     """
         Job를 검색 합니다.
 
@@ -53,6 +57,7 @@ def jobs_find(
     queryset = PlayerJob.objects.filter(version_id=version.id).all()
     now = get_curr_server_datetime(version=version)
 
+    ret = []
     for job in queryset.all():
         if event_jobs is not None and event_jobs != job.is_event_job:
             continue
@@ -71,8 +76,9 @@ def jobs_find(
         if job_location_id is not None and job_location_id != job.job_location_id:
             continue
 
-        yield job
+        ret.append(job)
 
+    return ret
 
 ###########################################################################
 # 기차 검색
@@ -137,9 +143,11 @@ def trains_find(
 
     return ret
 
-def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> Iterator[PlayerTrain]:
+
+def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> List[PlayerTrain]:
     """
         job에 맞는 기차를 검색 합니다.
+        작업중인 / 대기중인 기차를 검색합니다.
 
     :param version:
     :param job:
@@ -147,11 +155,7 @@ def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> Iterator[
     """
     requirements = job.requirements_to_dict
 
-    yield from trains_find(
-        version=version,
-        **requirements,
-        is_idle=True
-    )
+    return trains_find(version=version, **requirements)
 
 
 def trains_unload(version: RunVersion, train: PlayerTrain):
@@ -243,7 +247,7 @@ def trains_max_capacity(version: RunVersion, **kwargs) -> List[PlayerTrain]:
 ###########################################################################
 # article을 구하기 위한 source 검색 (factory, destination, contractor, job)
 ###########################################################################
-def article_source_find_factory(version: RunVersion, article_id: int) -> Iterator[TSProduct]:
+def article_source_find_factory(version: RunVersion, article_id: int) -> List[TSProduct]:
     """
         article id에 해당하는 product 검색
     :param version:
@@ -252,15 +256,14 @@ def article_source_find_factory(version: RunVersion, article_id: int) -> Iterato
     """
     queryset = TSProduct.objects.filter(
         article_id=article_id,
-        level_req__lte=version.level,
-        level_from__lte=version.level,
+        level_req__lte=version.level_id,
+        level_from__lte=version.level_id,
     ).all()
 
-    for src in queryset:
-        yield src
+    return list(queryset.all())
 
 
-def article_source_find_destination(version: RunVersion, article_id: int) -> Iterator[TSDestination]:
+def article_source_find_destination(version: RunVersion, article_id: int) -> List[TSDestination]:
     """
         article id에 해당하는 destination 검색
     :param version:
@@ -276,11 +279,10 @@ def article_source_find_destination(version: RunVersion, article_id: int) -> Ite
         article_id=article_id
     ).all()
 
-    for src in queryset:
-        yield src
+    return list(queryset.all())
 
 
-def article_source_find_contractor(version: RunVersion, article_id: int) -> Iterator[PlayerContract]:
+def article_source_find_contractor(version: RunVersion, article_id: int) -> List[PlayerContract]:
     """
         article id에 해당하는 contractor 검색
     :param version:
@@ -290,6 +292,7 @@ def article_source_find_contractor(version: RunVersion, article_id: int) -> Iter
     now = get_curr_server_datetime(version=version)
     delta = timedelta(minutes=1)
 
+    ret = []
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
 
         # contract_list.contract_list_id == 1 => ship.
@@ -330,16 +333,20 @@ def article_source_find_contractor(version: RunVersion, article_id: int) -> Iter
                     break
 
             if found:
-                yield contract
+                ret.append(contract)
+
+    return ret
 
 
-def article_source_find_jobs(version: RunVersion, article_id: int) -> Iterator[PlayerJob]:
+def article_source_find_jobs(version: RunVersion, article_id: int) -> List[PlayerJob]:
     """
         article id에 해당하는 다른 job 검색
     :param version:
     :param article_id:
     :return:
     """
+    ret = []
+
     for job in PlayerJob.objects.filter(version_id=version.id).all():
         rewards = job.reward_to_article_dict
 
@@ -350,7 +357,9 @@ def article_source_find_jobs(version: RunVersion, article_id: int) -> Iterator[P
                 break
 
         if found:
-            yield job
+            ret.append(job)
+
+    return ret
 
 
 ###########################################################################
@@ -363,9 +372,10 @@ def destination_find(version: RunVersion, destination_id: int) -> TSDestination:
 ###########################################################################
 # Gold Destination 검색 함수
 ###########################################################################
-def destination_gold_find_iter(version: RunVersion) -> Iterator[PlayerDestination]:
-    for destination in PlayerDestination.objects.filter(version_id=version.id).order_by('pk').all():
-        yield destination
+def destination_gold_find_iter(version: RunVersion) -> List[PlayerDestination]:
+    queryset = PlayerDestination.objects.filter(version_id=version.id).order_by('pk')
+    return list(queryset.all())
+
 
 def destination_set_used(version: RunVersion, dest: PlayerDestination):
     if dest and dest.definition.refresh_time > 0:
@@ -380,33 +390,203 @@ def destination_set_used(version: RunVersion, dest: PlayerDestination):
 ###########################################################################
 # Job 우선순위 정하는 함수.
 ###########################################################################
-def find_job_sources(version: RunVersion, jobs: List[PlayerJob]) -> Dict[int, List]:
-    now = get_curr_server_datetime(version=version)
+def jobs_find_sources(version: RunVersion, job: PlayerJob) -> List:
+    article = job.required_article
 
-    material_sources = {}
+    from_factory = list(article_source_find_factory(version=version, article_id=article.id))
+    from_destination = list(article_source_find_destination(version=version, article_id=article.id))
+    from_contract = list(article_source_find_contractor(version=version, article_id=article.id))
+    from_jobs = list(article_source_find_jobs(version=version, article_id=article.id))
 
-    for job in jobs:
-        amouunt = job.required_amount
-        article = job.required_article
+    possibles = []
+    possibles += from_factory
+    possibles += from_destination
+    possibles += from_contract
+    possibles += from_jobs
 
-        from_factory = list(article_source_find_factory(version=version, article_id=article.id))
-        from_destination = list(article_source_find_destination(version=version, article_id=article.id))
-        from_contract = list(article_source_find_contractor(version=version, article_id=article.id))
-        from_jobs = list(article_source_find_jobs(version=version, article_id=article.id))
+    return possibles
 
-        possibles = []
-        possibles += from_factory
-        possibles += from_destination
-        possibles += from_contract
-        possibles += from_jobs
-        material_sources.update({
-            job.id: possibles
+
+class TRAIN:
+    instance_id: int
+    capacity: int
+
+    def __init__(self, instance_id, capacity):
+        self.instance_id = instance_id
+        self.capacity = capacity
+
+
+class JOB:
+    article_id: int
+    total_count: int
+    curr_count: int
+
+    def __init__(self, article_id, total_count, curr_count):
+        self.article_id = article_id
+        self.total_count = total_count
+        self.curr_count = curr_count
+
+
+class WAREHOUSE:
+    article_id: int
+    article_amount: int
+    factory_count: int
+    contract_count: int
+
+    def __init__(self, article_id: int, amount: int):
+        self.article_id = article_id
+        self.article_amount = amount
+
+
+class UnionJobFinder:
+    number_of_dispatchers: int
+    trains: Dict[int, TRAIN]
+    jobs: Dict[int, JOB]
+    warehouse: Dict[int, WAREHOUSE]
+
+    train_job_relation: Dict[int, List[int]]
+
+    def __init__(self, dispatcher):
+        self.number_of_dispatchers = dispatcher
+        self.trains = {}
+        self.jobs = {}
+        self.warehouse = {}
+        self.train_job_relation = {}
+
+    def add_job_train(self, job: PlayerJob, trains: List[PlayerTrain]):
+        self.jobs.update({
+            job.id: JOB(
+                article_id=job.required_article_id,
+                total_count=job.required_amount,
+                curr_count=job.current_guild_amount,
+            )
+        })
+        for train in trains:
+            self.trains.update({
+                train.id: TRAIN(
+                    instance_id=train.instance_id,
+                    capacity=train.capacity()
+                )
+            })
+
+            if train.id not in self.train_job_relation:
+                self.train_job_relation.update({train.id: []})
+
+            self.train_job_relation[train.id].append(job.id)
+
+    def add_warehouse(self, article_id, amount):
+        self.warehouse.update({
+            article_id: WAREHOUSE(article_id=article_id, amount=amount)
         })
 
-    return material_sources
+    best_score: int = -1
+    best_assign: Dict[int, int]
+
+    train_id_list: List[int] = []
+    assigned_job_amount: Dict[int, int] = {}
+    assign: Dict[int, int] = {}
+
+    def get_score(self, used_dispatcher: int) -> int:
+        ret = 0
+
+        count = {}
+        INF_COUNT = 100000
+        has_infinity = False
+
+        for job_id, amount in self.assigned_job_amount.items():
+            count.update({job_id: 0})
+
+            total = self.jobs[job_id].total_count
+            curr = min(total, self.jobs[job_id].curr_count)
+
+            remain = total - curr
+            if remain < 1:
+                continue
+            if self.assigned_job_amount[job_id] < 1:
+                has_infinity = True
+                continue
+
+            count.update({job_id: math.ceil(remain / self.assigned_job_amount[job_id])})
+
+        for job_id, amount in self.assigned_job_amount.items():
+            total = self.jobs[job_id].total_count
+            curr = min(total, self.jobs[job_id].curr_count + self.assigned_job_amount[job_id])
+
+            ret += 1 - curr / total
+
+        # 가능한 하나라도 완료에 가까운 곳으로.
+
+        # 전체 수행 횟수를 줄이는 것.
+
+        score = 0
+
+        if has_infinity:
+            score += 10000
+
+        max_count = max(count.values())
+        avg_progress = ret / len(self.assigned_job_amount)
+        return ret
+
+    def recur(self, idx: int, used_dispatcher: int):
+
+        score = self.get_score(used_dispatcher)
+
+        if self.best_score < 0 or score < self.best_score:
+            self.best_score = score
+            self.best_assign = {k: v for k, v in self.assign.items()}
+
+        if used_dispatcher >= self.number_of_dispatchers:
+            return
+        if idx >= len(self.train_id_list):
+            return
+
+        train_id = self.train_id_list[idx]
+
+        train_capacity = self.trains[train_id].capacity
+        possible_job_id_list = []
+
+        for job_id in self.train_job_relation[train_id]:
+            total = self.jobs[job_id].total_count
+            curr = min(total, self.jobs[job_id].curr_count + self.assigned_job_amount[job_id])
+            if curr < total:
+                possible_job_id_list.append(job_id)
+
+        for job_id in possible_job_id_list:
+            total = self.jobs[job_id].total_count
+            curr = min(total, self.jobs[job_id].curr_count + self.assigned_job_amount[job_id])
+
+            amount = max(0, total - curr)
+            amount = min(amount, train_capacity)
+            if amount == 0:
+                continue
+
+            self.assigned_job_amount[job_id] += amount
+            self.assign.update({train_id: job_id})
+
+            self.recur(idx=idx+1, used_dispatcher=used_dispatcher+1)
+
+            self.assigned_job_amount[job_id] -= amount
+            self.assign.pop(train_id)
+
+        if len(possible_job_id_list) != 1:
+            self.recur(idx=idx+1, used_dispatcher=used_dispatcher)
+
+    def dispatching(self):
+        self.train_id_list = sorted(self.train_job_relation.keys(), key=lambda k: self.trains[k].capacity, reverse=True)
+        self.best_score = -1
+        self.assigned_job_amount = {job_id: 0 for job_id in self.jobs}
+        self.best_assign = {}
+        self.assign = {}
+
+        self.recur(idx=0, used_dispatcher=0)
+
+        print("------------------------------------------------------------------------------------------")
+        print(f"Update Score : {self.best_score} / used  dispatcher : {len(self.best_assign)}")
+        for train_id, job_id in self.best_assign.items():
+            print(f"TrainID={train_id}, InstanceID={self.trains[train_id].instance_id} / JobID={job_id}")
 
 
-def find_job_priority(version: RunVersion) -> List[PlayerJob]:
+def jobs_find_priority(version: RunVersion) -> List[PlayerJob]:
 
     # 재료 수집이 가능한가 ? & expired 체크 & event expired 체크 & union expired 체크
     # job의 travel time (1hour) 고려해서
@@ -415,10 +595,36 @@ def find_job_priority(version: RunVersion) -> List[PlayerJob]:
 
     # 재료 수집에 걸리는 시간
     #
+    ret = []
     if version.has_union:
+        finder = UnionJobFinder(dispatcher=version.guild_dispatchers + 2)
         jobs = list(jobs_find(version, union_jobs=True, expired_jobs=False))
         if jobs:
-            return jobs
+            for job in jobs:
+                materials = jobs_find_sources(version=version, job=job)
+                trains = trains_find_match_with_job(version=version, job=job)
+                print(f"[Job] : {job}")
+
+                print("materials")
+                for src in materials:
+                    print(f"    {src}")
+
+                print("trains")
+                for train in trains:
+                    print(f"    {train}")
+
+                finder.add_job_train(job, trains)
+
+                warehouse_cnt = warehouse_amount(version=version, article_id=job.required_article_id)
+
+                finder.add_warehouse(
+                    article_id=job.required_article_id,
+                    amount=warehouse_cnt
+                )
+
+            finder.dispatching()
+
+    return ret
 
 
 ###########################################################################
@@ -464,6 +670,13 @@ def warehouse_can_add(version: RunVersion, article_id: Type[int], amount: int) -
             return True
 
     return False
+
+
+def warehouse_amount(version: RunVersion, article_id: Type[int]) -> int:
+    article = PlayerWarehouse.objects.filter(version_id=version.id, article_id=article_id).first()
+    if article:
+        return article.amount
+    return 0
 
 
 def warehouse_can_add_with_rewards(version: RunVersion, reward: List[Dict], multiply: int = 1) -> bool:
@@ -586,19 +799,96 @@ def daily_reward_get_next_event_time(version: RunVersion) -> datetime:
 ###########################################################################
 # Daily Offer (일일 제공. 4시간? 5시간? 마다 제공)
 ###########################################################################
-def daily_offer(version: RunVersion):
-    pass
+def daily_offer_get_slots(version: RunVersion, available_video: bool = None, availble_gem: bool = None, available_gold: bool = None):
 
+    now = get_curr_server_datetime(version=version)
+    queryset = PlayerDailyOffer.objects.filter(version_id=version.id).all()
+
+    ret = []
+
+    for daily in queryset:
+        if daily.expire_at and daily.expire_at < now:
+            continue
+        if daily.expires_at and daily.expires_at < now:
+            continue
+
+        for item in PlayerDailyOfferItem.objects.filter(daily_offer_id=daily.id).prefetch_related('price').all():
+            item: PlayerDailyOfferItem
+
+            if item.purchased:
+                continue
+
+            if available_video is False and item.price.is_video_reward_article is True:
+                continue
+
+            if availble_gem is False and item.price.is_gem_article is True:
+                continue
+
+            if available_gold is False and item.price.is_gold_article is True:
+                continue
+
+            if available_video is True and item.price.is_video_reward_article is True:
+                ret.append(item)
+                continue
+
+            if availble_gem is True and item.price.is_gem_article is True:
+                ret.append(item)
+                continue
+
+            if available_gold is True and item.price.is_gold_article is True:
+                ret.append(item)
+                continue
+
+    return ret
+
+
+def daily_offer_get_next_event_time(version: RunVersion) -> datetime:
+    now = get_curr_server_datetime(version=version)
+    ret = now
+    queryset = PlayerDailyOffer.objects.filter(version_id=version.id).all()
+    delta = timedelta(seconds=10)
+
+    for daily in queryset:
+        if daily.expire_at:
+            ret = max(ret, daily.expire_at + delta)
+        if daily.expires_at:
+            ret = max(ret, daily.expires_at + delta)
+
+    if now < ret:
+        return ret
+
+
+def daily_offer_set_used(version: RunVersion, offer_item: PlayerDailyOfferItem):
+
+    if offer_item:
+        version.add_log(
+            msg='[daily_offer]',
+            slot=offer_item.slot,
+            price_id=offer_item.price_id,
+            price=str(offer_item.price),
+            price_amount=offer_item.price_amount,
+            purchased=[offer_item.purchased, True],
+            purchase_count=[offer_item.purchase_count, offer_item.purchase_count+1],
+        )
+
+        offer_item.purchased = True
+        offer_item.purchase_count += 1
+        offer_item.save(update_fields=[
+            'purchased',
+            'purchase_count',
+        ])
 
 ###########################################################################
 # Whistle
 ###########################################################################
-def whistle_get_collectable_list(version: RunVersion) -> Iterator[PlayerWhistle]:
-    INTERVAL_SECOND = 4 * 60
+
+def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
     now = get_curr_server_datetime(version=version)
     queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
-    delta = timedelta(seconds=INTERVAL_SECOND)
-    if version.login_server and (now - version.login_server).total_seconds() > INTERVAL_SECOND:
+    delta = timedelta(seconds=settings.WHISTLE_INTERVAL_SECOND)
+    ret = []
+
+    if version.login_server and (now - version.login_server).total_seconds() > settings.WHISTLE_INTERVAL_SECOND:
         for whistle in queryset:
             if whistle.spawn_time and now < whistle.spawn_time + delta:
                 continue
@@ -609,7 +899,9 @@ def whistle_get_collectable_list(version: RunVersion) -> Iterator[PlayerWhistle]
             if whistle.is_for_video_reward:
                 continue
 
-            yield whistle
+            ret.append(whistle)
+
+    return ret
 
 
 def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:

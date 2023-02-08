@@ -4,7 +4,8 @@ from typing import List, Dict
 from django.conf import settings
 
 from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerWarehouse, \
-    PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle, PlayerDailyOfferContainer
+    PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle, PlayerDailyOfferContainer, \
+    PlayerDailyOffer, PlayerDailyOfferItem
 from app_root.servers.models import RunVersion, TSArticle
 from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, trains_find, jobs_find, \
     destination_find, warehouse_used_capacity, warehouse_max_capacity, container_offer_find_iter
@@ -351,6 +352,30 @@ def ts_dump_daily_reward(version: RunVersion):
     return ret
 
 
+def ts_dump_daily_offer(version: RunVersion):
+    ret = []
+    line = '-' * 80
+
+    ret.append('# [Daily Offer]')
+    ret.append(line)
+    now = get_curr_server_datetime(version=version)
+    queryset = PlayerDailyOffer.objects.filter(version_id=version.id).all()
+    for daily in queryset:
+        ret.append(f'''   expire_at : {daily.expire_at} | remain : {get_remain_time(version=version, finish_at=daily.expire_at)}''')
+        ret.append(f'''   expires_at : {daily.expires_at} | remain : {get_remain_time(version=version, finish_at=daily.expires_at)}''')
+
+        for item in PlayerDailyOfferItem.objects.filter(daily_offer_id=daily.id).all():
+            ret.append(f'''       Slot: {item.slot}''')
+            ret.append(f'''       Price: article : #{item.price_id} {item.price} / amount: {item.price_amount}''')
+
+            ret.append(f'''       reward: {item.reward}''')
+            ret.append(f'''       purchased: {item.purchased} / purchase_count: {item.purchase_count} / definition_id: {item.definition_id}''')
+            ret.append('')
+
+    ret.append('')
+    return ret
+
+
 def ts_dump_offer_container(version: RunVersion):
     ret = []
     line = '-' * 80
@@ -410,6 +435,9 @@ def ts_dump(version: RunVersion):
 
     # daily reward
     ret += ts_dump_daily_reward(version=version)
+
+    # daily offer
+    ret += ts_dump_daily_offer(version=version)
 
     # offer container
     ret += ts_dump_offer_container(version=version)

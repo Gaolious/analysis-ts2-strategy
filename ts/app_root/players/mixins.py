@@ -1801,6 +1801,7 @@ class PlayerOfferContainerMixin(BaseVersionMixin):
             return True
         return False
 
+
 class PlayerDailyOfferMixin(BaseVersionMixin):
     expire_at = models.DateTimeField(_('ExpireAt'), null=True, blank=False)
     expires_at = models.DateTimeField(_('ExpiresAt'), null=True, blank=False)

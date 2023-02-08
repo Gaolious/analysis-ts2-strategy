@@ -979,6 +979,15 @@ class LeaderboardHelper(ImportHelperMixin):
                 'LeaderboardId' = {str} '015bf3d8-d688-4cd0-b2c3-57b61f4e3373'
                 'LeaderboardGroupId' = {str} '3a3dfa63-2e0f-4a40-b36c-08d252db9c2b'
             """
+            PlayerLeaderBoard.objects.filter(
+                version_id=self.version.id,
+                player_job_id=self.player_job_id,
+            ).delete()
+            PlayerLeaderBoardProgress.objects.filter(
+                version_id=self.version.id,
+                leader_board__player_job_id=self.player_job_id,
+            ).delete()
+
             bulk_leader_board_list, bulk_leader_board_progress_list = PlayerLeaderBoard.create_instance(
                 data=server_data,
                 version_id=self.version.id,
@@ -987,6 +996,7 @@ class LeaderboardHelper(ImportHelperMixin):
 
             if bulk_leader_board_list:
                 PlayerLeaderBoard.objects.bulk_create(bulk_leader_board_list, 100)
+
             if bulk_leader_board_list:
                 PlayerLeaderBoardProgress.objects.bulk_create(bulk_leader_board_progress_list, 100)
 
