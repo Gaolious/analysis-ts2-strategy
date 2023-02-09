@@ -988,10 +988,10 @@ def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
             max_spawn = whistle.spawn_time
         ret.append(whistle)
 
-    if max_spawn + delta <= now:
-        return ret
-    else:
-        return []
+    # if max_spawn + delta <= now:
+    #     return ret
+    # else:
+    return []
 
 
 def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:

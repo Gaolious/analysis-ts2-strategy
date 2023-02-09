@@ -169,11 +169,12 @@ class Strategy(object):
         return daily_offer_get_next_event_time(version=self.version)
 
     def _command_whistle(self) -> Optional[datetime]:
-        for whistle in whistle_get_collectable_list(version=self.version):
-            cmd = CollectWhistle(version=self.version, whistle=whistle)
-            self._send_commands(commands=[cmd])
-
-        return whistle_get_next_event_time(version=self.version)
+        pass
+        # for whistle in whistle_get_collectable_list(version=self.version):
+        #     cmd = CollectWhistle(version=self.version, whistle=whistle)
+        #     self._send_commands(commands=[cmd])
+        #
+        # return whistle_get_next_event_time(version=self.version)
 
     def _command_offer_container(self) -> Optional[datetime]:
         ret = None
