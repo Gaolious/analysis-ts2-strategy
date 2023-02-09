@@ -6,8 +6,8 @@ from django.conf import settings
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
-    PlayerDailyOfferItem
-from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle
+    PlayerDailyOfferItem, PlayerShipOffer
+from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory
 from app_root.utils import get_curr_server_datetime
 
 
@@ -247,6 +247,21 @@ def trains_max_capacity(version: RunVersion, **kwargs) -> List[PlayerTrain]:
 ###########################################################################
 # article을 구하기 위한 source 검색 (factory, destination, contractor, job)
 ###########################################################################
+def article_find_all_article_and_factory(version: RunVersion) -> Dict[int, TSFactory]:
+    """
+    :param version:
+    :return:
+    """
+    queryset = TSProduct.objects.filter(
+        level_req__lte=version.level_id,
+        level_from__lte=version.level_id,
+        factory__level_req__lte=version.level_id,
+        factory__level_from__lte=version.level_id,
+    ).all()
+
+    return {row.article_id: row.factory_id for row in queryset.all()}
+
+
 def article_source_find_factory(version: RunVersion, article_id: int) -> List[TSProduct]:
     """
         article id에 해당하는 product 검색
@@ -263,6 +278,18 @@ def article_source_find_factory(version: RunVersion, article_id: int) -> List[TS
     return list(queryset.all())
 
 
+def article_find_all_article_and_destination(version: RunVersion) -> Dict[int, TSDestination]:
+    visited_region_list = list(
+        PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
+    )
+
+    queryset = TSDestination.objects.filter(
+        region_id__in=visited_region_list,
+    ).all()
+
+    return {row.article_id: row for row in queryset.all()}
+
+
 def article_source_find_destination(version: RunVersion, article_id: int) -> List[TSDestination]:
     """
         article id에 해당하는 destination 검색
@@ -270,29 +297,17 @@ def article_source_find_destination(version: RunVersion, article_id: int) -> Lis
     :param article_id:
     :return:
     """
-    visited_region_list = list(
-        PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
-    )
+    ret = article_find_all_article_and_destination(version=version)
 
-    queryset = TSDestination.objects.filter(
-        region_id__in=visited_region_list,
-        article_id=article_id
-    ).all()
-
-    return list(queryset.all())
+    return ret.get(article_id, [])
 
 
-def article_source_find_contractor(version: RunVersion, article_id: int) -> List[PlayerContract]:
-    """
-        article id에 해당하는 contractor 검색
-    :param version:
-    :param article_id:
-    :return:
-    """
+def article_find_all_article_and_contract(version: RunVersion) -> Dict[int, List[PlayerContract]]:
+
     now = get_curr_server_datetime(version=version)
     delta = timedelta(minutes=1)
 
-    ret = []
+    ret = {}
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
 
         # contract_list.contract_list_id == 1 => ship.
@@ -328,14 +343,23 @@ def article_source_find_contractor(version: RunVersion, article_id: int) -> List
             rewards = contract.reward_to_article_dict
             found = False
             for reward_article_id, reward_amount in rewards.items():
-                if reward_article_id == article_id:
-                    found = True
-                    break
+                if reward_article_id not in ret:
+                    ret.update({reward_article_id: []})
 
-            if found:
-                ret.append(contract)
+                ret[reward_article_id].append(contract)
 
     return ret
+
+
+def article_source_find_contract(version: RunVersion, article_id: int) -> List[PlayerContract]:
+    """
+        article id에 해당하는 contractor 검색
+    :param version:
+    :param article_id:
+    :return:
+    """
+    ret = article_find_all_article_and_contract(version=version)
+    return ret.get(article_id, [])
 
 
 def article_source_find_jobs(version: RunVersion, article_id: int) -> List[PlayerJob]:
@@ -395,7 +419,7 @@ def jobs_find_sources(version: RunVersion, job: PlayerJob) -> List:
 
     from_factory = list(article_source_find_factory(version=version, article_id=article.id))
     from_destination = list(article_source_find_destination(version=version, article_id=article.id))
-    from_contract = list(article_source_find_contractor(version=version, article_id=article.id))
+    from_contract = list(article_source_find_contract(version=version, article_id=article.id))
     from_jobs = list(article_source_find_jobs(version=version, article_id=article.id))
 
     possibles = []
@@ -977,3 +1001,73 @@ def container_offer_set_used(version: RunVersion, offer: PlayerDailyOfferContain
         'last_bought_at',
         'count',
     ])
+
+
+###########################################################################
+# Container Offer
+###########################################################################
+def materials_find_from_ship(version: RunVersion) -> Dict[int, int]:
+    ret = {}
+
+    queryset = PlayerShipOffer.objects.filter(version_id=version.id).all()
+    for ship in queryset:
+        reward_dict = ship.reward_to_article_dict
+
+        for k, v in reward_dict:
+            if k not in ret:
+                ret.update({k, 0})
+            ret[k] += v
+
+    return ret
+
+
+def materials_find_from_jobs(version: RunVersion, jobs: List[PlayerJob]) -> Dict[int, int]:
+    pass
+
+
+def materials_find_redundancy(version: RunVersion, min_cnt_factory, min_cnt_destination, min_cnt_contract):
+    """
+
+    :param version:
+    :param min_cnt_factory:
+    :param min_cnt_destination:
+    :param min_cnt_contract:
+    :return:
+    """
+    amount_warehouse = {row.article_id: row.amount for row in PlayerWarehouse.objects.all()}
+    amount_factory = {}
+
+    article_factory_dict = article_find_all_article_and_factory(version=version)
+    article_destination_dict = article_find_all_article_and_destination(version=version)
+    article_contract_dict = article_find_all_article_and_contract(version=version)
+    all_article = {article.id: article for article in TSArticle.objects.all()}
+    ret = {}
+    if amount_warehouse:
+        for article in TSArticle.objects.all():
+
+            if article.level_req > version.level_id:
+                continue
+            if article.level_from > version.level_id:
+                continue
+            if article.type == 1:
+                continue
+            if article.is_event:
+                continue
+
+            if article.id in article_destination_dict:
+                ret.setdefault(article.id, min_cnt_destination)
+                continue
+
+            if article.id in article_factory_dict:
+                ret.setdefault(article.id, min_cnt_factory)
+                continue
+
+            if article.id in article_contract_dict:
+                ret.setdefault(article.id, min_cnt_contract)
+
+    for article_id, required in ret.items():
+        has = amount_warehouse.get(article_id, 0)
+
+        if has < required:
+            print(f"article [{article_id}|{all_article[article_id].name}] need {required - has} more")
+

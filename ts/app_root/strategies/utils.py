@@ -17,7 +17,9 @@ from app_root.strategies.managers import jobs_find, trains_find, warehouse_used_
     daily_reward_get_reward, warehouse_can_add, whistle_get_collectable_list, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, trains_get_next_unload_event_time, whistle_get_next_event_time, \
     update_next_event_time, trains_max_capacity, destination_gold_find_iter, container_offer_find_iter, \
-    warehouse_max_capacity, daily_offer_get_next_event_time, daily_offer_get_slots
+    warehouse_max_capacity, daily_offer_get_next_event_time, daily_offer_get_slots, \
+    materials_find_from_ship, materials_find_from_jobs, article_find_all_article_and_factory, \
+    article_find_all_article_and_destination, article_find_all_article_and_contract
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 
 
@@ -202,6 +204,7 @@ class Strategy(object):
             ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         return ret
+
     def collectable_commands(self) -> Optional[datetime]:
         """
 
@@ -211,6 +214,10 @@ class Strategy(object):
 
         # daily reward
         next_dt = self._command_daily_reward()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        # daily offer
+        next_dt = self._command_daily_offer()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         # train unload
@@ -255,7 +262,18 @@ class Strategy(object):
     def _command_prepare_materials(self) -> Optional[datetime]:
         ret = None
 
-        warehouse_capacity = warehouse_max_capacity(version=self.version)
+        # warehouse_capacity = warehouse_max_capacity(version=self.version)
+        # article_source_factory = article_find_all_article_and_factory(version=self.version)
+        # article_source_destination = article_find_all_article_and_destination(version=self.version)
+        # article_source_contract = article_find_all_article_and_contract(version=self.version)
+        #
+        # # ship
+        # ship_materials = materials_find_from_ship(version=self.version)
+        #
+        # # union quest item
+        #
+        # # prepare
+        # # redundancy_materials = materials_find_redundancy(version=self.version)
 
         return ret
 

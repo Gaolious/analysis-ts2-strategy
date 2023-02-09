@@ -1,4 +1,5 @@
 import datetime
+import json
 from typing import List, Dict
 
 from django.conf import settings
@@ -365,12 +366,30 @@ def ts_dump_daily_offer(version: RunVersion):
         ret.append(f'''   expires_at : {daily.expires_at} | remain : {get_remain_time(version=version, finish_at=daily.expires_at)}''')
 
         for item in PlayerDailyOfferItem.objects.filter(daily_offer_id=daily.id).all():
-            ret.append(f'''       Slot: {item.slot}''')
-            ret.append(f'''       Price: article : #{item.price_id} {item.price} / amount: {item.price_amount}''')
+            purchased = '가능' if item.purchased == False else '완료'
 
-            ret.append(f'''       reward: {item.reward}''')
-            ret.append(f'''       purchased: {item.purchased} / purchase_count: {item.purchase_count} / definition_id: {item.definition_id}''')
-            ret.append('')
+            required = f'''[{item.price_id}|{item.price.name}:{item.price_amount}]'''
+            rewards = []
+            for reward in json.loads(item.reward)['Items']:
+                _id = reward.get('Id')
+                _value = reward.get('Value')
+                _amount = reward.get('Amount')
+
+                article = TSArticle.objects.filter(id=_value).first()
+                if not article:
+                    rewards.append(
+                        f'''[{reward}]'''
+                    )
+                elif _amount:
+                    rewards.append(
+                        f'''[{article.id}|{article.name}:{_amount}]'''
+                    )
+                else:
+                    rewards.append(
+                        f'''[{article.id}|{article.name}]'''
+                    )
+
+            ret.append(f'''       Slot: {item.slot:2d} | {purchased} | {required:20s} | {','.join(rewards)}''')
 
     ret.append('')
     return ret
@@ -403,10 +422,7 @@ def ts_dump_whistle(version: RunVersion):
     now = get_curr_server_datetime(version=version)
     queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
     for whistle in queryset:
-        ret.append(f'''   category: {whistle.category} | Position: {whistle.position}''')
-        ret.append(f'''   spawn_time : {whistle.spawn_time} | remain : {get_remain_time(version=version, finish_at=whistle.spawn_time)}''')
-        ret.append(f'''   collectable_from : {whistle.collectable_from} | remain : {get_remain_time(version=version, finish_at=whistle.collectable_from)}''')
-        ret.append(f'''   expires_at : {whistle.expires_at} | remain : {get_remain_time(version=version, finish_at=whistle.expires_at)}''')
+        ret.append(f'''   category: {whistle.category} | Position: {whistle.position} | spawn_time : {whistle.spawn_time} | remain : {get_remain_time(version=version, finish_at=whistle.spawn_time)} | collectable_from : {whistle.collectable_from} | remain : {get_remain_time(version=version, finish_at=whistle.collectable_from)} | expires_at : {whistle.expires_at} | remain : {get_remain_time(version=version, finish_at=whistle.expires_at)}''')
         pass
     ret.append('')
     return ret

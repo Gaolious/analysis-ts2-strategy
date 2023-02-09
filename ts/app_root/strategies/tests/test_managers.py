@@ -13,7 +13,7 @@ from app_root.servers.utils_import import SQLDefinitionHelper
 from app_root.strategies.commands import ShopPurchaseItem
 from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find_match_with_job, jobs_find_sources, trains_max_capacity, \
-    jobs_find_priority, daily_offer_get_slots
+    jobs_find_priority, daily_offer_get_slots, materials_find_redundancy
 from app_root.strategies.utils import Strategy
 from app_root.users.models import User
 from core.tests.factory import AbstractFakeResp
@@ -302,7 +302,7 @@ def test_shop_purchase_item(multidb, init_filename, fixture_send_commands):
             version=version,
             available_video=True,
             availble_gem=False,
-            available_gold=True,
+            available_gold=False,
         )
         for offer_item in daily_offer_items:
             cmd = ShopPurchaseItem(version=version, offer_item=offer_item)
@@ -341,3 +341,33 @@ def test_job_prioirty(multidb, init_filename):
     with mock.patch('django.utils.timezone.now') as p:
         p.return_value = now
         jobs_find_priority(version=version)
+
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('init_filename', [
+    # 'strategies/6/6_0.json',
+    # 'init_data/gaolious1_2022.12.29.json',
+    # 'init_data/gaolious_2022.12.30-1.json',
+    # 'init_data/gaolious_2023.01.09_contract.json',
+    # 'init_data/gaolious_2023.01.09_gifts.json',
+    # 'init_data/gaolious_2023.01.11_jobs.json',
+    # 'init_data/gaolious_2023.01.14_fulltest.json',
+    # 'init_data/gaolious_2023.01.14_idle_destinations.json',
+    # 'init_data/gaolious_2023.01.14_results.json',
+    # 'init_data/gaolious_2023.02.05.json',
+    'init_data/gaolious_2023.02.07.json',
+])
+def test_materials_find_redundancy(multidb, init_filename):
+    ###########################################################################
+    # prepare
+    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
+
+    version = prepare(initdata_filepath=initdata_filepath)
+
+    txt = initdata_filepath.read_text(encoding='utf-8')
+    json_data = json.loads(txt, strict=False)
+    now = convert_datetime(json_data['Time'])
+
+    with mock.patch('django.utils.timezone.now') as p:
+        p.return_value = now
