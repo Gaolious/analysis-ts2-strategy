@@ -1,10 +1,12 @@
 import json
+import shutil
 from pathlib import Path
 from typing import Union, List
 from unittest import mock
 
 import pytest
 from django.conf import settings
+from django.utils import timezone
 
 from app_root.players.models import PlayerShipOffer
 from app_root.players.utils_import import InitdataHelper
@@ -16,27 +18,12 @@ from app_root.strategies.managers import jobs_find, trains_find_match_with_job, 
     jobs_find_priority, daily_offer_get_slots, materials_find_redundancy
 from app_root.strategies.utils import Strategy
 from app_root.users.models import User
+from app_root.utils import get_curr_server_str_datetime_s
 from core.tests.factory import AbstractFakeResp
 from core.utils import convert_datetime, hash10
 
 
-class FakeRunCommand(object):
-    commands: List
-    version: RunVersion
-    def __init__(self, version, commands):
-        self.commands = commands
-        self.version = version
 
-    def run(self):
-        for cmd in self.commands:
-            cmd.post_processing({})
-
-
-@pytest.fixture(scope='function')
-def fixture_send_commands():
-    with mock.patch('app_root.strategies.utils.RunCommand') as patch:
-        patch.side_effect = FakeRunCommand
-        yield patch
 
 def prepare(initdata_filepath: Union[List[Path], Path]):
     user = User.objects.create_user(
@@ -343,6 +330,100 @@ def test_job_prioirty(multidb, init_filename):
         jobs_find_priority(version=version)
 
 
+def convert_text(txt: str):
+    data = json.loads(txt, strict=False)
+    t = timezone.now().isoformat(sep='T', timespec='seconds').replace('+00:00', 'Z')
+    data.update({
+        'Time': t
+    })
+
+    return json.dumps(data, separators=(',', ':'))
+
+
+@pytest.fixture(scope='function')
+def fixture_endpoint():
+    with mock.patch('app_root.strategies.utils.EndpointHelper.get') as patch:
+        patch.return_value = convert_text(
+            (settings.DJANGO_PATH / 'fixtures' / 'endpoints' / 'gaolious1_2022.12.29.json').read_text('utf-8')
+        )
+        yield patch
+
+
+@pytest.fixture(scope='function')
+def fixture_login():
+    with mock.patch('app_root.strategies.utils.LoginHelper.post') as patch:
+        patch.return_value = convert_text(
+            (settings.DJANGO_PATH / 'fixtures' / 'login' / 'gaolious1_2022.12.29_with_device_id.json').read_text('utf-8')
+        )
+        yield patch
+
+
+@pytest.fixture(scope='function')
+def fixture_definition():
+
+    sqllite_filepath = settings.DJANGO_PATH / 'fixtures' / '207.004.sqlite'
+
+    def FakeDownload(instance, *args, **kwargs):
+        download_filename = Path(instance.download_path)
+        shutil.copy(sqllite_filepath, download_filename)
+        return 1_000_000
+
+    with mock.patch('app_root.strategies.utils.SQLDefinitionHelper.get') as patch:
+        patch.return_value = convert_text(
+            (settings.DJANGO_PATH / 'fixtures' / 'definition' / 'gaolious1_2022.12.29.json').read_text('utf-8')
+        )
+
+        with mock.patch('app_root.strategies.utils.SQLDefinitionHelper.download_data') as dn:
+            dn.side_effect = FakeDownload
+            yield dn
+
+@pytest.fixture(scope='function')
+def fixture_init_20230207():
+    filename = 'gaolious_2023.02.07.json'
+    with mock.patch('app_root.strategies.utils.InitdataHelper.get') as patch:
+        patch.side_effect = [
+            convert_text((settings.DJANGO_PATH / 'fixtures' / 'init_data' / filename).read_text('utf-8')),
+            '{}',
+        ]
+        yield patch
+
+
+@pytest.fixture(scope='function')
+def fixture_leader_board():
+    with mock.patch('app_root.strategies.utils.LeaderboardHelper.run') as patch:
+        yield patch
+
+
+@pytest.fixture(scope='function')
+def fixture_start_game():
+    with mock.patch('app_root.strategies.utils.StartGame.run') as patch:
+        yield patch
+
+
+class FakeRunCommand(object):
+    commands: List
+    version: RunVersion
+    def __init__(self, version, commands):
+        self.commands = commands
+        self.version = version
+
+    def run(self):
+        for cmd in self.commands:
+            cmd.post_processing({})
+
+
+@pytest.fixture(scope='function')
+def fixture_send_commands():
+    with mock.patch('app_root.strategies.utils.RunCommand') as patch:
+        patch.side_effect = FakeRunCommand
+        yield patch
+
+
+@pytest.fixture(scope='function')
+def fixture_sleep():
+    with mock.patch('app_root.strategies.commands.sleep') as patch:
+        yield patch
+
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('init_filename', [
@@ -358,16 +439,39 @@ def test_job_prioirty(multidb, init_filename):
     # 'init_data/gaolious_2023.02.05.json',
     'init_data/gaolious_2023.02.07.json',
 ])
-def test_materials_find_redundancy(multidb, init_filename):
+def test_materials_find_redundancy(
+        multidb,
+        init_filename, fixture_endpoint, fixture_login, fixture_definition, fixture_init_20230207,
+        fixture_leader_board, fixture_start_game,
+        fixture_send_commands,
+        fixture_sleep,
+):
     ###########################################################################
     # prepare
     initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
 
-    version = prepare(initdata_filepath=initdata_filepath)
-
+    user = User.objects.create_user(
+        username='test', android_id='test', game_access_token='1', player_id='1'
+    )
     txt = initdata_filepath.read_text(encoding='utf-8')
     json_data = json.loads(txt, strict=False)
     now = convert_datetime(json_data['Time'])
 
     with mock.patch('django.utils.timezone.now') as p:
         p.return_value = now
+        s = Strategy(user.id)
+        s.run()
+
+
+
+
+
+
+
+
+
+
+
+
+
+

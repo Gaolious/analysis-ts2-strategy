@@ -90,6 +90,9 @@ def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
             is_union = data.region.is_union
             destinations.setdefault(data.id, data)
 
+        if not data:
+            continue
+
         if is_union:
             working_union_dispatcher_count += 1
             add_union_dispatcher(route_type=train.route_type, key=data.id, train=train)

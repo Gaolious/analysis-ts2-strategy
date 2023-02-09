@@ -198,6 +198,7 @@ class EndPoint(BaseModelMixin, TimeStampedMixin):
                 )
 
         return ret
+
     @classmethod
     def get_urls(cls, endpoint) -> List[str]:
         ret = []

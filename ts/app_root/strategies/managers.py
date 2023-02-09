@@ -222,6 +222,44 @@ def trains_set_destination(version: RunVersion, train: PlayerTrain, definition_i
     ])
 
 
+def trains_set_job(version: RunVersion, train: PlayerTrain, definition_id: Type[int], departure_at: datetime, arrival_at: datetime):
+    """
+        기차를 목적지에 셋팅 합니다.
+     2 = {dict: 4} {'InstanceId': 3, 'DefinitionId': 4, 'Level': 1,
+     'Route': {
+     'RouteType': 'destination',
+     'DefinitionId': 151,
+     'DepartureTime': '2022-12-27T10:04:46Z',
+     'ArrivalTime': '2022-12-27T10:05:16Z'}}
+
+    :param version:
+    :param train:
+    :param definition_id:
+    :param departure_at:
+    :param arrival_at:
+    """
+    version.add_log(
+        msg='[Train SendDestination]',
+        train_id=train.id,
+        has_load=[train.has_load, True],
+        route_type=[train.route_type, 'destination'],
+        route_definition_id=[train.route_definition_id, definition_id],
+        route_departure_time=[train.route_departure_time, departure_at],
+        route_arrival_time=[train.route_arrival_time, arrival_at],
+    )
+    train.route_type = 'destination'
+    train.has_load = True
+    train.route_definition_id = definition_id
+    train.route_departure_time = departure_at
+    train.route_arrival_time = arrival_at
+    train.save(update_fields=[
+        'has_load',
+        'route_type',
+        'route_definition_id',
+        'route_departure_time',
+        'route_arrival_time',
+    ])
+
 def trains_get_next_unload_event_time(version: RunVersion):
     ret = None
 
@@ -551,7 +589,7 @@ class UnionJobFinder:
         avg_progress = ret / len(self.assigned_job_amount)
         return ret
 
-    def recur(self, idx: int, used_dispatcher: int):
+    def recur(self, idx: int, used_dispatcher: int, with_warehouse_limit: bool):
 
         score = self.get_score(used_dispatcher)
 
@@ -581,36 +619,56 @@ class UnionJobFinder:
 
             amount = max(0, total - curr)
             amount = min(amount, train_capacity)
+
+            if with_warehouse_limit:
+                required_article_id = self.jobs[job_id].article_id
+                has_amount = self.warehouse[required_article_id].article_amount if required_article_id in self.warehouse else 0
+                available_amount = max(0, has_amount - self.assigned_job_amount[job_id])
+
+                amount = min(available_amount, amount)
+
             if amount == 0:
                 continue
 
             self.assigned_job_amount[job_id] += amount
             self.assign.update({train_id: job_id})
 
-            self.recur(idx=idx+1, used_dispatcher=used_dispatcher+1)
+            self.recur(idx=idx+1, used_dispatcher=used_dispatcher+1, with_warehouse_limit=with_warehouse_limit)
 
             self.assigned_job_amount[job_id] -= amount
             self.assign.pop(train_id)
 
         if len(possible_job_id_list) != 1:
-            self.recur(idx=idx+1, used_dispatcher=used_dispatcher)
+            self.recur(idx=idx+1, used_dispatcher=used_dispatcher, with_warehouse_limit=with_warehouse_limit)
 
-    def dispatching(self):
+    def dispatching(self, with_warehouse_limit: bool) -> Dict[int, int]:
+        """
+
+        :return:
+            train_id, job_id
+        """
         self.train_id_list = sorted(self.train_job_relation.keys(), key=lambda k: self.trains[k].capacity, reverse=True)
         self.best_score = -1
         self.assigned_job_amount = {job_id: 0 for job_id in self.jobs}
         self.best_assign = {}
         self.assign = {}
 
-        self.recur(idx=0, used_dispatcher=0)
+        self.recur(idx=0, used_dispatcher=0, with_warehouse_limit=with_warehouse_limit)
 
         print("------------------------------------------------------------------------------------------")
         print(f"Update Score : {self.best_score} / used  dispatcher : {len(self.best_assign)}")
         for train_id, job_id in self.best_assign.items():
             print(f"TrainID={train_id}, InstanceID={self.trains[train_id].instance_id} / JobID={job_id}")
 
+        return self.best_assign
 
-def jobs_find_priority(version: RunVersion) -> List[PlayerJob]:
+
+def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> Dict[int, int]:
+    """
+
+    :param version:
+    :return:
+    """
 
     # 재료 수집이 가능한가 ? & expired 체크 & event expired 체크 & union expired 체크
     # job의 travel time (1hour) 고려해서
@@ -619,7 +677,7 @@ def jobs_find_priority(version: RunVersion) -> List[PlayerJob]:
 
     # 재료 수집에 걸리는 시간
     #
-    ret = []
+    ret = {}
     if version.has_union:
         finder = UnionJobFinder(dispatcher=version.guild_dispatchers + 2)
         jobs = list(jobs_find(version, union_jobs=True, expired_jobs=False))
@@ -646,7 +704,7 @@ def jobs_find_priority(version: RunVersion) -> List[PlayerJob]:
                     amount=warehouse_cnt
                 )
 
-            finder.dispatching()
+            return finder.dispatching(with_warehouse_limit)
 
     return ret
 
@@ -912,20 +970,28 @@ def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
     delta = timedelta(seconds=settings.WHISTLE_INTERVAL_SECOND)
     ret = []
 
-    if version.login_server and (now - version.login_server).total_seconds() > settings.WHISTLE_INTERVAL_SECOND:
-        for whistle in queryset:
-            if whistle.spawn_time and now < whistle.spawn_time + delta:
-                continue
-            if whistle.collectable_from and now < whistle.collectable_from + delta:
-                continue
-            if whistle.expires_at and whistle.expires_at <= now:
-                continue
-            if whistle.is_for_video_reward:
-                continue
+    max_spawn = None
 
-            ret.append(whistle)
+    for whistle in queryset:
+        # if whistle.spawn_time and now < whistle.spawn_time + delta:
+        #     continue
+        # if whistle.collectable_from and now < whistle.collectable_from + delta:
+        #     continue
+        if whistle.expires_at and whistle.expires_at <= now:
+            continue
+        if whistle.is_for_video_reward:
+            continue
 
-    return ret
+        if not max_spawn or max_spawn < whistle.spawn_time:
+            max_spawn = whistle.spawn_time
+        if not max_spawn or max_spawn < whistle.collectable_from:
+            max_spawn = whistle.spawn_time
+        ret.append(whistle)
+
+    if max_spawn + delta <= now:
+        return ret
+    else:
+        return []
 
 
 def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:
@@ -1011,11 +1077,11 @@ def materials_find_from_ship(version: RunVersion) -> Dict[int, int]:
 
     queryset = PlayerShipOffer.objects.filter(version_id=version.id).all()
     for ship in queryset:
-        reward_dict = ship.reward_to_article_dict
+        conditions_dict = ship.conditions_to_article_dict
 
-        for k, v in reward_dict:
+        for k, v in conditions_dict.items():
             if k not in ret:
-                ret.update({k, 0})
+                ret.update({k: 0})
             ret[k] += v
 
     return ret

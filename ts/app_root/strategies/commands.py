@@ -9,10 +9,10 @@ from django.conf import settings
 from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
-    PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem
+    PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob
 from app_root.servers.models import RunVersion, EndPoint
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
-    trains_set_destination, container_offer_set_used, destination_set_used, daily_offer_set_used
+    trains_set_destination, container_offer_set_used, destination_set_used, daily_offer_set_used, trains_set_job
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 
 
@@ -230,6 +230,70 @@ class TrainSendToDestinationCommand(BaseCommand):
         destination_set_used(
             version=self.version,
             dest=self.dest
+        )
+
+
+class TrainDispatchToJobCommand(BaseCommand):
+    """
+{"Id":4,"Time":"2023-02-06T05:04:41Z","Commands":[
+    {
+        "Command":"Train:DispatchToJob",
+        "Time":"2023-02-06T05:04:41Z",
+        "Parameters":{
+            "UniqueId":"5f446bee-6f0a-44db-8520-22c7c6c7e542",
+            "TrainId":134,
+            "JobLocationId":100007,
+            "Load":{
+                "Id":100010,"Amount":20
+            }
+        }
+    }
+    ],"Transactional":false}
+{"Success":true,"RequestId":"053b79bf-6bcc-4c83-8321-446eef7609f6","Time":"2023-02-06T05:04:42Z","Data":{"CollectionId":4,"Commands":[]}}
+
+    """
+
+    COMMAND = 'Train:DispatchToJob'
+    train: PlayerTrain
+    job: PlayerJob
+    amount: int
+    SLEEP_RANGE = (1.0, 1.5)
+
+    def __init__(self, *, train: PlayerTrain, job: PlayerJob, amount: int, **kwargs):
+        super(TrainDispatchToJobCommand, self).__init__(**kwargs)
+        self.train = train
+        self.job = job
+        self.amount = amount
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {
+            "UniqueId": self.job.job_id,
+            "TrainId": 134,
+            "JobLocationId": self.job.job_location_id,
+            "Load": {
+                "Id": self.job.required_article_id,
+                "Amount": self.amount
+            }
+        }
+
+    def post_processing(self, server_data: Dict):
+        departure_at = get_curr_server_datetime(version=self.version)
+        arrival_at = departure_at + timedelta(seconds=self.job.duration)
+        trains_set_job(
+            version=self.version,
+            train=self.train,
+            definition_id=self.job.job_location_id,
+            departure_at=departure_at,
+            arrival_at=arrival_at
+        )
+        warehouse_add_article(
+            version=self.version,
+            article_id=self.job.required_article_id,
+            amount=-self.amount
         )
 
 
@@ -545,50 +609,6 @@ class ShopPurchaseItem(BaseCommand):
     def post_processing(self, server_data: Dict):
         daily_offer_set_used(version=self.version, offer_item=self.offer_item)
 
-"""
-{"Success":true,"RequestId":"0c894a43-baf6-4aee-bda2-3bbba8463b94","Time":"2023-02-08T08:53:34Z","Data":[{"Type":"ab_test","Data":{"AbTests":[]}},{"Type":"achievements","Data":{"Achievements":[{"AchievementId":"complete_job","Level":0,"Progress":14},{"AchievementId":"daily_bonus_train","Level":1,"Progress":9},{"AchievementId":"open_train_container","Level":1,"Progress":5},{"AchievementId":"own_unique_trains","Level":0,"Progress":6},{"AchievementId":"population_max","Level":0,"Progress":40},{"AchievementId":"reach_player_level","Level":0,"Progress":5},{"AchievementId":"smelting_plant_production","Level":0,"Progress":2},{"AchievementId":"train_to_gold_destination","Level":0,"Progress":21},{"AchievementId":"train_to_material_destination","Level":1,"Progress":36},{"AchievementId":"upgrade_common_train_to_max","Level":0,"Progress":3},{"AchievementId":"upgrade_train","Level":0,"Progress":87},{"AchievementId":"warehouse_upgrade","Level":1,"Progress":600},{"AchievementId":"whistle_tap","Level":1,"Progress":68}],"ReturnAsArray":false}},{"Type":"boosts","Data":{"Boosts":[]}},{"Type":"calendars","Data":{"Calendars":[]}},{"Type":"city_building_shop","Data":{"Shops":[],"Buildings":[],"NextVideoReplaceAt":"2023-02-08T08:53:34Z","NextReplaceAt":"2023-02-08T08:53:34Z"}},{"Type":"city_loop","Data":{"Population":{"LastCalculatedCount":25,"LastCalculatedAt":"2022-08-27T06:02:48Z"},"UpgradeTaskNextReplaceAt":"2023-02-08T08:53:34Z","UpgradeTaskNextVideoReplaceAt":"2023-02-08T08:53:34Z","Parcels":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],"ShopOffers":[],"Buildings":[{"InstanceId":1,"DefinitionId":100,"ParcelNumber":1,"Rotation":0,"Level":1},{"InstanceId":2,"DefinitionId":102,"ParcelNumber":2,"Rotation":0,"Level":1},{"InstanceId":3,"DefinitionId":104,"ParcelNumber":3,"Rotation":0,"Level":1},{"InstanceId":4,"DefinitionId":109,"ParcelNumber":4,"Rotation":0,"Level":1},{"InstanceId":5,"DefinitionId":106,"ParcelNumber":5,"Rotation":0,"Level":1},{"InstanceId":6,"DefinitionId":101,"Rotation":0,"Level":1},{"InstanceId":7,"DefinitionId":103,"Rotation":0,"Level":1},{"InstanceId":8,"DefinitionId":105,"Rotation":0,"Level":1}]}},{"Type":"commodities","Data":{"Commodities":[]}},{"Type":"communities","Data":{"SelectedCommunityTeams":[],"ContestWinners":[]}},{"Type":"competitions","Data":{"Competitions":[{"Type":"union","LevelFrom":25,"MaxAttendees":15,"CompetitionId":"0a96024d-fcee-4402-9f33-618eaf07ca5b","ContentCategory":3,"Rewards":[],"StartsAt":"2022-12-05T12:00:00Z","EnrolmentAvailableTo":"2023-02-27T12:00:00Z","FinishesAt":"2023-02-27T12:00:00Z","ExpiresAt":"2023-03-03T12:00:00Z","PresentationDataId":100001,"GuildData":{"Status":0},"Scope":"global"},{"Type":"prestige","LevelFrom":899,"MaxAttendees":15,"CompetitionId":"1cd43cc9-07e8-4cca-b0fe-64bd5eb44aa8","ContentCategory":4,"Rewards":[{"Items":[{"Id":8,"Value":9,"Amount":11}]},{"Items":[{"Id":8,"Value":9,"Amount":7}]},{"Items":[{"Id":8,"Value":9,"Amount":5}]},{"Items":[{"Id":8,"Value":8,"Amount":20}]},{"Items":[{"Id":8,"Value":8,"Amount":18}]},{"Items":[{"Id":8,"Value":8,"Amount":16}]},{"Items":[{"Id":8,"Value":8,"Amount":14}]},{"Items":[{"Id":8,"Value":8,"Amount":12}]},{"Items":[{"Id":8,"Value":8,"Amount":10}]},{"Items":[{"Id":8,"Value":8,"Amount":9}]},{"Items":[{"Id":8,"Value":8,"Amount":8}]},{"Items":[{"Id":8,"Value":8,"Amount":7}]},{"Items":[{"Id":8,"Value":8,"Amount":5}]},{"Items":[{"Id":8,"Value":8,"Amount":3}]},{"Items":[{"Id":8,"Value":8,"Amount":1}]}],"StartsAt":"2023-02-06T12:00:00Z","EnrolmentAvailableTo":"2023-02-12T12:00:00Z","FinishesAt":"2023-02-12T12:00:00Z","ExpiresAt":"2023-02-12T23:59:50Z","PresentationDataId":33,"Scope":"group"},{"Type":"union","LevelFrom":25,"MaxAttendees":15,"CompetitionId":"fe40b122-dadd-4153-a0dc-e03503ad6bbb","ContentCategory":3,"Rewards":[],"StartsAt":"2023-02-06T12:00:00Z","EnrolmentAvailableTo":"2023-02-12T12:00:00Z","FinishesAt":"2023-02-12T12:00:00Z","ExpiresAt":"2023-02-13T00:00:00Z","PresentationDataId":100001,"GuildData":{"Status":0},"Scope":"group"},{"Type":"default","LevelFrom":12,"MaxAttendees":25,"CompetitionId":"fe92e154-6ece-4a77-9984-8b9187160923","ContentCategory":1,"Rewards":[{"Items":[{"Id":8,"Value":38001,"Amount":350},{"Id":6,"Value":100136}]},{"Items":[{"Id":8,"Value":38001,"Amount":250}]},{"Items":[{"Id":8,"Value":38001,"Amount":200}]},{"Items":[{"Id":8,"Value":38001,"Amount":180}]},{"Items":[{"Id":8,"Value":38001,"Amount":160}]},{"Items":[{"Id":8,"Value":38001,"Amount":120}]},{"Items":[{"Id":8,"Value":38001,"Amount":100}]},{"Items":[{"Id":8,"Value":38001,"Amount":90}]},{"Items":[{"Id":8,"Value":38001,"Amount":80}]},{"Items":[{"Id":8,"Value":38001,"Amount":70}]},{"Items":[{"Id":8,"Value":38001,"Amount":60}]},{"Items":[{"Id":8,"Value":38001,"Amount":50}]},{"Items":[{"Id":8,"Value":38001,"Amount":50}]},{"Items":[{"Id":8,"Value":38001,"Amount":40}]},{"Items":[{"Id":8,"Value":38001,"Amount":40}]},{"Items":[{"Id":8,"Value":38001,"Amount":20}]},{"Items":[{"Id":8,"Value":38001,"Amount":20}]},{"Items":[{"Id":8,"Value":38001,"Amount":20}]},{"Items":[{"Id":8,"Value":38001,"Amount":10}]},{"Items":[{"Id":8,"Value":38001,"Amount":10}]},{"Items":[{"Id":8,"Value":38001,"Amount":2}]},{"Items":[{"Id":8,"Value":38001,"Amount":2}]},{"Items":[{"Id":8,"Value":38001,"Amount":2}]},{"Items":[{"Id":8,"Value":38001,"Amount":2}]},{"Items":[{"Id":8,"Value":38001,"Amount":2}]}],"StartsAt":"2023-02-07T12:00:00Z","EnrolmentAvailableTo":"2023-02-09T00:00:00Z","FinishesAt":"2023-02-09T12:00:00Z","ExpiresAt":"2023-02-09T23:59:50Z","PresentationDataId":81,"Scope":"group"}]}},{"Type":"containers","Data":{"Containers":[]}},{"Type":"contracts","Data":{"Contracts":[],"ContractLists":[]}},{"Type":"daily_reward","Data":{"AvailableFrom":"2023-02-09T00:00:00Z","ExpireAt":"2023-02-09T23:59:59Z","Rewards":[{"Items":[{"Id":8,"Value":4,"Amount":30}]},{"Items":[{"Id":8,"Value":3,"Amount":36}]},{"Items":[{"Id":8,"Value":2,"Amount":10}]},{"Items":[{"Id":8,"Value":9,"Amount":2}]},{"Items":[{"Id":1,"Value":3}]}],"PoolId":2,"Day":0}},{"Type":"destinations","Data":{"Destinations":[{"LocationId":152,"DefinitionId":152,"TrainLimitCount":0,"TrainLimitRefreshTime":"2023-02-08T02:19:36Z","TrainLimitRefreshesAt":"2023-02-08T02:19:36Z","Multiplier":0}],"ReturnAsArray":false}},{"Type":"dispatcher","Data":{"PermanentLevel":1,"TemporaryDispatchers":[],"Dispatchers":[{"TemporaryDispatchers":[],"ContentCategory":1,"PermanentLevel":1},{"TemporaryDispatchers":[],"ContentCategory":3,"PermanentLevel":1}]}},{"Type":"event","Data":{"ActivationDate":"2023-02-06T12:00:00Z","StartDate":"2023-02-07T12:00:00Z","EndDate":"2023-02-27T12:00:00Z","ExpirationDate":"2023-03-01T12:00:00Z","EventId":38,"ActivatesAt":"2023-02-06T12:00:00Z","StartsAt":"2023-02-07T12:00:00Z","EndsAt":"2023-02-27T12:00:00Z","ExpiresAt":"2023-03-01T12:00:00Z","Shop":[]}},{"Type":"events","Data":{"Events":[{"UniqueId":"61007323-df94-4a9b-9bad-9495ddf77d2f","EventId":38,"ActivatesAt":"2023-02-06T12:00:00Z","StartsAt":"2023-02-07T12:00:00Z","EndsAt":"2023-02-27T12:00:00Z","ExpiresAt":"2023-03-01T12:00:00Z","Shop":[]}]}},{"Type":"factories","Data":{"Factories":[{"DefinitionId":1,"SlotCount":2,"ProductOrders":[]},{"DefinitionId":2,"SlotCount":2,"ProductOrders":[]}],"NextVideoSpeedUpAt":"2023-02-08T08:53:34Z"}},{"Type":"game_features","Data":{"Features":[{"Name":"depot","DefinitionId":1,"LevelFrom":3,"Enabled":true},{"Name":"warehouse","DefinitionId":2,"LevelFrom":2,"Enabled":true},{"Name":"job_list","DefinitionId":3,"LevelFrom":4,"Enabled":true},{"Name":"regions","DefinitionId":4,"LevelFrom":4,"Enabled":true},{"Name":"city_shop","DefinitionId":5,"LevelFrom":9,"Enabled":true},{"Name":"quest_log","DefinitionId":6,"LevelFrom":10,"Enabled":true},{"Name":"message_board","DefinitionId":7,"LevelFrom":5,"Enabled":true},{"Name":"event","DefinitionId":8,"LevelFrom":12,"Enabled":true},{"Name":"competition","DefinitionId":9,"LevelFrom":0,"Enabled":true},{"Name":"achievements","DefinitionId":10,"LevelFrom":4,"Enabled":true},{"Name":"shop","DefinitionId":11,"LevelFrom":2,"Enabled":true},{"Name":"special_offers","DefinitionId":12,"LevelFrom":5,"Enabled":true},{"Name":"your_station","DefinitionId":13,"LevelFrom":4,"Enabled":true},{"Name":"product_shortcut","DefinitionId":14,"LevelFrom":5,"Enabled":true},{"Name":"offer_wall","DefinitionId":15,"LevelFrom":10,"Enabled":true},{"Name":"headquarters","DefinitionId":16,"LevelFrom":4,"Enabled":true},{"Name":"redeem_code","DefinitionId":18,"LevelFrom":0,"Enabled":true},{"Name":"city_loop","DefinitionId":19,"LevelFrom":7,"Enabled":true},{"Name":"ship_loop","DefinitionId":20,"LevelFrom":11,"Enabled":true},{"Name":"prestige","DefinitionId":21,"LevelFrom":699,"Enabled":true},{"Name":"population","DefinitionId":22,"LevelFrom":7,"Enabled":true},{"Name":"guilds","DefinitionId":24,"LevelFrom":25,"Enabled":true},{"Name":"seasons","DefinitionId":25,"LevelFrom":25,"Enabled":true},{"Name":"region_progression_map","DefinitionId":26,"LevelFrom":5,"Enabled":true}]}},{"Type":"game","Data":{"Env":"prod","FirebaseEnv":"prod"}},{"Type":"gifts","Data":{"Gifts":[]}},{"Type":"guild","Data":{"WasInGuild":false,"Shops":[],"ClaimedRewardIds":[]}},{"Type":"jobs","Data":{"Jobs":[{"Id":"02ec5679-0c4c-4785-aefe-8fa96cd92847","JobLocationId":154,"JobLevel":1,"Sequence":0,"JobType":5,"Duration":30,"ConditionMultiplier":1,"RewardMultiplier":1,"RequiredArticle":{"Id":100,"Amount":40},"CurrentArticleAmount":0,"Reward":{"Items":[{"Id":8,"Value":4,"Amount":25},{"Id":8,"Value":1,"Amount":20}]},"Bonus":{"Reward":{"Items":[]}},"Requirements":[{"Type":"region","Value":1}]},{"Id":"eee0d5a5-3a9c-44f6-b782-bebe7f2e6757","JobLocationId":155,"JobLevel":1,"Sequence":0,"JobType":5,"Duration":30,"ConditionMultiplier":1,"RewardMultiplier":1,"RequiredArticle":{"Id":104,"Amount":30},"CurrentArticleAmount":0,"Reward":{"Items":[{"Id":8,"Value":4,"Amount":25},{"Id":8,"Value":1,"Amount":20}]},"Bonus":{"Reward":{"Items":[]}},"Requirements":[{"Type":"region","Value":1}]},{"Id":"f1a6673b-343d-4c13-8cb1-af7cf994742d","JobLocationId":158,"JobLevel":1,"Sequence":0,"JobType":5,"Duration":1800,"ConditionMultiplier":1,"RewardMultiplier":1,"RequiredArticle":{"Id":104,"Amount":12},"CurrentArticleAmount":0,"Reward":{"Items":[{"Id":8,"Value":4,"Amount":25},{"Id":8,"Value":1,"Amount":10},{"Id":8,"Value":3,"Amount":30}]},"Bonus":{"Reward":{"Items":[]}},"Requirements":[{"Type":"region","Value":1},{"Type":"rarity","Value":3}]},{"Id":"2ae660d1-e5b7-4395-95e9-e8d69d417641","JobLocationId":161,"JobLevel":3,"Sequence":0,"JobType":8,"Duration":3600,"ConditionMultiplier":1,"RewardMultiplier":1,"RequiredArticle":{"Id":104,"Amount":10},"CurrentArticleAmount":0,"Reward":{"Items":[{"Id":8,"Value":4,"Amount":40},{"Id":8,"Value":1,"Amount":30},{"Id":8,"Value":3,"Amount":40}]},"Bonus":{"Reward":{"Items":[]}},"Requirements":[{"Type":"region","Value":1}],"UnlocksAt":"2023-01-23T13:20:50Z"},{"Id":"4374d7d3-d480-41eb-b2e0-3990477f0e73","JobLocationId":162,"JobLevel":3,"Sequence":0,"JobType":8,"Duration":1800,"ConditionMultiplier":1,"RewardMultiplier":1,"RequiredArticle":{"Id":104,"Amount":6},"CurrentArticleAmount":0,"Reward":{"Items":[{"Id":8,"Value":4,"Amount":25},{"Id":8,"Value":1,"Amount":20}]},"Bonus":{"Reward":{"Items":[]}},"Requirements":[{"Type":"region","Value":1},{"Type":"rarity","Value":2}],"UnlocksAt":"2023-01-23T12:57:07Z"}],"NextReplaceAt":"2023-02-08T08:53:34Z","NextVideoReplaceAt":"2023-02-08T08:53:34Z"}},{"Type":"locations","Data":{"Skins":[]}},{"Type":"login_profile","Data":{}},{"Type":"maps","Data":{"Maps":[{"Id":"region_101","Spots":[{"SpotId":161,"Position":{"X":3,"Y":0},"Connections":[164],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[161],"Reward":{"Items":[]}}}},{"SpotId":164,"Position":{"X":5,"Y":0},"Connections":[153],"IsResolved":false,"Content":{"Category":"quest","Data":{"JobLocationIds":[164],"Reward":{"Items":[{"Id":6,"Value":100008}]}}}},{"SpotId":153,"Position":{"X":7,"Y":0},"Connections":[],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[153],"Reward":{"Items":[]}}}},{"SpotId":150,"Position":{"X":0,"Y":1},"Connections":[159],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[150],"Reward":{"Items":[]}}}},{"SpotId":159,"Position":{"X":1,"Y":1},"Connections":[160],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[159],"Reward":{"Items":[]}}}},{"SpotId":160,"Position":{"X":2,"Y":1},"Connections":[161,162,152],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[160],"Reward":{"Items":[{"Id":1,"Value":34}]}}}},{"SpotId":162,"Position":{"X":3,"Y":1},"Connections":[163],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[162],"Reward":{"Items":[]}}}},{"SpotId":163,"Position":{"X":4,"Y":1},"Connections":[165],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[163],"Reward":{"Items":[]}}}},{"SpotId":165,"Position":{"X":6,"Y":1},"Connections":[153],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[165],"Reward":{"Items":[]}}}},{"SpotId":152,"Position":{"X":3,"Y":2},"Connections":[],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[152],"Reward":{"Items":[]}}}},{"SpotId":158,"Position":{"X":4,"Y":2},"Connections":[],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[158],"Reward":{"Items":[]}}}},{"SpotId":155,"Position":{"X":5,"Y":2},"Connections":[],"IsResolved":true,"Content":{"Category":"quest","Data":{"JobLocationIds":[155],"Reward":{"Items":[]}}}},{"SpotId":154,"Position":{"X":6,"Y":2},"Connections":[],"IsResolved":false,"Content":{"Category":"quest","Data":{"JobLocationIds":[154],"Reward":{"Items":[{"Id":1,"Value":34}]}}}},{"SpotId":157,"Position":{"X":7,"Y":2},"Connections":[],"IsResolved":false,"Content":{"Category":"quest","Data":{"JobLocationIds":[157],"Reward":{"Items":[{"Id":2,"Value":14,"Amount":1}]}}}},{"SpotId":156,"Position":{"X":8,"Y":2},"Connections":[],"IsResolved":false,"Content":{"Category":"quest","Data":{"JobLocationIds":[156],"Reward":{"Items":[{"Id":8,"Value":8,"Amount":2}]}}}}]}]}},{"Type":"markets","Data":{"Markets":[]}},{"Type":"milestones","Data":{"Milestones":[]}},{"Type":"offer_wall","Data":{}},{"Type":"placements","Data":{"Competition":[]}},{"Type":"player_feature","Data":{"Features":[]}},{"Type":"player","Data":{"PlayerLevel":5,"PlayerId":62794770,"PlayerName":"Player_62794770","AvatarId":1,"Company":{"Rank":2,"Value":1322,"Stats":[{"Type":"complete_job","Progress":42},{"Type":"open_train_container","Progress":40},{"Type":"own_unique_trains","Progress":600},{"Type":"population_max","Progress":40},{"Type":"upgrade_common_train_to_max","Progress":600}]}}},{"Type":"prestige","Data":{"Prestiges":[{"PrestigeId":"084a3ff3-9c80-4691-a3cb-d4aca320ef5a","DefinitionId":2,"ActivationDate":"2023-02-06T12:00:00Z","ActivatesAt":"2023-02-06T12:00:00Z","StartDate":"2023-02-06T12:00:00Z","StartsAt":"2023-02-06T12:00:00Z","EndDate":"2023-02-13T12:00:00Z","EndsAt":"2023-02-13T12:00:00Z","ExpirationDate":"2023-02-13T12:00:00Z","ExpiresAt":"2023-02-13T12:00:00Z","HasJoined":false}]}},{"Type":"regions","Data":{"RegionProgressions":[],"Quests":[{"JobLocationId":150,"Milestone":1,"Progress":1},{"JobLocationId":152,"Milestone":2,"Progress":2},{"JobLocationId":159,"Milestone":3,"Progress":3},{"JobLocationId":160,"Milestone":4,"Progress":4},{"JobLocationId":161,"Milestone":2,"Progress":2},{"JobLocationId":162,"Milestone":2,"Progress":2}],"VisitedRegions":[101]}},{"Type":"reminders","Data":{"Reminders":[{"Category":"notification","RemindsAt":"2023-02-04T01:12:07Z"}]}},{"Type":"seasons","Data":{"Seasons":[{"UniqueId":"8068a940-1de9-4230-bb0f-62238aa5cd28","DefinitionId":100,"ActivatesAt":"2022-12-05T11:00:00Z","StartsAt":"2022-12-05T12:00:00Z","EndsAt":"2023-02-27T12:00:00Z","ExpiresAt":"2023-03-03T12:00:00Z"},{"UniqueId":"efadd4dd-5a58-4d0b-9ac0-743abda2637b","DefinitionId":200,"ActivatesAt":"2023-03-03T12:00:00Z","StartsAt":"2023-03-06T12:00:00Z","EndsAt":"2023-05-29T12:00:00Z","ExpiresAt":"2023-06-02T12:00:00Z"}],"Phases":[{"SeasonDefinitionId":100,"DefinitionId":101,"StartsAt":"2022-12-05T12:00:00Z","EndsAt":"2023-01-02T11:59:59Z"},{"SeasonDefinitionId":100,"DefinitionId":102,"StartsAt":"2023-01-02T12:00:00Z","EndsAt":"2023-01-30T11:59:59Z"},{"SeasonDefinitionId":100,"DefinitionId":103,"StartsAt":"2023-01-30T12:00:00Z","EndsAt":"2023-02-27T12:00:00Z"},{"SeasonDefinitionId":200,"DefinitionId":202,"StartsAt":"2023-04-03T12:00:00Z","EndsAt":"2023-05-01T11:59:59Z"},{"SeasonDefinitionId":200,"DefinitionId":203,"StartsAt":"2023-05-01T12:00:00Z","EndsAt":"2023-05-29T12:00:00Z"},{"SeasonDefinitionId":200,"DefinitionId":201,"StartsAt":"2023-03-06T12:00:00Z","EndsAt":"2023-04-03T11:59:59Z"}]}},{"Type":"shop","Data":{"OfferContainers":[{"DefinitionId":1,"LastBoughtAt":"2023-02-07T22:19:02Z","Count":21},{"DefinitionId":2,"LastBoughtAt":"2022-08-27T06:02:12Z","Count":4},{"DefinitionId":6,"LastBoughtAt":"2023-02-07T22:19:34Z","Count":20}],"SpecialOffers":[],"DailyOffer":{"ExpireAt":"2023-02-09T00:00:00Z","ExpiresAt":"2023-02-09T00:00:00Z","OfferItems":[{"Slot":11,"Price":{"Id":16,"Amount":1},"Reward":{"Items":[{"Id":8,"Value":8,"Amount":3}]},"Purchased":false,"PurchaseCount":0,"DefinitionId":55},{"Slot":12,"Price":{"Id":3,"Amount":120},"Reward":{"Items":[{"Id":1,"Value":35}]},"Purchased":false,"PurchaseCount":0,"DefinitionId":56},{"Slot":13,"Price":{"Id":3,"Amount":250},"Reward":{"Items":[{"Id":8,"Value":8,"Amount":15}]},"Purchased":false,"PurchaseCount":0,"DefinitionId":57},{"Slot":14,"Price":{"Id":2,"Amount":20},"Reward":{"Items":[{"Id":1,"Value":34}]},"Purchased":false,"PurchaseCount":0,"DefinitionId":58},{"Slot":15,"Price":{"Id":2,"Amount":250},"Reward":{"Items":[{"Id":8,"Value":8,"Amount":100}]},"Purchased":false,"PurchaseCount":0,"DefinitionId":59},{"Slot":16,"Price":{"Id":2,"Amount":350},"Reward":{"Items":[{"Id":1,"Value":69}]},"Purchased":false,"PurchaseCount":0,"DefinitionId":60}]},"OfferWall":{"Claimed":[],"Unclaimed":[]},"PaymentData":{"Verified":[]}}},{"Type":"task_lists","Data":{"TaskLists":[],"ReturnAsArray":false}},{"Type":"tickets","Data":{"Tickets":[]}},{"Type":"trains","Data":{"Trains":[{"InstanceId":1,"DefinitionId":3,"Level":17,"Route":{"RouteType":"destination","DefinitionId":152,"DepartureTime":"2023-02-07T22:19:36Z","ArrivalTime":"2023-02-07T22:20:36Z"}},{"InstanceId":2,"DefinitionId":5,"Level":21,"Route":{"RouteType":"destination","DefinitionId":151,"DepartureTime":"2023-02-04T14:21:36Z","ArrivalTime":"2023-02-04T14:22:06Z"}},{"InstanceId":3,"DefinitionId":4,"Level":20,"Route":{"RouteType":"destination","DefinitionId":151,"DepartureTime":"2023-02-04T14:21:37Z","ArrivalTime":"2023-02-04T14:22:07Z"}},{"InstanceId":4,"DefinitionId":2,"Level":17},{"InstanceId":5,"DefinitionId":1,"Level":17},{"InstanceId":6,"DefinitionId":136,"Level":1}],"ReturnAsArray":false}},{"Type":"tutorial","Data":{"Groups":["GoToBritain_LVL2_0","introduction1C","introduction2C","introduction3C","job_listC","trigger_100_keysC","trigger_player_stationC","trigger_send_2_trainsC","trigger_shopC","trigger_train_upgradeC","TriggerCloseJobC"]}},{"Type":"unlocked_contents","Data":{"UnlockedContents":[{"DefinitionId":150,"UnlockedAt":"2022-08-25T10:00:47Z"},{"DefinitionId":151,"UnlockedAt":"2022-08-27T05:14:23Z"},{"DefinitionId":152,"UnlockedAt":"2022-12-29T12:08:16Z"},{"DefinitionId":154,"UnlockedAt":"2022-08-25T10:00:47Z"},{"DefinitionId":173,"UnlockedAt":"2023-01-23T12:57:23Z"},{"DefinitionId":175,"UnlockedAt":"2023-01-23T12:57:23Z"}]}},{"Type":"vouchers","Data":{"Vouchers":[]}},{"Type":"warehouse","Data":{"Level":2,"Articles":[{"Id":1,"Amount":28},{"Id":2,"Amount":67},{"Id":3,"Amount":158},{"Id":4,"Amount":344},{"Id":6,"Amount":1310},{"Id":7,"Amount":10},{"Id":8,"Amount":0},{"Id":9,"Amount":3},{"Id":100,"Amount":54},{"Id":101,"Amount":51},{"Id":104,"Amount":65},{"Id":232,"Amount":1}]}},{"Type":"whistles","Data":{"Whistles":[{"Category":1,"Position":1,"SpawnTime":"2023-02-08T08:55:04Z","CollectableFrom":"2023-02-08T08:55:04Z","Reward":{"Items":[{"Id":8,"Value":232,"Amount":1}]},"IsForVideoReward":false},{"Category":1,"Position":3,"SpawnTime":"2023-02-08T08:56:04Z","CollectableFrom":"2023-02-08T08:56:04Z","Reward":{"Items":[{"Id":8,"Value":101,"Amount":1}]},"IsForVideoReward":false},{"Category":1,"Position":4,"SpawnTime":"2023-02-08T08:57:04Z","CollectableFrom":"2023-02-08T08:57:04Z","Reward":{"Items":[{"Id":8,"Value":101,"Amount":1}]},"IsForVideoReward":false},{"Category":1,"Position":2,"SpawnTime":"2023-02-08T08:55:24Z","CollectableFrom":"2023-02-08T08:55:24Z","Reward":{"Items":[{"Id":8,"Value":4,"Amount":1}]},"IsForVideoReward":false}]}}]}
-
-
-08 17:54:04 | T: 8258 | I | IO.Mem.Write    | {"Id":2,"Time":"2023-02-08T08:54:03Z","Commands":[{"Command":"Shop:DailyOffer:PurchaseItem","Time":"2023-02-08T08:54:01Z","Parameters":{"Slot":11,"Amount":1}}],"Transactional":false}
-08 17:54:04 | T: 8260 | I | SSL_AsyncWrite  | POST /api/v2/command-processing/run-collection HTTP/1.1
-PXFD-Request-Id: 544754d1-22ca-402a-905d-5e9ad1cd1667
-PXFD-Retry-No: 0
-PXFD-Sent-At: 2023-02-08T08:54:03.053Z
-PXFD-Client-Information: {"Store":"google_play","Version":"2.7.0.4123","Language":"ko"}
-PXFD-Client-Version: 2.7.0.4123
-PXFD-Device-Token: 30b270ca64e80bbbf4b186f251ba358a
-PXFD-Game-Access-Token: 79c5daef-c77d-5de2-8cec-6e84539d9caa
-PXFD-Player-Id: 62794770
-Content-Type: application/json
-Content-Length: 182
-Host: game.trainstation2.com
-Accept-Encoding: gzip, deflate
-
-
-08 17:54:04 | T: 8263 | I | SSL_AsyncWrite  | {"Id":2,"Time":"2023-02-08T08:54:03Z","Commands":[{"Command":"Shop:DailyOffer:PurchaseItem","Time":"2023-02-08T08:54:01Z","Parameters":{"Slot":11,"Amount":1}}],"Transactional":false}
-08 17:54:04 | T: 8263 | I | IO.Mem.Write    | {"Success":true,"RequestId":"544754d1-22ca-402a-905d-5e9ad1cd1667","Time":"2023-02-08T08:54:04Z","Data":{"CollectionId":2,"Commands":[]}}
-
-08 17:54:25 | T: 8261 | I | IO.Mem.Write    | {"Id":3,"Time":"2023-02-08T08:54:24Z","Commands":[{"Command":"Shop:DailyOffer:PurchaseItem","Time":"2023-02-08T08:54:23Z","Parameters":{"Slot":12,"Amount":1}}],"Transactional":false}
-08 17:54:25 | T: 8260 | I | SSL_AsyncWrite  | POST /api/v2/command-processing/run-collection HTTP/1.1
-PXFD-Request-Id: 1a58e894-6912-4719-9cdb-b0e650f7a85f
-PXFD-Retry-No: 0
-PXFD-Sent-At: 2023-02-08T08:54:24.791Z
-PXFD-Client-Information: {"Store":"google_play","Version":"2.7.0.4123","Language":"ko"}
-PXFD-Client-Version: 2.7.0.4123
-PXFD-Device-Token: 30b270ca64e80bbbf4b186f251ba358a
-PXFD-Game-Access-Token: 79c5daef-c77d-5de2-8cec-6e84539d9caa
-PXFD-Player-Id: 62794770
-Content-Type: application/json
-Content-Length: 182
-Host: game.trainstation2.com
-Accept-Encoding: gzip, deflate
-
-
-08 17:54:25 | T: 8263 | I | SSL_AsyncWrite  | {"Id":3,"Time":"2023-02-08T08:54:24Z","Commands":[{"Command":"Shop:DailyOffer:PurchaseItem","Time":"2023-02-08T08:54:23Z","Parameters":{"Slot":12,"Amount":1}}],"Transactional":false}
-08 17:54:25 | T: 8260 | I | IO.Mem.Write    | {"Success":true,"RequestId":"1a58e894-6912-4719-9cdb-b0e650f7a85f","Time":"2023-02-08T08:54:25Z","Data":{"CollectionId":3,"Commands":[{"Command":"Container:ShowContent","Data":{"Containers":[{"ContainerId":35,"Reward":{"Items":[{"Id":8,"Value":6,"Amount":360}]}}]}}]}}
-
-"""
-
 
 ###################################################################
 # Union Quest - Completed
@@ -647,6 +667,206 @@ slot 21번은 timer 약 59분 남은 상태 (UsableFrom..)
 {"Slot": 20,"ContractListId": 100001,"Conditions": [{"Id": 112,"Amount": 90}],"Reward": {"Items": [{"Id": 8,"Value": 100010,"Amount": 50}]},"UsableFrom": "2023-02-06T03:55:35Z","ExpiresAt": "2023-02-27T12:00:00Z","AvailableFrom": "2022-12-05T12:00:00Z","AvailableTo": "2023-02-27T12:00:00Z"},          
 {"Slot": 21,"ContractListId": 100001,"Conditions": [{"Id": 126,"Amount": 547}],"Reward": {"Items": [{"Id": 8,"Value": 100010,"Amount": 100}]},"UsableFrom": "2023-02-06T05:58:22Z","AvailableFrom": "2022-12-05T12:00:00Z","AvailableTo": "2023-02-27T12:00:00Z"}
 
+
+"""
+
+###################################################################
+# Ship Offer
+###################################################################
+"""
+Step 1. 제품 수집
+
+################################################
+Step 2. ship 보내기 - sleep 
+################################################
+12 11:35:39 | T: 6701 | I | SSL_AsyncWrite  | buffer : 
+                                              {'buffer': 'POST /api/v2/command-processing/run-collection HTTP/1.1\r\nPXFD-Request-Id: a8438911-4593-4144-98ce-540a288a90ec\r\nPXFD-Retry-No: 0\r\nPXFD-Sent-At: 2023-01-12T02:35:38.982Z\r\nPXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}\r\nPXFD-Client-Version: 2.6.3.4068\r\nPXFD-Device-Token: 662461905988ab8a7fade82221cce64b\r\nPXFD-Game-Access-Token: 80e1e3c6-28f8-5d50-8047-a9284469d1ef\r\nPXFD-Player-Id: 61561146\r\nContent-Type: application/json\r\nContent-Length: 205\r\nHost: game.trainstation2.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n'}
+
+12 11:35:39 | T: 6692 | I | WebReqStream    | buffer : 
+                                              {'buffer': '{"Id":36,"Time":"2023-01-12T02:35:38Z","Commands":[{"Command":"Game:Sleep","Time":"2023-01-12T02:35:38Z","Parameters":{},"Debug":{"CollectionsInQueue":0,"CollectionsInQueueIds":""}}],"Transactional":false}'}
+
+12 11:35:39 | T: 6700 | P | IO.Mem.Write    | buffer
+                                                         0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  0123456789ABCDEF
+                                              05ad7010  7b 22 53 75 63 63 65 73 73 22 3a 74 72 75 65 2c  {"Success":true,
+                                              05ad7020  22 52 65 71 75 65 73 74 49 64 22 3a 22 61 38 34  "RequestId":"a84
+                                              05ad7030  33 38 39 31 31 2d 34 35 39 33 2d 34 31 34 34 2d  38911-4593-4144-
+                                              05ad7040  39 38 63 65 2d 35 34 30 61 32 38 38 61 39 30 65  98ce-540a288a90e
+                                              05ad7050  63 22 2c 22 54 69 6d 65 22 3a 22 32 30 32 33 2d  c","Time":"2023-
+                                              05ad7060  30 31 2d 31 32 54 30 32 3a 33 35 3a 33 39 5a 22  01-12T02:35:39Z"
+                                              05ad7070  2c 22 44 61 74 61 22 3a 7b 22 43 6f 6c 6c 65 63  ,"Data":{"Collec
+                                              05ad7080  74 69 6f 6e 49 64 22 3a 33 36 2c 22 43 6f 6d 6d  tionId":36,"Comm
+                                              05ad7090  61 6e 64 73 22 3a 5b 5d 7d 7d                    ands":[]}}
+
+################################################
+Step 2. ship 보내기 - ????
+################################################
+
+12 11:36:14 | T: 6700 | I | SSL_AsyncWrite  | buffer : 
+                                              {'buffer': 'POST /api/v2/transfer-client-event/video_ads HTTP/1.1\r\nPXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}\r\nPXFD-Client-Version: 2.6.3.4068\r\nPXFD-Device-Token: 662461905988ab8a7fade82221cce64b\r\nPXFD-Game-Access-Token: 80e1e3c6-28f8-5d50-8047-a9284469d1ef\r\nPXFD-Player-Id: 61561146\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 71\r\nHost: game.trainstation2.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n'}
+
+12 11:36:14 | T: 6701 | P | IO.Mem.Write    | buffer
+                                                         0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  0123456789ABCDEF
+                                              05ad7010  7b 22 53 75 63 63 65 73 73 22 3a 74 72 75 65 2c  {"Success":true,
+                                              05ad7020  22 52 65 71 75 65 73 74 49 64 22 3a 22 30 31 32  "RequestId":"012
+                                              05ad7030  63 63 38 66 61 2d 38 32 38 63 2d 34 34 36 37 2d  cc8fa-828c-4467-
+                                              05ad7040  62 38 37 34 2d 64 30 35 62 35 61 64 66 32 65 61  b874-d05b5adf2ea
+                                              05ad7050  61 22 2c 22 54 69 6d 65 22 3a 22 32 30 32 33 2d  a","Time":"2023-
+                                              05ad7060  30 31 2d 31 32 54 30 32 3a 33 36 3a 31 35 5a 22  01-12T02:36:15Z"
+                                              05ad7070  7d                                               }
+
+
+12 11:36:15 | T: 6701 | I | SSL_AsyncWrite  | buffer : 
+                                              {'buffer': 'POST /api/v2/transfer-client-event/video_ads HTTP/1.1\r\nPXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}\r\nPXFD-Client-Version: 2.6.3.4068\r\nPXFD-Device-Token: 662461905988ab8a7fade82221cce64b\r\nPXFD-Game-Access-Token: 80e1e3c6-28f8-5d50-8047-a9284469d1ef\r\nPXFD-Player-Id: 61561146\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 73\r\nHost: game.trainstation2.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n'}
+
+12 11:36:15 | T: 6701 | I | WebReqStream    | buffer : 
+                                              {'buffer': '{"Placement":"ship_offer_claim_double","Action":"Rewarded","ErrorCode":0}'}
+
+12 11:36:15 | T: 6700 | P | IO.Mem.Write    | buffer
+                                                         0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  0123456789ABCDEF
+                                              052d5010  7b 22 53 75 63 63 65 73 73 22 3a 74 72 75 65 2c  {"Success":true,
+                                              052d5020  22 52 65 71 75 65 73 74 49 64 22 3a 22 36 66 64  "RequestId":"6fd
+                                              052d5030  37 33 65 34 64 2d 36 62 34 38 2d 34 31 36 34 2d  73e4d-6b48-4164-
+                                              052d5040  61 63 38 36 2d 62 34 39 36 38 62 30 63 34 35 38  ac86-b4968b0c458
+                                              052d5050  62 22 2c 22 54 69 6d 65 22 3a 22 32 30 32 33 2d  b","Time":"2023-
+                                              052d5060  30 31 2d 31 32 54 30 32 3a 33 36 3a 31 35 5a 22  01-12T02:36:15Z"
+                                              052d5070  7d                                               }
+
+12 11:36:15 | T: 6700 | I | SSL_AsyncWrite  | buffer : 
+                                              {'buffer': 'POST /api/v2/transfer-client-event/video_ads HTTP/1.1\r\nPXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}\r\nPXFD-Client-Version: 2.6.3.4068\r\nPXFD-Device-Token: 662461905988ab8a7fade82221cce64b\r\nPXFD-Game-Access-Token: 80e1e3c6-28f8-5d50-8047-a9284469d1ef\r\nPXFD-Player-Id: 61561146\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 71\r\nHost: game.trainstation2.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n'}
+
+12 11:36:15 | T: 6701 | I | WebReqStream    | buffer : 
+                                              {'buffer': '{"Placement":"ship_offer_claim_double","Action":"Closed","ErrorCode":0}'}
+
+12 11:36:15 | T: 6688 | P | IO.Mem.Write    | buffer
+                                                         0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  0123456789ABCDEF
+                                              05ad7010  7b 22 53 75 63 63 65 73 73 22 3a 74 72 75 65 2c  {"Success":true,
+                                              05ad7020  22 52 65 71 75 65 73 74 49 64 22 3a 22 64 64 39  "RequestId":"dd9
+                                              05ad7030  32 36 64 32 31 2d 64 32 63 33 2d 34 36 63 32 2d  26d21-d2c3-46c2-
+                                              05ad7040  61 33 38 33 2d 30 38 62 34 62 34 65 66 64 34 32  a383-08b4b4efd42
+                                              05ad7050  38 22 2c 22 54 69 6d 65 22 3a 22 32 30 32 33 2d  8","Time":"2023-
+                                              05ad7060  30 31 2d 31 32 54 30 32 3a 33 36 3a 31 35 5a 22  01-12T02:36:15Z"
+                                              05ad7070  7d                                               }
+
+12 11:36:17 | T: 6688 | I | parse_req_data  | RequestData
+                                              {'instance': '0x89a3a840', 'monitor': '0x0', 'url': 'https://game.trainstation2.com/api/v2/command-processing/run-collection', 'method': 'POST', 'req_id': 'c51ca065-ceac-4845-8a1f-92db0526df3e', 'is_binary': 0, 'retry_no': 0}
+ 
+12 11:36:17 | T: 6688 | I | IO.Mem.Write    | onEnter - params : 
+                                              {'instance': '0x296d150', 'buffer': '0x2949000', 'offset': '0x0', 'count': 300, 'method': '0x88461560'}
+12 11:36:17 | T: 6688 | P | IO.Mem.Write    | buffer
+                                                         0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  0123456789ABCDEF
+                                              02949010  7b 22 49 64 22 3a 33 37 2c 22 54 69 6d 65 22 3a  {"Id":37,"Time":
+                                              02949020  22 32 30 32 33 2d 30 31 2d 31 32 54 30 32 3a 33  "2023-01-12T02:3
+                                              02949030  36 3a 31 37 5a 22 2c 22 43 6f 6d 6d 61 6e 64 73  6:17Z","Commands
+                                              02949040  22 3a 5b 7b 22 43 6f 6d 6d 61 6e 64 22 3a 22 47  ":[{"Command":"G
+                                              02949050  61 6d 65 3a 57 61 6b 65 55 70 22 2c 22 54 69 6d  ame:WakeUp","Tim
+                                              02949060  65 22 3a 22 32 30 32 33 2d 30 31 2d 31 32 54 30  e":"2023-01-12T0
+                                              02949070  32 3a 33 35 3a 33 38 5a 22 2c 22 50 61 72 61 6d  2:35:38Z","Param
+                                              02949080  65 74 65 72 73 22 3a 7b 7d 7d 2c 7b 22 43 6f 6d  eters":{}},{"Com
+                                              02949090  6d 61 6e 64 22 3a 22 43 6f 6e 74 72 61 63 74 3a  mand":"Contract:
+                                              029490a0  41 63 63 65 70 74 57 69 74 68 56 69 64 65 6f 52  AcceptWithVideoR
+                                              029490b0  65 77 61 72 64 22 2c 22 54 69 6d 65 22 3a 22 32  eward","Time":"2
+                                              029490c0  30 32 33 2d 30 31 2d 31 32 54 30 32 3a 33 36 3a  023-01-12T02:36:
+                                              029490d0  31 37 5a 22 2c 22 50 61 72 61 6d 65 74 65 72 73  17Z","Parameters
+                                              029490e0  22 3a 7b 22 43 6f 6e 74 72 61 63 74 4c 69 73 74  ":{"ContractList
+                                              029490f0  49 64 22 3a 33 2c 22 53 6c 6f 74 22 3a 31 2c 22  Id":3,"Slot":1,"
+                                              02949100  41 63 63 65 70 74 65 64 41 74 22 3a 22 32 30 32  AcceptedAt":"202
+                                              02949110  33 2d 30 31 2d 31 32 54 30 32 3a 33 35 3a 33 38  3-01-12T02:35:38
+                                              02949120  5a 22 7d 7d 5d 2c 22 54 72 61 6e 73 61 63 74 69  Z"}}],"Transacti
+                                              02949130  6f 6e 61 6c 22 3a 66 61 6c 73 65 7d              onal":false}
+
+12 11:36:17 | T: 6701 | I | SSL_AsyncWrite  | buffer : 
+                                              {'buffer': 'POST /api/v2/command-processing/run-collection HTTP/1.1\r\nPXFD-Request-Id: c51ca065-ceac-4845-8a1f-92db0526df3e\r\nPXFD-Retry-No: 0\r\nPXFD-Sent-At: 2023-01-12T02:36:17.809Z\r\nPXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}\r\nPXFD-Client-Version: 2.6.3.4068\r\nPXFD-Device-Token: 662461905988ab8a7fade82221cce64b\r\nPXFD-Game-Access-Token: 80e1e3c6-28f8-5d50-8047-a9284469d1ef\r\nPXFD-Player-Id: 61561146\r\nContent-Type: application/json\r\nContent-Length: 300\r\nHost: game.trainstation2.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n'}
+
+12 11:36:17 | T: 6700 | I | WebReqStream    | buffer : 
+                                              {'buffer': '{"Id":37,"Time":"2023-01-12T02:36:17Z","Commands":[{"Command":"Game:WakeUp","Time":"2023-01-12T02:35:38Z","Parameters":{}},{"Command":"Contract:AcceptWithVideoReward","Time":"2023-01-12T02:36:17Z","Parameters":{"ContractListId":3,"Slot":1,"AcceptedAt":"2023-01-12T02:35:38Z"}}],"Transactional":false}'}
+
+12 11:36:18 | T: 6701 | P | IO.Mem.Write    | buffer
+                                                         0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  0123456789ABCDEF
+                                              05f3c010  7b 22 53 75 63 63 65 73 73 22 3a 74 72 75 65 2c  {"Success":true,
+                                              05f3c020  22 52 65 71 75 65 73 74 49 64 22 3a 22 63 35 31  "RequestId":"c51
+                                              05f3c030  63 61 30 36 35 2d 63 65 61 63 2d 34 38 34 35 2d  ca065-ceac-4845-
+                                              05f3c040  38 61 31 66 2d 39 32 64 62 30 35 32 36 64 66 33  8a1f-92db0526df3
+                                              05f3c050  65 22 2c 22 54 69 6d 65 22 3a 22 32 30 32 33 2d  e","Time":"2023-
+                                              05f3c060  30 31 2d 31 32 54 30 32 3a 33 36 3a 31 38 5a 22  01-12T02:36:18Z"
+                                              05f3c070  2c 22 44 61 74 61 22 3a 7b 22 43 6f 6c 6c 65 63  ,"Data":{"Collec
+                                              05f3c080  74 69 6f 6e 49 64 22 3a 33 37 2c 22 43 6f 6d 6d  tionId":37,"Comm
+                                              05f3c090  61 6e 64 73 22 3a 5b 7b 22 43 6f 6d 6d 61 6e 64  ands":[{"Command
+                                              05f3c0a0  22 3a 22 53 68 69 70 4c 6f 6f 70 3a 43 68 61 6e  ":"ShipLoop:Chan
+                                              05f3c0b0  67 65 22 2c 22 44 61 74 61 22 3a 7b 22 44 65 66  ge","Data":{"Def
+                                              05f3c0c0  69 6e 69 74 69 6f 6e 49 64 22 3a 35 7d 2c 22 49  initionId":5},"I
+                                              05f3c0d0  64 22 3a 22 61 37 64 36 63 64 31 34 2d 64 64 63  d":"a7d6cd14-ddc
+                                              05f3c0e0  61 2d 34 62 35 63 2d 39 65 63 33 2d 64 38 66 37  a-4b5c-9ec3-d8f7
+                                              05f3c0f0  35 31 64 36 35 63 38 32 22 7d 2c 7b 22 43 6f 6d  51d65c82"},{"Com
+                                              05f3c100  6d 61 6e 64 22 3a 22 41 63 68 69 65 76 65 6d 65  mand":"Achieveme
+                                              05f3c110  6e 74 3a 43 68 61 6e 67 65 22 2c 22 44 61 74 61  nt:Change","Data
+                                              05f3c120  22 3a 7b 22 41 63 68 69 65 76 65 6d 65 6e 74 22  ":{"Achievement"
+                                              05f3c130  3a 7b 22 41 63 68 69 65 76 65 6d 65 6e 74 49 64  :{"AchievementId
+                                              05f3c140  22 3a 22 73 68 69 70 5f 6c 6f 6f 70 5f 74 72 61  ":"ship_loop_tra
+                                              05f3c150  64 65 22 2c 22 4c 65 76 65 6c 22 3a 35 2c 22 50  de","Level":5,"P
+                                              05f3c160  72 6f 67 72 65 73 73 22 3a 32 31 36 7d 7d 7d 2c  rogress":216}}},
+                                              05f3c170  7b 22 43 6f 6d 6d 61 6e 64 22 3a 22 50 6c 61 79  {"Command":"Play
+                                              05f3c180  65 72 43 6f 6d 70 61 6e 79 3a 53 74 61 74 73 3a  erCompany:Stats:
+                                              05f3c190  43 68 61 6e 67 65 22 2c 22 44 61 74 61 22 3a 7b  Change","Data":{
+                                              05f3c1a0  22 53 74 61 74 73 22 3a 7b 22 54 79 70 65 22 3a  "Stats":{"Type":
+                                              05f3c1b0  22 73 68 69 70 5f 6c 6f 6f 70 5f 74 72 61 64 65  "ship_loop_trade
+                                              05f3c1c0  22 2c 22 50 72 6f 67 72 65 73 73 22 3a 34 33 32  ","Progress":432
+                                              05f3c1d0  30 7d 7d 7d 2c 7b 22 43 6f 6d 6d 61 6e 64 22 3a  0}}},{"Command":
+                                              05f3c1e0  22 43 6f 6e 74 72 61 63 74 3a 4e 65 77 22 2c 22  "Contract:New","
+                                              05f3c1f0  44 61 74 61 22 3a 7b 22 43 6f 6e 74 72 61 63 74  Data":{"Contract
+                                              05f3c200  22 3a 7b 22 53 6c 6f 74 22 3a 32 2c 22 43 6f 6e  ":{"Slot":2,"Con
+                                              05f3c210  74 72 61 63 74 4c 69 73 74 49 64 22 3a 33 2c 22  tractListId":3,"
+                                              05f3c220  43 6f 6e 64 69 74 69 6f 6e 73 22 3a 5b 7b 22 49  Conditions":[{"I
+                                              05f3c230  64 22 3a 31 30 34 2c 22 41 6d 6f 75 6e 74 22 3a  d":104,"Amount":
+                                              05f3c240  34 30 36 7d 2c 7b 22 49 64 22 3a 31 31 31 2c 22  406},{"Id":111,"
+                                              05f3c250  41 6d 6f 75 6e 74 22 3a 31 34 30 7d 2c 7b 22 49  Amount":140},{"I
+                                              05f3c260  64 22 3a 31 30 38 2c 22 41 6d 6f 75 6e 74 22 3a  d":108,"Amount":
+                                              05f3c270  31 30 37 7d 5d 2c 22 52 65 77 61 72 64 22 3a 7b  107}],"Reward":{
+                                              05f3c280  22 49 74 65 6d 73 22 3a 5b 7b 22 49 64 22 3a 38  "Items":[{"Id":8
+                                              05f3c290  2c 22 56 61 6c 75 65 22 3a 32 2c 22 41 6d 6f 75  ,"Value":2,"Amou
+                                              05f3c2a0  6e 74 22 3a 36 7d 2c 7b 22 49 64 22 3a 38 2c 22  nt":6},{"Id":8,"
+                                              05f3c2b0  56 61 6c 75 65 22 3a 31 31 2c 22 41 6d 6f 75 6e  Value":11,"Amoun
+                                              05f3c2c0  74 22 3a 31 30 7d 2c 7b 22 49 64 22 3a 38 2c 22  t":10},{"Id":8,"
+                                              05f3c2d0  56 61 6c 75 65 22 3a 31 32 2c 22 41 6d 6f 75 6e  Value":12,"Amoun
+                                              05f3c2e0  74 22 3a 37 7d 2c 7b 22 49 64 22 3a 38 2c 22 56  t":7},{"Id":8,"V
+                                              05f3c2f0  61 6c 75 65 22 3a 31 30 2c 22 41 6d 6f 75 6e 74  alue":10,"Amount
+                                              05f3c300  22 3a 31 33 7d 5d 7d 2c 22 55 73 61 62 6c 65 46  ":13}]},"UsableF
+                                              05f3c310  72 6f 6d 22 3a 22 32 30 32 33 2d 30 31 2d 31 32  rom":"2023-01-12
+                                              05f3c320  54 31 38 3a 33 35 3a 33 38 5a 22 2c 22 41 76 61  T18:35:38Z","Ava
+                                              05f3c330  69 6c 61 62 6c 65 46 72 6f 6d 22 3a 22 31 39 37  ilableFrom":"197
+                                              05f3c340  30 2d 30 31 2d 30 31 54 30 30 3a 30 30 3a 30 30  0-01-01T00:00:00
+                                              05f3c350  5a 22 2c 22 41 76 61 69 6c 61 62 6c 65 54 6f 22  Z","AvailableTo"
+                                              05f3c360  3a 22 32 39 39 39 2d 31 32 2d 33 31 54 30 30 3a  :"2999-12-31T00:
+                                              05f3c370  30 30 3a 30 30 5a 22 7d 7d 2c 22 49 64 22 3a 22  00:00Z"}},"Id":"
+                                              05f3c380  63 62 34 61 61 33 64 33 2d 30 66 37 34 2d 34 62  cb4aa3d3-0f74-4b
+                                              05f3c390  32 61 2d 38 30 36 62 2d 36 30 62 36 64 33 39 37  2a-806b-60b6d397
+                                              05f3c3a0  35 33 63 31 22 7d 2c 7b 22 43 6f 6d 6d 61 6e 64  53c1"},{"Command
+                                              05f3c3b0  22 3a 22 53 68 69 70 3a 4f 66 66 65 72 22 2c 22  ":"Ship:Offer","
+                                              05f3c3c0  44 61 74 61 22 3a 7b 22 53 68 69 70 22 3a 7b 22  Data":{"Ship":{"
+                                              05f3c3d0  44 65 66 69 6e 69 74 69 6f 6e 49 64 22 3a 35 2c  DefinitionId":5,
+                                              05f3c3e0  22 43 6f 6e 64 69 74 69 6f 6e 73 22 3a 5b 7b 22  "Conditions":[{"
+                                              05f3c3f0  49 64 22 3a 31 30 34 2c 22 41 6d 6f 75 6e 74 22  Id":104,"Amount"
+                                              05f3c400  3a 34 30 36 7d 2c 7b 22 49 64 22 3a 31 31 31 2c  :406},{"Id":111,
+                                              05f3c410  22 41 6d 6f 75 6e 74 22 3a 31 34 30 7d 2c 7b 22  "Amount":140},{"
+                                              05f3c420  49 64 22 3a 31 30 38 2c 22 41 6d 6f 75 6e 74 22  Id":108,"Amount"
+                                              05f3c430  3a 31 30 37 7d 5d 2c 22 52 65 77 61 72 64 22 3a  :107}],"Reward":
+                                              05f3c440  7b 22 49 74 65 6d 73 22 3a 5b 7b 22 49 64 22 3a  {"Items":[{"Id":
+                                              05f3c450  38 2c 22 56 61 6c 75 65 22 3a 32 2c 22 41 6d 6f  8,"Value":2,"Amo
+                                              05f3c460  75 6e 74 22 3a 36 7d 2c 7b 22 49 64 22 3a 38 2c  unt":6},{"Id":8,
+                                              05f3c470  22 56 61 6c 75 65 22 3a 31 31 2c 22 41 6d 6f 75  "Value":11,"Amou
+                                              05f3c480  6e 74 22 3a 31 30 7d 2c 7b 22 49 64 22 3a 38 2c  nt":10},{"Id":8,
+                                              05f3c490  22 56 61 6c 75 65 22 3a 31 32 2c 22 41 6d 6f 75  "Value":12,"Amou
+                                              05f3c4a0  6e 74 22 3a 37 7d 2c 7b 22 49 64 22 3a 38 2c 22  nt":7},{"Id":8,"
+                                              05f3c4b0  56 61 6c 75 65 22 3a 31 30 2c 22 41 6d 6f 75 6e  Value":10,"Amoun
+                                              05f3c4c0  74 22 3a 31 33 7d 5d 7d 2c 22 41 72 72 69 76 61  t":13}]},"Arriva
+                                              05f3c4d0  6c 41 74 22 3a 22 32 30 32 33 2d 30 31 2d 31 32  lAt":"2023-01-12
+                                              05f3c4e0  54 31 38 3a 33 35 3a 33 38 5a 22 7d 7d 2c 22 49  T18:35:38Z"}},"I
+                                              05f3c4f0  64 22 3a 22 38 64 65 33 36 32 66 38 2d 61 62 31  d":"8de362f8-ab1
+                                              05f3c500  33 2d 34 66 61 31 2d 62 32 39 61 2d 66 65 34 31  3-4fa1-b29a-fe41
+                                              05f3c510  62 36 38 63 64 33 32 64 22 7d 2c 7b 22 43 6f 6d  b68cd32d"},{"Com
+                                              05f3c520  6d 61 6e 64 22 3a 22 50 6c 61 79 65 72 43 6f 6d  mand":"PlayerCom
+                                              05f3c530  70 61 6e 79 3a 43 68 61 6e 67 65 56 61 6c 75 65  pany:ChangeValue
+                                              05f3c540  22 2c 22 44 61 74 61 22 3a 7b 22 56 61 6c 75 65  ","Data":{"Value
+                                              05f3c550  22 3a 31 37 35 33 38 34 7d 7d 5d 7d 7d           ":175384}}]}}
 
 """
 class StartGame(ImportHelperMixin):

@@ -19,7 +19,8 @@ from app_root.strategies.managers import jobs_find, trains_find, warehouse_used_
     update_next_event_time, trains_max_capacity, destination_gold_find_iter, container_offer_find_iter, \
     warehouse_max_capacity, daily_offer_get_next_event_time, daily_offer_get_slots, \
     materials_find_from_ship, materials_find_from_jobs, article_find_all_article_and_factory, \
-    article_find_all_article_and_destination, article_find_all_article_and_contract
+    article_find_all_article_and_destination, article_find_all_article_and_contract, materials_find_redundancy, \
+    jobs_find_priority
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 
 
@@ -271,6 +272,7 @@ class Strategy(object):
         # ship_materials = materials_find_from_ship(version=self.version)
         #
         # # union quest item
+        # train_job_ids = jobs_find_priority(version=self.version, with_warehouse_limit=False)
         #
         # # prepare
         # # redundancy_materials = materials_find_redundancy(version=self.version)
