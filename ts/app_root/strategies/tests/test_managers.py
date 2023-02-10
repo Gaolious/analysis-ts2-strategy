@@ -387,6 +387,16 @@ def fixture_init_20230207():
         ]
         yield patch
 
+@pytest.fixture(scope='function')
+def fixture_init_20230210():
+    filename = 'gaolious_2023.02.10.json'
+    with mock.patch('app_root.strategies.utils.InitdataHelper.get') as patch:
+        patch.side_effect = [
+            convert_text((settings.DJANGO_PATH / 'fixtures' / 'init_data' / filename).read_text('utf-8')),
+            '{}',
+        ]
+        yield patch
+
 
 @pytest.fixture(scope='function')
 def fixture_leader_board():
@@ -425,34 +435,27 @@ def fixture_sleep():
         yield patch
 
 
+@pytest.fixture(scope='function')
+def fixture_use_cache():
+    with mock.patch('app_root.strategies.utils.USE_CACHE', True) as patch:
+        yield patch
+
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filename', [
-    # 'strategies/6/6_0.json',
-    # 'init_data/gaolious1_2022.12.29.json',
-    # 'init_data/gaolious_2022.12.30-1.json',
-    # 'init_data/gaolious_2023.01.09_contract.json',
-    # 'init_data/gaolious_2023.01.09_gifts.json',
-    # 'init_data/gaolious_2023.01.11_jobs.json',
-    # 'init_data/gaolious_2023.01.14_fulltest.json',
-    # 'init_data/gaolious_2023.01.14_idle_destinations.json',
-    # 'init_data/gaolious_2023.01.14_results.json',
-    # 'init_data/gaolious_2023.02.05.json',
-    'init_data/gaolious_2023.02.07.json',
+@pytest.mark.parametrize('user_name, run_version_id', [
+    ('gaolious', 13)
 ])
 def test_materials_find_redundancy(
         multidb,
-        init_filename, fixture_endpoint, fixture_login, fixture_definition, fixture_init_20230207,
-        fixture_leader_board, fixture_start_game,
-        fixture_send_commands,
-        fixture_sleep,
+        user_name, run_version_id,
+        fixture_send_commands, fixture_sleep, fixture_use_cache,
 ):
     ###########################################################################
     # prepare
-    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
-
     user = User.objects.create_user(
-        username='test', android_id='test', game_access_token='1', player_id='1'
+        username=user_name, android_id='test', game_access_token='1', player_id='1'
     )
+    version = RunVersion.objects.create(id=run_version_id, user_id=user.id, level_id=1)
+    initdata_filepath = version.get_account_path() / 'startgame_post.txt'
     txt = initdata_filepath.read_text(encoding='utf-8')
     json_data = json.loads(txt, strict=False)
     now = convert_datetime(json_data['Time'])
@@ -463,15 +466,30 @@ def test_materials_find_redundancy(
         s.run()
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize('user_name, run_version_id', [
+    # ('gaolious', 19),  # 약 1분정도 남은 상태.
+    ('gaolious', 20),  # 가능 상태
+])
+def test_prepare_contract(
+        multidb,
+        user_name, run_version_id,
+        fixture_send_commands, fixture_sleep, fixture_use_cache,
+):
+    ###########################################################################
+    # prepare
+    user = User.objects.create_user(
+        username=user_name, android_id='test', game_access_token='1', player_id='1'
+    )
+    version = RunVersion.objects.create(id=run_version_id, user_id=user.id, level_id=1)
+    initdata_filepath = version.get_account_path() / 'startgame_post.txt'
+    txt = initdata_filepath.read_text(encoding='utf-8')
+    json_data = json.loads(txt, strict=False)
+    now = convert_datetime(json_data['Time'])
 
-
-
-
-
-
-
-
-
-
+    with mock.patch('django.utils.timezone.now') as p:
+        p.return_value = now
+        s = Strategy(user.id)
+        s.run()
 
 

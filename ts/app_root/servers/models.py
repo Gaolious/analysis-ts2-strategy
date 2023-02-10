@@ -112,6 +112,28 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
 
         return timedelta(seconds=s, microseconds=us)
 
+    def get_account_path(self) -> Path:
+        account_path = settings.SITE_PATH / 'cache' / f'{self.user.username}' / f'{self.id}'
+        account_path.mkdir(0o755, True, exist_ok=True)
+        return account_path
+
+    def save_cache(self, name, data):
+        account_path = self.get_account_path()
+
+        if "pytest" not in sys.modules:
+            log_filepath = account_path / f'{name}.txt'
+            with open(log_filepath, 'at', encoding='UTF-8') as fout:
+                fout.write(data)
+                fout.write("\n")
+
+    def read_cache(self, name, idx):
+        account_path = self.get_account_path()
+
+        log_filepath = account_path / f'{name}.txt'
+        if log_filepath.exists():
+            return log_filepath.read_text(encoding='UTF-8').split('\n')[idx]
+        return ''
+
     def add_log(self, msg, **kwargs):
         account_path = settings.SITE_PATH / 'log' / f'{self.user.username}' / f'{self.id}'
         account_path.mkdir(0o755, True, exist_ok=True)

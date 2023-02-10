@@ -1,4 +1,5 @@
 import math
+from collections import OrderedDict
 from datetime import timedelta, datetime
 from typing import List, Set, Dict, Type, Optional, Tuple
 
@@ -511,7 +512,7 @@ class UnionJobFinder:
     def __init__(self, dispatcher):
         self.number_of_dispatchers = dispatcher
         self.trains = {}
-        self.jobs = {}
+        self.jobs = OrderedDict({})
         self.warehouse = {}
         self.train_job_relation = {}
 
@@ -541,19 +542,19 @@ class UnionJobFinder:
             article_id: WAREHOUSE(article_id=article_id, amount=amount)
         })
 
-    best_score: int = -1
-    best_assign: Dict[int, int]
+    best_score: Tuple[float, int]
+    best_assign: List[Tuple[int, int, int]] = []
 
     train_id_list: List[int] = []
     assigned_job_amount: Dict[int, int] = {}
-    assign: Dict[int, int] = {}
+    assign: List[Tuple[int, int, int]] = []
 
-    def get_score(self, used_dispatcher: int) -> int:
+    def get_score(self, used_dispatcher: int) -> Tuple[float, int]:
         ret = 0
 
         count = {}
-        INF_COUNT = 100000
-        has_infinity = False
+        INFINITY_HOUR = 1000000
+        infinity_count = 0
 
         for job_id, amount in self.assigned_job_amount.items():
             count.update({job_id: 0})
@@ -565,37 +566,34 @@ class UnionJobFinder:
             if remain < 1:
                 continue
             if self.assigned_job_amount[job_id] < 1:
-                has_infinity = True
-                continue
-
-            count.update({job_id: math.ceil(remain / self.assigned_job_amount[job_id])})
+                count.update({
+                    job_id: INFINITY_HOUR
+                })
+            else:
+                count.update({
+                    job_id: math.ceil(remain / self.assigned_job_amount[job_id])
+                })
 
         for job_id, amount in self.assigned_job_amount.items():
-            total = self.jobs[job_id].total_count
-            curr = min(total, self.jobs[job_id].curr_count + self.assigned_job_amount[job_id])
-
-            ret += 1 - curr / total
+            remain = max(0, self.jobs[job_id].total_count - self.jobs[job_id].curr_count)
+            if remain > 0:
+                ret += self.assigned_job_amount[job_id] / remain
 
         # 가능한 하나라도 완료에 가까운 곳으로.
 
         # 전체 수행 횟수를 줄이는 것.
 
-        score = 0
+        hours = min(count.values())
 
-        if has_infinity:
-            score += 10000
-
-        max_count = max(count.values())
-        avg_progress = ret / len(self.assigned_job_amount)
-        return ret
+        return ret, -hours
 
     def recur(self, idx: int, used_dispatcher: int, with_warehouse_limit: bool):
+        if used_dispatcher > 0:
+            score = self.get_score(used_dispatcher)
 
-        score = self.get_score(used_dispatcher)
-
-        if self.best_score < 0 or score < self.best_score:
-            self.best_score = score
-            self.best_assign = {k: v for k, v in self.assign.items()}
+            if not self.best_score or self.best_score < score:
+                self.best_score = score
+                self.best_assign = [(train_id, job_id, amount) for train_id, job_id, amount in self.assign]
 
         if used_dispatcher >= self.number_of_dispatchers:
             return
@@ -631,39 +629,33 @@ class UnionJobFinder:
                 continue
 
             self.assigned_job_amount[job_id] += amount
-            self.assign.update({train_id: job_id})
+            self.assign.append((train_id, job_id, amount))
 
             self.recur(idx=idx+1, used_dispatcher=used_dispatcher+1, with_warehouse_limit=with_warehouse_limit)
 
             self.assigned_job_amount[job_id] -= amount
-            self.assign.pop(train_id)
+            del self.assign[-1]
 
-        if len(possible_job_id_list) != 1:
-            self.recur(idx=idx+1, used_dispatcher=used_dispatcher, with_warehouse_limit=with_warehouse_limit)
+        self.recur(idx=idx+1, used_dispatcher=used_dispatcher, with_warehouse_limit=with_warehouse_limit)
 
-    def dispatching(self, with_warehouse_limit: bool) -> Dict[int, int]:
+    def dispatching(self, with_warehouse_limit: bool) -> List[Tuple[int, int, int]]:
         """
 
         :return:
-            train_id, job_id
+            train_id, job_id, amount
         """
         self.train_id_list = sorted(self.train_job_relation.keys(), key=lambda k: self.trains[k].capacity, reverse=True)
-        self.best_score = -1
+        self.best_score = None
         self.assigned_job_amount = {job_id: 0 for job_id in self.jobs}
-        self.best_assign = {}
-        self.assign = {}
+        self.best_assign = []
+        self.assign = []
 
         self.recur(idx=0, used_dispatcher=0, with_warehouse_limit=with_warehouse_limit)
-
-        print("------------------------------------------------------------------------------------------")
-        print(f"Update Score : {self.best_score} / used  dispatcher : {len(self.best_assign)}")
-        for train_id, job_id in self.best_assign.items():
-            print(f"TrainID={train_id}, InstanceID={self.trains[train_id].instance_id} / JobID={job_id}")
 
         return self.best_assign
 
 
-def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> Dict[int, int]:
+def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[Tuple[PlayerTrain, PlayerJob, int]]:
     """
 
     :param version:
@@ -677,12 +669,14 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> Dict[
 
     # 재료 수집에 걸리는 시간
     #
-    ret = {}
+    ret = []
     if version.has_union:
         finder = UnionJobFinder(dispatcher=version.guild_dispatchers + 2)
-        jobs = list(jobs_find(version, union_jobs=True, expired_jobs=False))
-        if jobs:
-            for job in jobs:
+        all_jobs = {job.id: job for job in jobs_find(version, union_jobs=True, expired_jobs=False)}
+        all_trains = {train.id: train for train in trains_find(version=version)}
+
+        if all_jobs:
+            for job_id, job in all_jobs.items():
                 materials = jobs_find_sources(version=version, job=job)
                 trains = trains_find_match_with_job(version=version, job=job)
                 print(f"[Job] : {job}")
@@ -697,16 +691,85 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> Dict[
 
                 finder.add_job_train(job, trains)
 
-                warehouse_cnt = warehouse_amount(version=version, article_id=job.required_article_id)
+                warehouse_cnt = warehouse_get_amount(version=version, article_id=job.required_article_id)
 
                 finder.add_warehouse(
                     article_id=job.required_article_id,
                     amount=warehouse_cnt
                 )
 
-            return finder.dispatching(with_warehouse_limit)
+            for train_id, job_id, amount in finder.dispatching(with_warehouse_limit):
+                train, job = all_trains[train_id], all_jobs[job_id]
+                ret.append(
+                    (train, job, amount)
+                )
+                print(f"{train.str_dump()} / {job} / Amount={amount}")
 
     return ret
+
+
+def jobs_check_warehouse(version: RunVersion, train_job_amount_list: List[Tuple[PlayerTrain, PlayerJob, int]]) -> bool:
+    """
+
+    :param version:
+    :param train_job_amount_list:
+    :return:
+    """
+
+    now = get_curr_server_datetime(version=version)
+
+    required_amount: Dict[int, int] = {}
+
+    for train, job, amount in train_job_amount_list:
+        if train.is_working(now=now):
+            return False
+        if train.has_load:
+            return False
+
+        article_id = int(job.required_article_id)
+        required_amount.setdefault(article_id, 0)
+        required_amount[article_id] += amount
+
+    for article_id, amount in required_amount.items():
+        warehouse_amount = warehouse_get_amount(version=version, article_id=article_id)
+        if warehouse_amount < amount:
+            return False
+
+    return True
+
+
+###########################################################################
+# dispatchers
+###########################################################################
+def get_number_of_working_dispatchers(version: RunVersion) -> Tuple[int, int]:
+    working_union_dispatcher_count = 0
+    working_normal_dispatcher_count = 0
+
+    trains = list(trains_find(version=version, is_idle=False))
+
+    for train in trains:
+        is_union = False
+        data = None
+
+        if train.is_job_route:
+            ret_list = list(jobs_find(version=version, job_location_id=train.route_definition_id))
+            if ret_list:
+                data = ret_list[0]
+                is_union = data.job_location.region.is_union
+
+        elif train.is_destination_route:
+            data = destination_find(version=version, destination_id=train.route_definition_id)
+            is_union = data.region.is_union
+
+        if not data:
+            continue
+
+        if is_union:
+            working_union_dispatcher_count += 1
+        else:
+            working_normal_dispatcher_count += 1
+
+    return working_normal_dispatcher_count, working_union_dispatcher_count
 
 
 ###########################################################################
@@ -754,7 +817,7 @@ def warehouse_can_add(version: RunVersion, article_id: Type[int], amount: int) -
     return False
 
 
-def warehouse_amount(version: RunVersion, article_id: Type[int]) -> int:
+def warehouse_get_amount(version: RunVersion, article_id: Type[int]) -> int:
     article = PlayerWarehouse.objects.filter(version_id=version.id, article_id=article_id).first()
     if article:
         return article.amount
@@ -1085,10 +1148,6 @@ def materials_find_from_ship(version: RunVersion) -> Dict[int, int]:
             ret[k] += v
 
     return ret
-
-
-def materials_find_from_jobs(version: RunVersion, jobs: List[PlayerJob]) -> Dict[int, int]:
-    pass
 
 
 def materials_find_redundancy(version: RunVersion, min_cnt_factory, min_cnt_destination, min_cnt_contract):

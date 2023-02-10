@@ -1,4 +1,4 @@
-from app_root.strategies.utils import Strategy
+from app_root.servers.models import RunVersion
 from app_root.users.models import User
 
 
@@ -10,7 +10,4 @@ def run(*args, **kwargs):
             continue
         if user.has_error:
             continue
-
-        print(f"run for user : {user.username} - {user.android_id}")
-        strategy = Strategy(user_id=user.id)
-        strategy.run()
+        RunVersion.objects.create(user_id=user.id, level_id=1)

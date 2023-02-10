@@ -328,7 +328,7 @@ def ts_dump_contract(version: RunVersion) -> List[str]:
                 msg = '가능'
             else:
                 msg = '대기'
-            ret.append(f'''   Slot : {contract.slot:2d} | {msg} / 필요: {' '.join(str_condition):20s} / 보상: {' '.join(str_reward):20s}''')
+            ret.append(f'''   Slot : {contract.slot:2d} | {msg} / 필요: {' '.join(str_condition):20s} / 보상: {' '.join(str_reward):20s} | remain : {get_remain_time(version=version, finish_at=contract.usable_from)}''')
             # ret.append(f'''   usable_from : {contract.usable_from} | remain : {get_remain_time(version=version, finish_at=contract.usable_from)}''')
             # ret.append(f'''   available_from : {contract.available_from} | remain : {get_remain_time(version=version, finish_at=contract.available_from)}''')
             # ret.append(f'''   available_to : {contract.available_to} | remain : {get_remain_time(version=version, finish_at=contract.available_to)}''')

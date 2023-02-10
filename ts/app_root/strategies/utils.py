@@ -1,32 +1,35 @@
 import json
 from datetime import datetime, timedelta
-from typing import Iterator, Tuple, List, Optional
+from typing import Iterator, Tuple, List, Optional, Dict
 
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.players.models import PlayerWhistle
+from app_root.exceptions import TsRespInvalidOrExpiredSession
+from app_root.players.models import PlayerWhistle, PlayerTrain
 from app_root.players.utils_import import InitdataHelper, LeaderboardHelper
 from app_root.servers.models import RunVersion
 from app_root.servers.utils_import import EndpointHelper, LoginHelper, SQLDefinitionHelper
 from app_root.strategies.commands import HeartBeat, RunCommand, BaseCommand, TrainUnloadCommand, StartGame, \
     DailyRewardClaimWithVideoCommand, GameSleep, GameWakeup, DailyRewardClaimCommand, CollectWhistle, \
-    TrainSendToDestinationCommand, ShopBuyContainer, ShopPurchaseItem
+    TrainSendToDestinationCommand, ShopBuyContainer, ShopPurchaseItem, TrainDispatchToJobCommand
 from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, warehouse_used_capacity, warehouse_add_article, \
     daily_reward_get_reward, warehouse_can_add, whistle_get_collectable_list, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, trains_get_next_unload_event_time, whistle_get_next_event_time, \
     update_next_event_time, trains_max_capacity, destination_gold_find_iter, container_offer_find_iter, \
     warehouse_max_capacity, daily_offer_get_next_event_time, daily_offer_get_slots, \
-    materials_find_from_ship, materials_find_from_jobs, article_find_all_article_and_factory, \
+    materials_find_from_ship, article_find_all_article_and_factory, \
     article_find_all_article_and_destination, article_find_all_article_and_contract, materials_find_redundancy, \
-    jobs_find_priority
+    jobs_find_priority, jobs_check_warehouse, get_number_of_working_dispatchers
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 
+USE_CACHE = False
 
 class Strategy(object):
     version: RunVersion
     user_id: int
+    now: datetime
 
     def __init__(self, user_id):
         self.user_id = user_id
@@ -91,23 +94,19 @@ class Strategy(object):
         return instance
 
     def on_queued_status(self):
-        ep_helper = EndpointHelper(version=self.version)
+        ep_helper = EndpointHelper(version=self.version, use_cache=USE_CACHE)
         ep_helper.run()
 
-        login_helper = LoginHelper(version=self.version)
+        login_helper = LoginHelper(version=self.version, use_cache=USE_CACHE)
         login_helper.run()
 
-        sd_helper = SQLDefinitionHelper(version=self.version)
+        sd_helper = SQLDefinitionHelper(version=self.version, use_cache=USE_CACHE)
         sd_helper.run()
 
-        init_helper = InitdataHelper(version=self.version)
+        init_helper = InitdataHelper(version=self.version, use_cache=USE_CACHE)
         init_helper.run()
 
-        for job in jobs_find(version=self.version, union_jobs=True):
-            lb_helper = LeaderboardHelper(version=self.version, player_job_id=job.id)
-            lb_helper.run()
-
-        sg = StartGame(version=self.version)
+        sg = StartGame(version=self.version, use_cache=USE_CACHE)
         sg.run()
 
         ts_dump(version=self.version)
@@ -240,14 +239,13 @@ class Strategy(object):
         return ret
 
     def _command_send_gold_destination(self) -> Optional[datetime]:
-        now = get_curr_server_datetime(version=self.version)
         ret = None
         for destination in destination_gold_find_iter(version=self.version):
-            if destination.is_available(now=now):
+            if destination.is_available(now=self.now):
                 requirerments = destination.definition.requirements_to_dict
                 possibles = []
                 for train in trains_max_capacity(version=self.version, **requirerments):
-                    if train.is_idle(now=now):
+                    if train.is_idle(now=self.now):
                         possibles.append(train)
                 if possibles:
                     cmd = TrainSendToDestinationCommand(
@@ -256,27 +254,104 @@ class Strategy(object):
                         dest=destination,
                     )
                     self._send_commands(commands=[cmd])
-            elif destination.train_limit_refresh_at and destination.train_limit_refresh_at > now:
+            elif destination.train_limit_refresh_at and destination.train_limit_refresh_at > self.now:
                 ret = update_next_event_time(previous=ret, event_time=destination.train_limit_refresh_at)
 
         return ret
 
-    def _command_prepare_materials(self) -> Optional[datetime]:
-        ret = None
+    def _command_do_union_quest(self, train_job_amount_list):
+        normal_workers, union_workers = get_number_of_working_dispatchers(version=self.version)
+        max_normal_workers = self.version.dispatchers + 2
+        max_union_workers = self.version.guild_dispatchers + 2
 
+        for train, job, amount in train_job_amount_list:
+            if union_workers >= max_union_workers:
+                break
+            train: PlayerTrain
+            train.refresh_from_db()
+
+            if train.is_working(now=self.now):
+                continue
+            if train.has_load:
+                continue
+
+            cmd = TrainDispatchToJobCommand(
+                version=self.version,
+                train=train,
+                job=job,
+                amount=amount,
+            )
+            self._send_commands(commands=[cmd])
+            union_workers += 1
+
+    def _command_prepare_ship_material(self) -> Optional[datetime]:
+        """
+
+        :return:
+        """
         # warehouse_capacity = warehouse_max_capacity(version=self.version)
+        # ship_materials = materials_find_from_ship(version=self.version)
+        #
         # article_source_factory = article_find_all_article_and_factory(version=self.version)
         # article_source_destination = article_find_all_article_and_destination(version=self.version)
         # article_source_contract = article_find_all_article_and_contract(version=self.version)
         #
         # # ship
-        # ship_materials = materials_find_from_ship(version=self.version)
         #
-        # # union quest item
-        # train_job_ids = jobs_find_priority(version=self.version, with_warehouse_limit=False)
-        #
-        # # prepare
+        # # prepare materials
         # # redundancy_materials = materials_find_redundancy(version=self.version)
+        pass
+
+    def _command_prepare_contract(self) -> Optional[datetime]:
+        pass
+
+    def _command_prepare_factory(self) -> Optional[datetime]:
+        pass
+
+    def _command_prepare_redundancy(self) -> Optional[datetime]:
+        pass
+
+    def _command_prepare_population(self) -> Optional[datetime]:
+        pass
+
+    def _command_dispatch_jobs(self) -> Optional[datetime]:
+        if self.version.has_union:
+
+            for job in jobs_find(version=self.version, union_jobs=True):
+                lb_helper = LeaderboardHelper(version=self.version, player_job_id=job.id, use_cache=USE_CACHE)
+                lb_helper.run()
+
+            # union quest item
+            train_job_amount_list = jobs_find_priority(version=self.version, with_warehouse_limit=False)
+
+            if jobs_check_warehouse(version=self.version, train_job_amount_list=train_job_amount_list):
+                self._command_do_union_quest(train_job_amount_list=train_job_amount_list)
+
+        return None
+
+    def _command_prepare_materials(self) -> Optional[datetime]:
+        ret = None
+
+        # Step 0. Ship
+        # Step 1. contract. / union quest materials.
+        # Step 2. Factory
+        # Step 3. Redundancy
+        # Step 4. Population
+
+        next_dt = self._command_prepare_ship_material()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        next_dt = self._command_prepare_contract()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        next_dt = self._command_prepare_factory()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        next_dt = self._command_prepare_redundancy()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        next_dt = self._command_prepare_population()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         return ret
 
@@ -286,16 +361,18 @@ class Strategy(object):
         next_dt = self._command_send_gold_destination()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
+        next_dt = self._command_dispatch_jobs()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+
         next_dt = self._command_prepare_materials()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
         return ret
 
     def on_finally(self) -> Optional[datetime]:
         ret = None
-        now = get_curr_server_datetime(version=self.version)
 
         for train in trains_find(version=self.version, is_idle=False):
-            if train.route_arrival_time and train.route_arrival_time > now:
+            if train.route_arrival_time and train.route_arrival_time > self.now:
                 ret = update_next_event_time(previous=ret, event_time=train.route_arrival_time)
 
         return ret
@@ -316,9 +393,7 @@ class Strategy(object):
 
         # 3. assign job if
         # 4. prepare materials
-        # 5. send train
         # 6. increase population
-        # 7. collect gold
         return ret
 
     def _send_commands(self, commands: List[BaseCommand]):
@@ -336,6 +411,7 @@ class Strategy(object):
 
         try:
             ret = None
+            self.now = get_curr_server_datetime(version=self.version)
 
             if self.version.is_queued_task:
                 self.on_queued_status()
@@ -352,6 +428,11 @@ class Strategy(object):
             self.version.save(
                 update_fields=['next_event_datetime']
             )
+        except TsRespInvalidOrExpiredSession as e:
+            if self.version:
+                now = get_curr_server_datetime(version=self.version)
+                self.version.next_event_datetime = now + timedelta(minutes=10)
+                self.version.set_completed(save=True, update_fields=[])
 
         except Exception as e:
             if self.version:

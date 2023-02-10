@@ -18,6 +18,8 @@ class ImportHelperMixin:
     """
         Bot Helper
     """
+    NAME = 'helper'
+
     HEADER_REQUEST_ID = 0x01 << 0
     HEADER_RETRY_NO = 0x01 << 1
     HEADER_SENT_AT = 0x01 << 2
@@ -28,9 +30,13 @@ class ImportHelperMixin:
     HEADER_PLAYER_ID = 0x01 << 7
 
     version: RunVersion
+    use_cache: bool
+    idx: int
 
-    def __init__(self, version: RunVersion, **kwargs):
+    def __init__(self, version: RunVersion, use_cache: bool = False, **kwargs):
         self.version = version
+        self.use_cache = use_cache
+        self.idx = -1
 
     def get_headers(self, *, mask) -> Dict[str, str]:
 
@@ -69,6 +75,11 @@ class ImportHelperMixin:
     def get(self, url, headers, params):
         assert url
         assert headers
+        name = f'{self.NAME}_get'
+
+        if self.use_cache:
+            self.idx += 1
+            return self.version.read_cache(name=name, idx=self.idx)
 
         self.version.add_log(
             msg=f'[{self.__class__.__name__} ] Before GET',
@@ -91,6 +102,7 @@ class ImportHelperMixin:
         resp_headers = {k: v for k, v in resp.headers.items()}
         resp_cookies = {k: v for k, v in resp.cookies.items()}
 
+        self.version.save_cache(name=name, data=resp_body)
         self.version.add_log(
             msg=f'[{self.__class__.__name__} ] After GET',
             status_code=str(resp_status_code),
@@ -103,6 +115,11 @@ class ImportHelperMixin:
     def post(self, url, headers, payload):
         assert url
         assert headers
+        name = f'{self.NAME}_post'
+
+        if self.use_cache:
+            self.idx += 1
+            return self.version.read_cache(name=name, idx=self.idx)
 
         self.version.add_log(
             msg=f'[{self.__class__.__name__} ] Before POST',
@@ -123,6 +140,8 @@ class ImportHelperMixin:
         resp_body = resp.content.decode('utf-8')
         resp_headers = {k: v for k, v in resp.headers.items()}
         resp_cookies = {k: v for k, v in resp.cookies.items()}
+
+        self.version.save_cache(name=name, data=resp_body)
 
         self.version.add_log(
             msg=f'[{self.__class__.__name__} ] After POST',

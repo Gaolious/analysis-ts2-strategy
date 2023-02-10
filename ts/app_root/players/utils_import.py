@@ -19,6 +19,7 @@ LOGGING_MENU = 'plyaers.import'
 
 class InitdataHelper(ImportHelperMixin):
     BASE_PATH = settings.SITE_PATH / 'download' / 'init_data'
+    NAME = 'init_data'
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
 
@@ -926,6 +927,7 @@ class InitdataHelper(ImportHelperMixin):
 class LeaderboardHelper(ImportHelperMixin):
 
     player_job_id: int
+    NAME = 'leaderboard'
 
     def __init__(self, player_job_id: int, **kwargs):
         super(LeaderboardHelper, self).__init__(**kwargs)
@@ -949,6 +951,8 @@ class LeaderboardHelper(ImportHelperMixin):
         headers = self.get_headers(mask=mask)
 
         job = PlayerJob.objects.filter(id=self.player_job_id).first()
+        self.NAME = f'leaderboard_{job.job_id}'
+
         assert job
 
         param = {

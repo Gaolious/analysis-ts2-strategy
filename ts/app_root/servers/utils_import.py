@@ -15,6 +15,7 @@ from core.utils import download_file
 
 
 class EndpointHelper(ImportHelperMixin):
+    NAME = 'endpoint'
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
         yield 'https://game.trainstation2.com/get-endpoints', 'ep_sent', 'ep_server', 'ep_recv'
@@ -74,6 +75,7 @@ class LoginHelper(ImportHelperMixin):
     FIELD_REQUEST_DATETIME = 'login_sent'
     FIELD_SERVER_DATETIME = 'login_server'
     FIELD_RESPONSE_DATETIME = 'login_recv'
+    NAME = 'login'
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
         for url in EndPoint.get_login_urls():
@@ -152,6 +154,7 @@ class LoginHelper(ImportHelperMixin):
 
 class SQLDefinitionHelper(ImportHelperMixin):
     BASE_PATH = settings.SITE_PATH / 'download' / 'definition'
+    NAME = 'definition'
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
         for url in EndPoint.get_definition_urls():
