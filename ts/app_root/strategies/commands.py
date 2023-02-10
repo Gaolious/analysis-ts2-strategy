@@ -9,10 +9,12 @@ from django.conf import settings
 from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
-    PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard
-from app_root.servers.models import RunVersion, EndPoint
+    PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard, PlayerContract, \
+    PlayerFactoryProductOrder
+from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
-    trains_set_destination, container_offer_set_used, destination_set_used, daily_offer_set_used, trains_set_job
+    trains_set_destination, container_offer_set_used, destination_set_used, daily_offer_set_used, trains_set_job, \
+    contract_set_used, factory_order_product, factory_collect_product
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 
 
@@ -199,10 +201,10 @@ class TrainSendToDestinationCommand(BaseCommand):
 
     COMMAND = 'Train:DispatchToDestination'
     train: PlayerTrain
-    dest: PlayerDestination
+    dest: TSDestination
     SLEEP_RANGE = (1.0, 1.5)
 
-    def __init__(self, *, train: PlayerTrain, dest: PlayerDestination, **kwargs):
+    def __init__(self, *, train: PlayerTrain, dest: TSDestination, **kwargs):
         super(TrainSendToDestinationCommand, self).__init__(**kwargs)
         self.train = train
         self.dest = dest
@@ -214,16 +216,16 @@ class TrainSendToDestinationCommand(BaseCommand):
         """
         return {
             'TrainId': self.train.instance_id,
-            'DestinationId': self.dest.definition_id,
+            'DestinationId': self.dest.id,
         }
 
     def post_processing(self, server_data: Dict):
         departure_at = get_curr_server_datetime(version=self.version)
-        arrival_at = departure_at + timedelta(seconds=self.dest.definition.travel_duration)
+        arrival_at = departure_at + timedelta(seconds=self.dest.travel_duration)
         trains_set_destination(
             version=self.version,
             train=self.train,
-            definition_id=self.dest.definition_id,
+            definition_id=self.dest.id,
             departure_at=departure_at,
             arrival_at=arrival_at
         )
@@ -681,9 +683,107 @@ Accept-Encoding: gzip, deflate
 slot 21번은 timer 약 59분 남은 상태 (UsableFrom..)
 {"Slot": 20,"ContractListId": 100001,"Conditions": [{"Id": 112,"Amount": 90}],"Reward": {"Items": [{"Id": 8,"Value": 100010,"Amount": 50}]},"UsableFrom": "2023-02-06T03:55:35Z","ExpiresAt": "2023-02-27T12:00:00Z","AvailableFrom": "2022-12-05T12:00:00Z","AvailableTo": "2023-02-27T12:00:00Z"},          
 {"Slot": 21,"ContractListId": 100001,"Conditions": [{"Id": 126,"Amount": 547}],"Reward": {"Items": [{"Id": 8,"Value": 100010,"Amount": 100}]},"UsableFrom": "2023-02-06T05:58:22Z","AvailableFrom": "2022-12-05T12:00:00Z","AvailableTo": "2023-02-27T12:00:00Z"}
-
-
 """
+
+class ContractAcceptCommand(BaseCommand):
+    """
+    {"Id":4,"Time":"2023-02-06T04:58:24Z","Commands":[{"Command":"Contract:Accept","Time":"2023-02-06T04:58:22Z","Parameters":{
+    "ContractListId":100001,"Slot":21}}],"Transactional":false}
+    """
+
+    COMMAND = 'Contract:Accept'
+    contract: PlayerContract
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, contract: PlayerContract, **kwargs):
+        super(ContractAcceptCommand, self).__init__(**kwargs)
+        self.contract = contract
+
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "ContractListId": self.contract.contract_list.contract_list_id,
+            "Slot": self.contract.slot,
+        }
+
+    def post_processing(self, server_data: Dict):
+        for article_id, amount in self.contract.conditions_to_article_dict.items():
+            warehouse_add_article(version=self.version, article_id=article_id, amount=-amount)
+
+        for article_id, amount in self.contract.reward_to_article_dict.items():
+            warehouse_add_article(version=self.version, article_id=article_id, amount=amount)
+
+        contract_set_used(version=self.version, contract=self.contract)
+
+
+###################################################################
+# Product Order in Factory
+###################################################################
+class FactoryOrderProductCommand(BaseCommand):
+    """
+    {"Command":"Factory:OrderProduct","Time":"2023-01-14T10:29:41Z","Parameters":{"FactoryId":6000,"ArticleId":6004}},
+    {"Command":"Factory:OrderProduct","Time":"2023-01-14T10:29:42Z","Parameters":{"FactoryId":6000,"ArticleId":6004}}
+
+    """
+    COMMAND = 'Factory:OrderProduct'
+    product: TSProduct
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, product: TSProduct, **kwargs):
+        super(FactoryOrderProductCommand, self).__init__(**kwargs)
+        self.product = product
+
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "FactoryId": self.product.factory_id,
+            "ArticleId": self.product.article_id,
+        }
+
+    def post_processing(self, server_data: Dict):
+        factory_order_product(version=self.version, product=self.product)
+
+
+class FactoryCollectProductCommand(BaseCommand):
+    """
+        {
+            "Command":"Factory:CollectProduct",
+            "Time":"2023-01-14T10:29:35Z",
+            "Parameters":{"FactoryId":6000,"Index":0}
+        },
+        {
+            "Command":"Factory:CollectProduct",
+            "Time":"2023-01-14T10:29:36Z",
+            "Parameters":{"FactoryId":6000,"Index":0}
+        }
+
+    """
+
+    COMMAND = 'Factory:CollectProduct'
+    order: PlayerFactoryProductOrder
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, order: PlayerFactoryProductOrder, **kwargs):
+        super(FactoryCollectProductCommand, self).__init__(**kwargs)
+        self.order = order
+
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "FactoryId": self.order.player_factory.factory_id,
+            "Index": self.order.index - 1,  # 서버는 0 base / local은 1 base
+        }
+
+    def post_processing(self, server_data: Dict):
+        factory_collect_product(version=self.version, order=self.order)
+
+
 
 ###################################################################
 # Ship Offer

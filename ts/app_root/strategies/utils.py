@@ -6,34 +6,38 @@ from django.conf import settings
 from django.utils import timezone
 
 from app_root.exceptions import TsRespInvalidOrExpiredSession
-from app_root.players.models import PlayerWhistle, PlayerTrain
+from app_root.players.models import PlayerWhistle, PlayerTrain, PlayerJob, PlayerContract
 from app_root.players.utils_import import InitdataHelper, LeaderboardHelper
 from app_root.servers.models import RunVersion
 from app_root.servers.utils_import import EndpointHelper, LoginHelper, SQLDefinitionHelper
 from app_root.strategies.commands import HeartBeat, RunCommand, BaseCommand, TrainUnloadCommand, StartGame, \
     DailyRewardClaimWithVideoCommand, GameSleep, GameWakeup, DailyRewardClaimCommand, CollectWhistle, \
-    TrainSendToDestinationCommand, ShopBuyContainer, ShopPurchaseItem, TrainDispatchToJobCommand
+    TrainSendToDestinationCommand, ShopBuyContainer, ShopPurchaseItem, TrainDispatchToJobCommand, ContractAcceptCommand, \
+    FactoryCollectProductCommand
 from app_root.strategies.dumps import ts_dump
-from app_root.strategies.managers import jobs_find, trains_find, warehouse_used_capacity, warehouse_add_article, \
-    daily_reward_get_reward, warehouse_can_add, whistle_get_collectable_list, warehouse_can_add_with_rewards, \
-    daily_reward_get_next_event_time, trains_get_next_unload_event_time, whistle_get_next_event_time, \
+from app_root.strategies.managers import jobs_find, trains_find, \
+    daily_reward_get_reward, warehouse_can_add, warehouse_can_add_with_rewards, \
+    daily_reward_get_next_event_time, trains_get_next_unload_event_time, \
     update_next_event_time, trains_max_capacity, destination_gold_find_iter, container_offer_find_iter, \
     warehouse_max_capacity, daily_offer_get_next_event_time, daily_offer_get_slots, \
-    materials_find_from_ship, article_find_all_article_and_factory, \
-    article_find_all_article_and_destination, article_find_all_article_and_contract, materials_find_redundancy, \
-    jobs_find_priority, jobs_check_warehouse, get_number_of_working_dispatchers
+    jobs_find_priority, jobs_check_warehouse, get_number_of_working_dispatchers, warehouse_countable, \
+    warehouse_get_amount, article_find_product, article_find_contract, article_find_destination, \
+    factory_find_product_orders, factory_find_player_factory, factory_find_possible_products
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 
 USE_CACHE = False
+
 
 class Strategy(object):
     version: RunVersion
     user_id: int
     now: datetime
+    train_job_amount_list: List[Tuple[PlayerTrain, PlayerJob, int]]
 
     def __init__(self, user_id):
         self.user_id = user_id
         self.version = None
+        self.train_job_amount_list = []
 
     def create_version(self):
         instance = RunVersion.objects.filter(user_id=self.user_id).order_by('-pk').first()
@@ -108,6 +112,8 @@ class Strategy(object):
 
         sg = StartGame(version=self.version, use_cache=USE_CACHE)
         sg.run()
+
+        self.update_union_progress(True)
 
         ts_dump(version=self.version)
 
@@ -251,7 +257,7 @@ class Strategy(object):
                     cmd = TrainSendToDestinationCommand(
                         version=self.version,
                         train=possibles[0],
-                        dest=destination,
+                        dest=destination.definition,
                     )
                     self._send_commands(commands=[cmd])
             elif destination.train_limit_refresh_at and destination.train_limit_refresh_at > self.now:
@@ -302,10 +308,159 @@ class Strategy(object):
         # # redundancy_materials = materials_find_redundancy(version=self.version)
         pass
 
-    def _command_prepare_contract(self) -> Optional[datetime]:
-        pass
+    def _command_collect_article_from_contract(self, article_id: int, amount: int, depth: int = 0) -> bool:
+        if depth > 5:
+            return False
+
+        source_contract = article_find_contract(version=self.version, article_id=article_id)
+        if not source_contract:
+            return False
+
+        contract_list = source_contract.get(article_id, [])
+        for contract in contract_list:
+            contract: PlayerContract
+
+            has_amount = warehouse_get_amount(version=self.version, article_id=article_id)
+            if amount <= has_amount:
+                break
+
+            condition = contract.conditions_to_article_dict
+            if not condition:
+                continue
+
+            all_pass = []
+            for required_article_id, required_article_amount in condition.items():
+                required_article_amount = required_article_amount
+                self._command_collect_article(article_id=required_article_id, amount=required_article_amount, depth=depth + 1)
+
+                has_amount = warehouse_get_amount(version=self.version, article_id=required_article_id)
+                if required_article_amount <= has_amount:
+                    all_pass.append(True)
+                else:
+                    all_pass.append(False)
+
+            if all_pass and all(all_pass):
+                cmd = ContractAcceptCommand(version=self.version, contract=contract)
+                self._send_commands(commands=[cmd])
+
+        return True
+
+    def _command_collect_article_from_destination(self, article_id: int, amount: int, depth: int = 0) -> bool:
+        if depth > 5:
+            return False
+
+        normal_workers, union_workers = get_number_of_working_dispatchers(version=self.version)
+        if normal_workers >= self.version.dispatchers + 2:
+            return False
+
+        source_destination = article_find_destination(version=self.version, article_id=article_id)
+
+        if not source_destination:
+            return False
+
+        # requirerments = destination.definition.requirements_to_dict
+        # possibles = []
+        # for train in trains_max_capacity(version=self.version, **requirerments):
+        #     if train.is_idle(now=self.now):
+        #         possibles.append(train)
+        # if possibles:
+        #     cmd = TrainSendToDestinationCommand(
+        #         version=self.version,
+        #         train=possibles[0],
+        #         dest=destination.definition,
+        #     )
+        #     self._send_commands(commands=[cmd])
+        return True
+
+    def _command_collect_article_from_factory(self, article_id: int, amount: int, depth: int = 0) -> bool:
+        if depth > 5:
+            return False
+
+        source_factory = article_find_product(version=self.version, article_id=article_id)
+
+        if not source_factory:
+            return False
+
+        products_list = source_factory.get(article_id, [])
+        if not products_list:
+            return False
+
+        for product in products_list:
+            found = True
+            while found:
+                found = False
+
+                has_amount = warehouse_get_amount(version=self.version, article_id=article_id)
+                if amount <= has_amount:
+                    return True
+
+                completed_orders, _, _ = factory_find_product_orders(
+                    version=self.version,
+                    factory_id=int(product.factory_id),
+                    article_id=article_id,
+                )
+
+                for order in completed_orders:
+                    found = True
+                    cmd = FactoryCollectProductCommand(version=self.version, order=order)
+                    self._send_commands(commands=[cmd])
+                    break
+
+        return True
+
+    def _command_collect_article(self, article_id: int, amount: int, depth: int = 0):
+        if depth > 5:
+            return
+
+        has_amount = warehouse_get_amount(version=self.version, article_id=article_id)
+        if amount < has_amount:
+            return
+
+        if self._command_collect_article_from_destination(article_id=article_id, amount=amount, depth=depth + 1):
+            return
+
+        if self._command_collect_article_from_factory(article_id=article_id, amount=amount, depth=depth + 1):
+            return
+
+        if self._command_collect_article_from_contract(article_id=article_id, amount=amount, depth=depth + 1):
+            return
+
+    def _command_prepare_union_quest_materials(self) -> Optional[datetime]:
+        warehouse_capacity = warehouse_max_capacity(version=self.version)
+        warehouse_amount = warehouse_countable(version=self.version, basic=True, event=False, union=True)
+        avg_count = warehouse_capacity // len(warehouse_amount)
+
+        need_article: Dict[int, int] = {}
+
+        for train, job, amount in self.train_job_amount_list:
+            article_id = int(job.required_article_id)
+            need_article.setdefault(article_id, 0)
+            need_article[article_id] += amount
+
+        for article_id, amount in need_article.items():
+            need_amount = max(amount, avg_count)
+            self._command_collect_article(article_id=article_id, amount=need_amount)
+
+        return None
 
     def _command_prepare_factory(self) -> Optional[datetime]:
+        for player_factory in factory_find_player_factory(version=self.version):
+            if player_factory.factory.is_event:
+                continue
+
+            slot_count = player_factory.slot_count
+
+            factory_product_list = []
+            destination_product_list = []
+            for product in factory_find_possible_products(version=self.version, player_factory=player_factory):
+                ret = article_find_destination(version=self.version, article_id=product.article_id)
+                destinations = ret.get(product.article_id, [])
+
+                if destinations:
+                    destination_product_list.append(product)
+                else:
+                    factory_product_list.append(product)
+
         pass
 
     def _command_prepare_redundancy(self) -> Optional[datetime]:
@@ -314,18 +469,19 @@ class Strategy(object):
     def _command_prepare_population(self) -> Optional[datetime]:
         pass
 
-    def _command_dispatch_jobs(self) -> Optional[datetime]:
-        if self.version.has_union:
-
+    def update_union_progress(self, force: bool = False):
+        if self.version.has_union and (force or abs((self.version.created - self.now).total_seconds()) > 10):
             for job in jobs_find(version=self.version, union_jobs=True):
                 lb_helper = LeaderboardHelper(version=self.version, player_job_id=job.id, use_cache=USE_CACHE)
                 lb_helper.run()
 
+    def _command_dispatch_jobs(self) -> Optional[datetime]:
+        if self.version.has_union:
             # union quest item
-            train_job_amount_list = jobs_find_priority(version=self.version, with_warehouse_limit=False)
+            self.train_job_amount_list = jobs_find_priority(version=self.version, with_warehouse_limit=False)
 
-            if jobs_check_warehouse(version=self.version, train_job_amount_list=train_job_amount_list):
-                self._command_do_union_quest(train_job_amount_list=train_job_amount_list)
+            if jobs_check_warehouse(version=self.version, train_job_amount_list=self.train_job_amount_list):
+                self._command_do_union_quest(train_job_amount_list=self.train_job_amount_list)
 
         return None
 
@@ -341,7 +497,7 @@ class Strategy(object):
         next_dt = self._command_prepare_ship_material()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
-        next_dt = self._command_prepare_contract()
+        next_dt = self._command_prepare_union_quest_materials()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         next_dt = self._command_prepare_factory()
@@ -364,8 +520,8 @@ class Strategy(object):
         next_dt = self._command_dispatch_jobs()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
-        next_dt = self._command_prepare_materials()
-        ret = update_next_event_time(previous=ret, event_time=next_dt)
+        # next_dt = self._command_prepare_materials()
+        # ret = update_next_event_time(previous=ret, event_time=next_dt)
         return ret
 
     def on_finally(self) -> Optional[datetime]:
@@ -381,6 +537,8 @@ class Strategy(object):
         """
 
         """
+        self.update_union_progress()
+
         ret: Optional[datetime] = None
         self._send_commands(commands=[HeartBeat(version=self.version)])
 
