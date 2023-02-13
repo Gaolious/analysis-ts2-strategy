@@ -75,6 +75,8 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
     init_server_2 = models.DateTimeField(_('Init Data Server Datetime'), null=True, blank=False, default=None)
     init_recv_2 = models.DateTimeField(_('Init Data Recv Datetime'), null=True, blank=False, default=None)
 
+    now = models.DateTimeField(_('now'), null=True, blank=False, default=timezone.now)
+
     class Meta:
         verbose_name = 'Version'
         verbose_name_plural = 'Versions'
@@ -112,6 +114,10 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
 
         return timedelta(seconds=s, microseconds=us)
 
+    def update_now(self, now):
+        self.now = now
+        self.save(update_fields=['now'])
+
     def get_account_path(self) -> Path:
         account_path = settings.SITE_PATH / 'cache' / f'{self.user.username}' / f'{self.id}'
         account_path.mkdir(0o755, True, exist_ok=True)
@@ -148,9 +154,11 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
                 fout.write(f'# Time : Now[{now}] | Login[{self.login_server}] | Elapsed[{elapse}] | Command No[{self.command_no}]\n')
                 fout.write(f'# {msg}\n')
                 fout.write('############################################################\n')
-                fout.write(
-                    json.dumps(kwargs, indent=2, cls=DjangoJSONEncoder)
-                )
+                if kwargs:
+                    fout.write(
+                        json.dumps(kwargs, indent=2, cls=DjangoJSONEncoder)
+                    )
+
 
 class EndPoint(BaseModelMixin, TimeStampedMixin):
 
@@ -401,6 +409,21 @@ class TSProduct(BaseModelMixin, TimeStampedMixin):
     class Meta:
         verbose_name = 'Product'
         verbose_name_plural = 'Products'
+
+    def __str__(self):
+        return f'''{str(self.factory)}|{self.article_id}|{self.article.name}'''
+
+    @cached_property
+    def conditions_to_article_dict(self) -> Dict:
+
+        article_id_list = list(map(int, self.article_ids.split(';')))
+        article_amount_list = list(map(int, self.article_amounts.split(';')))
+
+        ret = {}
+        for article_id, article_amount in zip(article_id_list, article_amount_list):
+            ret.update({article_id: article_amount})
+
+        return ret
 
 
 class TSTrain(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin, RarityMixin, EraMixin):

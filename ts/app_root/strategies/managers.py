@@ -9,7 +9,7 @@ from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion,
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory
-from app_root.utils import get_curr_server_datetime
+from app_root.strategies.data_types import JobPriority
 
 
 def update_next_event_time(previous: Optional[datetime], event_time: Optional[datetime]) -> datetime:
@@ -20,6 +20,9 @@ def update_next_event_time(previous: Optional[datetime], event_time: Optional[da
     :param event_time:
     :return:
     """
+    if event_time:
+        event_time = event_time + timedelta(seconds=5)
+
     if not previous or not event_time:
         return previous or event_time
     if previous > event_time:
@@ -56,7 +59,6 @@ def jobs_find(
     :return:
     """
     queryset = PlayerJob.objects.filter(version_id=version.id).all()
-    now = get_curr_server_datetime(version=version)
 
     ret = []
     for job in queryset.all():
@@ -68,11 +70,11 @@ def jobs_find(
             continue
         if side_jobs is not None and side_jobs != job.is_side_job:
             continue
-        if collectable_jobs is not None and collectable_jobs != job.is_collectable(now):
+        if collectable_jobs is not None and collectable_jobs != job.is_collectable(version.now):
             continue
-        if completed_jobs is not None and completed_jobs != job.is_completed(now):
+        if completed_jobs is not None and completed_jobs != job.is_completed(version.now):
             continue
-        if expired_jobs is not None and expired_jobs != job.is_expired(now):
+        if expired_jobs is not None and expired_jobs != job.is_expired(version.now):
             continue
         if job_location_id is not None and job_location_id != job.job_location_id:
             continue
@@ -93,7 +95,8 @@ def trains_find(
         available_min_power: int = None,
         available_content_category: Set[int] = None,
         is_idle: bool = None,
-        has_load: bool = None
+        has_load: bool = None,
+        load_id: int = None,
 ) -> List[PlayerTrain]:
     """
         가용 가능한 기차를 검색 합니다.
@@ -109,13 +112,14 @@ def trains_find(
     :return:
     """
     ret = []
-    now = get_curr_server_datetime(version=version)
 
     queryset = PlayerTrain.objects.filter(
         version_id=version.id
     ).prefetch_related(
         'level', 'train', 'load'
     ).all()
+    if load_id:
+        queryset = queryset.filter(load_id=load_id)
 
     # if available_region:
     #     queryset = queryset.filter(train__region__in=available_region)
@@ -135,8 +139,13 @@ def trains_find(
         if available_min_power is not None and player_train.capacity() < available_min_power:
             continue
 
-        if is_idle is not None and player_train.is_idle(now=now) != is_idle:
-            continue
+        if is_idle is True:
+            if not player_train.is_idle(now=version.now) or player_train.has_load:
+                continue
+
+        if is_idle is False:
+            if player_train.is_idle(now=version.now) and not player_train.has_load:
+                continue
 
         if has_load is not None and player_train.has_load != has_load:
             continue
@@ -144,6 +153,13 @@ def trains_find(
         ret.append(player_train)
 
     return ret
+
+
+def trains_loads_amount_article_id(version: RunVersion, article_id: int) -> int:
+    amount = 0
+    for train in trains_find(version=version, has_load=True, load_id=article_id):
+        amount += train.load_amount
+    return amount
 
 
 def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> List[PlayerTrain]:
@@ -186,7 +202,7 @@ def trains_unload(version: RunVersion, train: PlayerTrain):
 
 
 def trains_set_destination(version: RunVersion, train: PlayerTrain, definition_id: Type[int], departure_at: datetime,
-                           arrival_at: datetime):
+                           arrival_at: datetime, article_id:int, amount:int):
     """
         기차를 목적지에 셋팅 합니다.
      2 = {dict: 4} {'InstanceId': 3, 'DefinitionId': 4, 'Level': 1,
@@ -203,7 +219,7 @@ def trains_set_destination(version: RunVersion, train: PlayerTrain, definition_i
     :param arrival_at:
     """
     version.add_log(
-        msg='[Train SendDestination]',
+        msg='[Train Send Destination]',
         train_id=train.id,
         has_load=[train.has_load, True],
         route_type=[train.route_type, 'destination'],
@@ -213,11 +229,15 @@ def trains_set_destination(version: RunVersion, train: PlayerTrain, definition_i
     )
     train.route_type = 'destination'
     train.has_load = True
+    train.load_id = article_id
+    train.load_amount = amount
     train.route_definition_id = definition_id
     train.route_departure_time = departure_at
     train.route_arrival_time = arrival_at
     train.save(update_fields=[
         'has_load',
+        'load_id',
+        'load_amount',
         'route_type',
         'route_definition_id',
         'route_departure_time',
@@ -243,7 +263,7 @@ def trains_set_job(version: RunVersion, train: PlayerTrain, definition_id: Type[
     :param arrival_at:
     """
     version.add_log(
-        msg='[Train SendDestination]',
+        msg='[Train Send Job]',
         train_id=train.id,
         has_load=[train.has_load, False],
         route_type=[train.route_type, 'destination'],
@@ -253,12 +273,16 @@ def trains_set_job(version: RunVersion, train: PlayerTrain, definition_id: Type[
     )
     train.route_type = 'job'
     train.has_load = False
+    train.load_id = None
+    train.load_amount = 0
     train.route_definition_id = definition_id
     train.route_departure_time = departure_at
     train.route_arrival_time = arrival_at
     train.save(update_fields=[
-        'has_load',
         'route_type',
+        'has_load',
+        'load_id',
+        'load_amount',
         'route_definition_id',
         'route_departure_time',
         'route_arrival_time',
@@ -267,7 +291,6 @@ def trains_set_job(version: RunVersion, train: PlayerTrain, definition_id: Type[
 
 def trains_get_next_unload_event_time(version: RunVersion):
     ret = None
-
     for train in trains_find(version=version, is_idle=False):
         ret = update_next_event_time(previous=ret, event_time=train.route_arrival_time)
 
@@ -277,7 +300,6 @@ def trains_get_next_unload_event_time(version: RunVersion):
 def trains_max_capacity(version: RunVersion, **kwargs) -> List[PlayerTrain]:
     capacity = -1
     ret = []
-
     for train in trains_find(version=version, **kwargs):
         if train.capacity() > capacity:
             capacity = train.capacity()
@@ -323,6 +345,8 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
 
     queryset = TSDestination.objects.filter(
         region_id__in=visited_region_list,
+        article__level_from__lte=version.level_id,
+        article__level_req__lte=version.level_id,
     ).all()
 
     if article_id:
@@ -338,8 +362,7 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
     return ret
 
 
-def article_find_contract(version: RunVersion, article_id=None) -> Dict[int, List[PlayerContract]]:
-    now = get_curr_server_datetime(version=version)
+def article_find_contract(version: RunVersion, article_id=None, available_only=True) -> Dict[int, List[PlayerContract]]:
     delta = timedelta(minutes=1)
 
     ret = {}
@@ -350,10 +373,11 @@ def article_find_contract(version: RunVersion, article_id=None) -> Dict[int, Lis
         # fixme: expired check
         # if contract_list.next_replace_at and now < contract_list.next_replace_at < now + delta:
         #     continue
-        if contract_list.available_to and now + delta >= contract_list.available_to:
-            continue
-        if contract_list.expires_at and now + delta >= contract_list.expires_at:
-            continue
+        if available_only:
+            if contract_list.available_to and version.now + delta >= contract_list.available_to:
+                continue
+        # if contract_list.expires_at and version.now + delta >= contract_list.expires_at:
+        #     continue
 
         for contract in PlayerContract.objects.filter(contract_list_id=contract_list.id).all():
             # fixme: expired check
@@ -365,14 +389,15 @@ def article_find_contract(version: RunVersion, article_id=None) -> Dict[int, Lis
                 +----------+---------------+
                           now
             """
+            if available_only:
+                if contract.usable_from and contract.usable_from > version.now:
+                    continue
+                if contract.available_from and contract.available_from > version.now:
+                    continue
 
-            if contract.usable_from and contract.usable_from > now:
+            if contract.available_to and version.now + delta >= contract.available_to:
                 continue
-            if contract.available_from and contract.available_from > now:
-                continue
-            if contract.available_to and now + delta >= contract.available_to:
-                continue
-            if contract.expires_at and now + delta >= contract.expires_at:
+            if contract.expires_at and version.now + delta >= contract.expires_at:
                 continue
 
             rewards = contract.reward_to_article_dict
@@ -386,9 +411,9 @@ def article_find_contract(version: RunVersion, article_id=None) -> Dict[int, Lis
 
                 ret[reward_article_id].append(contract)
 
-    for article_id in ret.keys():
-        ret[article_id] = sorted(ret[article_id], reverse=True,
-                                 key=lambda x: x.reward_to_article_dict.get(article_id, 0))
+    for key in ret.keys():
+        ret[key] = sorted(ret[key], reverse=True,
+                                 key=lambda x: x.reward_to_article_dict.get(key, 0))
 
     return ret
 
@@ -432,11 +457,10 @@ def destination_gold_find_iter(version: RunVersion) -> List[PlayerDestination]:
     return list(queryset.all())
 
 
-def destination_set_used(version: RunVersion, dest: TSDestination):
-    if dest and dest.refresh_time > 0:
-        now = get_curr_server_datetime(version=version)
-        dest.train_limit_refresh_at = now + timedelta(seconds=dest.refresh_time)
-        dest.train_limit_refresh_time = now + timedelta(seconds=dest.refresh_time)
+def Player_destination_set_used(version: RunVersion, dest: PlayerDestination):
+    if dest and dest.definition.refresh_time > 0:
+        dest.train_limit_refresh_at = version.now + timedelta(seconds=dest.definition.refresh_time)
+        dest.train_limit_refresh_time = version.now + timedelta(seconds=dest.definition.refresh_time)
         dest.save(update_fields=[
             'train_limit_refresh_at',
             'train_limit_refresh_time',
@@ -448,11 +472,18 @@ def destination_set_used(version: RunVersion, dest: TSDestination):
 ###########################################################################
 def contract_set_used(version: RunVersion, contract: PlayerContract):
     if contract:
-        contract.expires_at = version.init_server_1
+        contract.expires_at = version.init_server_1 + timedelta(hours=-1)
         contract.save(update_fields=[
             'expires_at',
         ])
 
+
+def contract_set_active(version: RunVersion, contract: PlayerContract):
+    if contract:
+        contract.expires_at = contract.available_to
+        contract.save(update_fields=[
+            'expires_at',
+        ])
 
 ###########################################################################
 # Factory
@@ -476,85 +507,118 @@ def factory_find_player_factory(version: RunVersion, factory_id=None) -> List[Pl
     return list(queryset.all())
 
 
-def factory_find_product_orders(version: RunVersion, factory_id: int, article_id: int = None) -> Tuple[
-    List[PlayerFactoryProductOrder], List[PlayerFactoryProductOrder], List[PlayerFactoryProductOrder]]:
-    now = get_curr_server_datetime(version=version)
-
+def factory_find_product_orders(version: RunVersion, factory_id: int, article_id: int = None) -> Tuple[List[PlayerFactoryProductOrder], List[PlayerFactoryProductOrder], List[PlayerFactoryProductOrder]]:
+    player_factory = PlayerFactory.objects.filter(version=version, factory_id=factory_id).first()
     queryset = PlayerFactoryProductOrder.objects.filter(
-        player_factory__factory_id=factory_id,
-    ).select_related('article').order_by('index').all()
-    completed_list = []
-    processing_list = []
-    waiting_list = []
+        player_factory=player_factory,
+    ).prefetch_related('article').order_by('index').all()
+    completed_list: List[PlayerFactoryProductOrder] = []
+    processing_list: List[PlayerFactoryProductOrder] = []
+    waiting_list: List[PlayerFactoryProductOrder] = []
 
-    for order in queryset:
-        if article_id and order.article_id != article_id:
-            continue
+    idx = 0
+    order_list = list(queryset.all())
 
-        if order.is_completed(now):
-            completed_list.append(order)
-        elif order.is_processing(now):
-            processing_list.append(order)
-        elif order.is_waiting(now):
+    for order in order_list:
+        if len(waiting_list) > 0 or len(processing_list) > 0:
             waiting_list.append(order)
+        elif len(completed_list) >= player_factory.slot_count or order.is_processing(now=version.now):
+            processing_list.append(order)
         else:
-            raise Exception(str(order))
+            completed_list.append(order)
+
+    if article_id:
+        completed_list = [o for o in completed_list if o.article_id == article_id]
+        processing_list = [o for o in processing_list if o.article_id == article_id]
+        waiting_list = [o for o in waiting_list if o.article_id == article_id]
 
     return completed_list, processing_list, waiting_list
+
+
+def factory_find_destination_and_factory_only_products(version: RunVersion, player_factory: PlayerFactory) -> Tuple[List[TSProduct], List[TSProduct]]:
+    factory_product_list = []
+    destination_product_list = []
+    for product in factory_find_possible_products(version=version, player_factory=player_factory):
+        ret = article_find_destination(version=version, article_id=product.article_id)
+        destinations = ret.get(product.article_id, [])
+        if destinations:
+            destination_product_list.append(product)
+        else:
+            factory_product_list.append(product)
+
+    return destination_product_list, factory_product_list
 
 
 def factory_collect_product(version: RunVersion, order: PlayerFactoryProductOrder):
     player_factory = order.player_factory
     slot_count = player_factory.slot_count
-    now = get_curr_server_datetime(version=version)
+
+    if not order.is_completed(now=version.now):
+        return
 
     # 창고에 넣고
     warehouse_add_article(version=version, article_id=order.article_id, amount=order.amount)
 
-    order_list = list(
-        PlayerFactoryProductOrder.objects.filter(player_factory=player_factory).order_by('index').all()
-    )
+    completed, processing, waiting = factory_find_product_orders(version=version, factory_id=player_factory.factory_id)
+    order_list = completed + processing + waiting
+
+    order_list = [o for o in order_list if o.id != order.id]
 
     # 기존 데이터 index 변경, 완료시간 변경.
-    for index, next_order in enumerate(order_list[order.index:], order.index):
+    order.delete()
+    print(f'[Manager] - CollectProduct in Factory - {player_factory}')
+    now = version.now
+    for index, next_order in enumerate(order_list, 1):
+        param = {}
+
+        param.update({'index': [next_order.index, index]})
         next_order.index = index
         update_fields = ['index']
 
-        if next_order.index == slot_count:
+        if next_order.index <= slot_count and not next_order.finish_time:
             finish_time = now + timedelta(seconds=next_order.craft_time)
 
+            param.update({'finish_time': [next_order.finish_time, finish_time]})
             next_order.finish_time = finish_time
             update_fields.append('finish_time')
+
+            param.update({'finishes_at': [next_order.finishes_at, finish_time]})
             next_order.finishes_at = finish_time
             update_fields.append('finishes_at')
             now = finish_time
 
+        # print(f'    Order[{next_order}] Change to => ', param)
         next_order.save(update_fields=update_fields)
 
-    order.delete()
+
+
+
+def factory_can_order_product(version: RunVersion, product: TSProduct) -> bool:
+    player_factory = PlayerFactory.objects.filter(version=version, factory_id=product.factory_id).first()
+    slot_count = player_factory.slot_count
+
+    completed, processing, waiting = factory_find_product_orders(version=version, factory_id=product.factory_id)
+    order_list = completed + processing + waiting
+    if len(processing) + len(waiting) >= slot_count:
+        return False
+    return True
 
 
 def factory_order_product(version: RunVersion, product: TSProduct):
     player_factory = PlayerFactory.objects.filter(version=version, factory_id=product.factory_id).first()
     slot_count = player_factory.slot_count
-    now = get_curr_server_datetime(version=version)
 
-    # 사용된 재료 빼고
-    required_article_ids = list(map(int, product.article_ids.split(';')))
-    required_article_amount = list(map(int, product.article_amounts.split(';')))
-    for article_id, article_amount in zip(required_article_ids, required_article_amount):
-        warehouse_add_article(version=version, article_id=article_id, amount=-article_amount)
-
-    order_list = list(
-        PlayerFactoryProductOrder.objects.filter(player_factory=player_factory).order_by('index').all()
-    )
+    completed, processing, waiting = factory_find_product_orders(version=version, factory_id=product.factory_id)
+    order_list = completed + processing + waiting
+    if len(processing) + len(waiting) >= slot_count:
+        return
 
     player_factory = player_factory
     article_id = product.article_id
     index = 1
     amount = product.article_amount
     craft_time = product.craft_time
-    finish_time = now + timedelta(seconds=product.craft_time)
+    finish_time = version.now + timedelta(seconds=product.craft_time)
     finishes_at = finish_time
 
     if len(order_list) < 1:
@@ -569,6 +633,7 @@ def factory_order_product(version: RunVersion, product: TSProduct):
         finishes_at = None
 
     PlayerFactoryProductOrder.objects.create(
+        version=version,
         player_factory=player_factory,
         article_id=article_id,
         index=index,
@@ -577,6 +642,14 @@ def factory_order_product(version: RunVersion, product: TSProduct):
         finish_time=finish_time,
         finishes_at=finishes_at,
     )
+
+    # 사용된 재료 빼고
+    required_article_ids = list(map(int, product.article_ids.split(';')))
+    required_article_amount = list(map(int, product.article_amounts.split(';')))
+    for article_id, article_amount in zip(required_article_ids, required_article_amount):
+        warehouse_add_article(version=version, article_id=article_id, amount=-article_amount)
+
+
 
 
 ###########################################################################
@@ -780,13 +853,12 @@ class UnionJobFinder:
         return self.best_assign
 
 
-def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[Tuple[PlayerTrain, PlayerJob, int]]:
+def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
     """
 
     :param version:
     :return:
     """
-
     # 재료 수집이 가능한가 ? & expired 체크 & event expired 체크 & union expired 체크
     # job의 travel time (1hour) 고려해서
 
@@ -812,36 +884,32 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
                 )
 
             for train_id, job_id, amount in finder.dispatching(with_warehouse_limit):
-                train, job = all_trains[train_id], all_jobs[job_id]
-                ret.append(
-                    (train, job, amount)
-                )
-                print(f"{train.str_dump()} / {job} / Amount={amount}")
+                instance = JobPriority(train=all_trains[train_id], job=all_jobs[job_id], amount=amount)
+                ret.append(instance)
+                # print(f"{train.str_dump()} / {job} / Amount={amount}")
 
     return ret
 
 
-def jobs_check_warehouse(version: RunVersion, train_job_amount_list: List[Tuple[PlayerTrain, PlayerJob, int]]) -> bool:
+def jobs_check_warehouse(version: RunVersion, job_priority: List[JobPriority]) -> bool:
     """
 
     :param version:
-    :param train_job_amount_list:
+    :param job_priority:
     :return:
     """
 
-    now = get_curr_server_datetime(version=version)
-
     required_amount: Dict[int, int] = {}
 
-    for train, job, amount in train_job_amount_list:
-        if train.is_working(now=now):
+    for instance in job_priority:
+        if instance.train.is_working(now=version.now):
             return False
-        if train.has_load:
+        if instance.train.has_load:
             return False
 
-        article_id = int(job.required_article_id)
+        article_id = int(instance.job.required_article_id)
         required_amount.setdefault(article_id, 0)
-        required_amount[article_id] += amount
+        required_amount[article_id] += instance.amount
 
     for article_id, amount in required_amount.items():
         warehouse_amount = warehouse_get_amount(version=version, article_id=article_id)
@@ -977,7 +1045,7 @@ def warehouse_used_capacity(version: RunVersion):
     return capacity
 
 
-def warehouse_countable(version: RunVersion, basic: bool, event: bool, union: bool):
+def warehouse_countable(version: RunVersion, basic: bool, event: bool, union: bool) -> Dict[int, Tuple[TSArticle, int]]:
     ret = {}
 
     queryset = TSArticle.objects.all()
@@ -988,19 +1056,19 @@ def warehouse_countable(version: RunVersion, basic: bool, event: bool, union: bo
 
         if basic and article.is_basic:
             ret.update({
-                article.id: warehouse_get_amount(version=version, article_id=article.id)
+                article.id: (article, warehouse_get_amount(version=version, article_id=article.id))
             })
             continue
 
         if event and article.is_event:
             ret.update({
-                article.id: warehouse_get_amount(version=version, article_id=article.id)
+                article.id: (article, warehouse_get_amount(version=version, article_id=article.id))
             })
             continue
 
         if union and article.is_union:
             ret.update({
-                article.id: warehouse_get_amount(version=version, article_id=article.id)
+                article.id: (article, warehouse_get_amount(version=version, article_id=article.id))
             })
             continue
 
@@ -1062,26 +1130,23 @@ def daily_reward_get_reward(version: RunVersion) -> PlayerDailyReward:
     :return:
     """
     INTERVAL_SECOND = 12 * 60
-    now = get_curr_server_datetime(version=version)
     queryset = PlayerDailyReward.objects.filter(version_id=version.id).all()
 
-    if version.login_server and (now - version.login_server).total_seconds() > INTERVAL_SECOND:
+    if version.login_server and (version.now - version.login_server).total_seconds() > INTERVAL_SECOND:
         # 12분 후
 
         for reward in queryset:
-            if reward.available_from and now < reward.available_from:
+            if reward.available_from and version.now < reward.available_from:
                 continue
-            if reward.expire_at and reward.expire_at <= now:
+            if reward.expire_at and reward.expire_at <= version.now:
                 continue
             return reward
 
 
 def daily_reward_get_next_event_time(version: RunVersion) -> datetime:
     queryset = PlayerDailyReward.objects.filter(version_id=version.id).all()
-    now = get_curr_server_datetime(version=version)
-
     for reward in queryset:
-        return max(now, reward.available_from)
+        return max(version.now, reward.available_from)
 
 
 ###########################################################################
@@ -1089,15 +1154,14 @@ def daily_reward_get_next_event_time(version: RunVersion) -> datetime:
 ###########################################################################
 def daily_offer_get_slots(version: RunVersion, available_video: bool = None, availble_gem: bool = None,
                           available_gold: bool = None):
-    now = get_curr_server_datetime(version=version)
     queryset = PlayerDailyOffer.objects.filter(version_id=version.id).all()
 
     ret = []
 
     for daily in queryset:
-        if daily.expire_at and daily.expire_at < now:
+        if daily.expire_at and daily.expire_at < version.now:
             continue
-        if daily.expires_at and daily.expires_at < now:
+        if daily.expires_at and daily.expires_at < version.now:
             continue
 
         for item in PlayerDailyOfferItem.objects.filter(daily_offer_id=daily.id).prefetch_related('price').all():
@@ -1131,7 +1195,7 @@ def daily_offer_get_slots(version: RunVersion, available_video: bool = None, ava
 
 
 def daily_offer_get_next_event_time(version: RunVersion) -> datetime:
-    now = get_curr_server_datetime(version=version)
+    now = version.now
     ret = now
     queryset = PlayerDailyOffer.objects.filter(version_id=version.id).all()
     delta = timedelta(seconds=10)
@@ -1171,7 +1235,7 @@ def daily_offer_set_used(version: RunVersion, offer_item: PlayerDailyOfferItem):
 ###########################################################################
 
 def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
-    now = get_curr_server_datetime(version=version)
+    now = version.now
     queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
     delta = timedelta(seconds=settings.WHISTLE_INTERVAL_SECOND)
     ret = []
@@ -1202,7 +1266,7 @@ def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
 
 def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:
     if whistle:
-        now = version.login_server
+        now = version.now
 
         version.add_log(
             msg='[whistle_remove]',
@@ -1221,7 +1285,7 @@ def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:
 
 
 def whistle_get_next_event_time(version: RunVersion) -> datetime:
-    now = get_curr_server_datetime(version=version)
+    now = version.now
     ret = None
 
     for whistle in PlayerWhistle.objects.filter(version_id=version.id).all():
@@ -1244,7 +1308,7 @@ def whistle_get_next_event_time(version: RunVersion) -> datetime:
 # Container Offer
 ###########################################################################
 def container_offer_find_iter(version: RunVersion, available_only: bool) -> List[PlayerDailyOfferContainer]:
-    now = get_curr_server_datetime(version=version)
+    now = version.now
     queryset = PlayerDailyOfferContainer.objects.filter(version_id=version.id).order_by('id').all()
     ret = []
     for offer in queryset.all():
@@ -1267,7 +1331,7 @@ def container_offer_find_iter(version: RunVersion, available_only: bool) -> List
 
 
 def container_offer_set_used(version: RunVersion, offer: PlayerDailyOfferContainer):
-    now = get_curr_server_datetime(version=version)
+    now = version.now
     offer.last_bought_at = now
     offer.count += 1
     offer.save(update_fields=[
@@ -1277,9 +1341,14 @@ def container_offer_set_used(version: RunVersion, offer: PlayerDailyOfferContain
 
 
 ###########################################################################
-# Container Offer
+# ship
 ###########################################################################
-def materials_find_from_ship(version: RunVersion) -> Dict[int, int]:
+def ship_find_iter(version: RunVersion) -> List[PlayerShipOffer]:
+    queryset = PlayerShipOffer.objects.filter(version_id=version.id).all()
+    return list(queryset.all())
+
+
+def ship_get_conditions(version: RunVersion) -> Dict[int, int]:
     ret = {}
 
     queryset = PlayerShipOffer.objects.filter(version_id=version.id).all()
@@ -1292,50 +1361,3 @@ def materials_find_from_ship(version: RunVersion) -> Dict[int, int]:
             ret[k] += v
 
     return ret
-
-# def materials_find_redundancy(version: RunVersion, min_cnt_factory, min_cnt_destination, min_cnt_contract):
-#     """
-#
-#     :param version:
-#     :param min_cnt_factory:
-#     :param min_cnt_destination:
-#     :param min_cnt_contract:
-#     :return:
-#     """
-#     pass
-# amount_warehouse = {row.article_id: row.amount for row in PlayerWarehouse.objects.all()}
-# amount_factory = {}
-#
-# article_factory_dict = article_find_all_article_and_factory(version=version)
-# article_destination_dict = article_find_all_article_and_destination(version=version)
-# article_contract_dict = article_find_all_article_and_contract(version=version)
-# all_article = {article.id: article for article in TSArticle.objects.all()}
-# ret = {}
-# if amount_warehouse:
-#     for article in TSArticle.objects.all():
-#
-#         if article.level_req > version.level_id:
-#             continue
-#         if article.level_from > version.level_id:
-#             continue
-#         if article.type == 1:
-#             continue
-#         if article.is_event:
-#             continue
-#
-#         if article.id in article_destination_dict:
-#             ret.setdefault(article.id, min_cnt_destination)
-#             continue
-#
-#         if article.id in article_factory_dict:
-#             ret.setdefault(article.id, min_cnt_factory)
-#             continue
-#
-#         if article.id in article_contract_dict:
-#             ret.setdefault(article.id, min_cnt_contract)
-#
-# for article_id, required in ret.items():
-#     has = amount_warehouse.get(article_id, 0)
-#
-#     if has < required:
-#         print(f"article [{article_id}|{all_article[article_id].name}] need {required - has} more")

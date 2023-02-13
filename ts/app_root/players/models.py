@@ -45,6 +45,8 @@ class PlayerFactoryProductOrder(PlayerFactoryProductOrderMixin, BaseModelMixin, 
         verbose_name = 'Player Factory Product Order'
         verbose_name_plural = 'Player Factory Product Orders'
 
+    def __str__(self):
+        return f'FactoryId={self.player_factory.factory_id}/article=[{self.article_id}|{self.article}]/Index={self.index}'
 
 class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
     class Meta:
@@ -83,6 +85,8 @@ class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
             ret.append(f'Progress: {self.current_guild_amount}/{self.required_amount} ({self.current_guild_amount/self.required_amount*100:.2f} %)')
         else:
             ret.append(f'Progress: {self.current_article_amount}/{self.required_amount} ({self.current_article_amount/self.required_amount*100:.2f} %)')
+
+        ret.append(f'Required: #{self.required_article.id}|{self.required_article.name}')
         return ' / '.join(ret)
 
 

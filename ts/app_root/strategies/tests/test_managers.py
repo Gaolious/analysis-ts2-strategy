@@ -8,14 +8,14 @@ import pytest
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.players.models import PlayerShipOffer
+from app_root.players.models import PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder
 from app_root.players.utils_import import InitdataHelper
-from app_root.servers.models import RunVersion, SQLDefinition, EndPoint
+from app_root.servers.models import RunVersion, SQLDefinition, EndPoint, TSProduct
 from app_root.servers.utils_import import SQLDefinitionHelper
 from app_root.strategies.commands import ShopPurchaseItem
-from app_root.strategies.dumps import ts_dump
+from app_root.strategies.dumps import ts_dump, ts_dump_factory
 from app_root.strategies.managers import jobs_find, trains_find_match_with_job, trains_max_capacity, \
-    jobs_find_priority, daily_offer_get_slots
+    jobs_find_priority, daily_offer_get_slots, factory_order_product, factory_collect_product
 from app_root.strategies.utils import Strategy
 from app_root.users.models import User
 from app_root.utils import get_curr_server_str_datetime_s
@@ -419,12 +419,13 @@ class FakeRunCommand(object):
 
     def run(self):
         for cmd in self.commands:
+            print(f"* FakeCmd : {cmd.COMMAND} {cmd.get_parameters()}")
             cmd.post_processing({})
 
 
 @pytest.fixture(scope='function')
 def fixture_send_commands():
-    with mock.patch('app_root.strategies.utils.RunCommand') as patch:
+    with mock.patch('app_root.strategies.commands.RunCommand') as patch:
         patch.side_effect = FakeRunCommand
         yield patch
 
@@ -469,7 +470,7 @@ def test_materials_find_redundancy(
 @pytest.mark.django_db
 @pytest.mark.parametrize('user_name, run_version_id', [
     # ('gaolious', 19),  # 약 1분정도 남은 상태.
-    ('gaolious', 20),  # 가능 상태
+    ('gaolious', 19),  # 가능 상태
 ])
 def test_prepare_contract(
         multidb,
@@ -486,10 +487,61 @@ def test_prepare_contract(
     txt = initdata_filepath.read_text(encoding='utf-8')
     json_data = json.loads(txt, strict=False)
     now = convert_datetime(json_data['Time'])
+    version.now = now
+    version.save()
 
     with mock.patch('django.utils.timezone.now') as p:
         p.return_value = now
         s = Strategy(user.id)
         s.run()
+
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('user_name, run_version_id', [
+    # ('gaolious', 19),  # 약 1분정도 남은 상태.
+    ('gaolious', 9),  # 가능 상태
+])
+def test_factory_order_product(
+        multidb,
+        user_name, run_version_id,
+        fixture_send_commands, fixture_sleep, fixture_use_cache,
+):
+    ###########################################################################
+    # prepare
+    user = User.objects.create_user(
+        username=user_name, android_id='test', game_access_token='1', player_id='1'
+    )
+    version = RunVersion.objects.create(id=run_version_id, user_id=user.id, level_id=1)
+    initdata_filepath = version.get_account_path() / 'startgame_post.txt'
+    txt = initdata_filepath.read_text(encoding='utf-8')
+    json_data = json.loads(txt, strict=False)
+    now = convert_datetime(json_data['Time'])
+    version.now = now
+    version.save()
+
+    with mock.patch('django.utils.timezone.now') as p:
+        p.return_value = now
+        s = Strategy(user.id)
+        s.run()
+        prod = TSProduct.objects.filter(article_id=224).first()
+        order_list = list(
+            PlayerFactoryProductOrder.objects.filter(player_factory__factory_id=prod.factory_id).order_by('index').all()
+        )
+        before = ts_dump_factory(version=version, factory_id=prod.factory_id)
+        print("[INIT]")
+        print("\n".join(before))
+
+        for order in order_list:
+            order.refresh_from_db()
+            factory_collect_product(version=version, order=order)
+            after1 = ts_dump_factory(version=version, factory_id=order.player_factory.factory_id)
+            print("[After Collect]")
+            print("\n".join(after1))
+
+            factory_order_product(version=version, product=prod)
+            after2 = ts_dump_factory(version=version, factory_id=order.player_factory.factory_id)
+            print("[After add]")
+            print("\n".join(after2))
 
 

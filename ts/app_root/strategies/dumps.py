@@ -9,7 +9,8 @@ from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFact
     PlayerDailyOffer, PlayerDailyOfferItem
 from app_root.servers.models import RunVersion, TSArticle
 from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, trains_find, jobs_find, \
-    destination_find, warehouse_used_capacity, warehouse_max_capacity, container_offer_find_iter
+    destination_find, warehouse_used_capacity, warehouse_max_capacity, container_offer_find_iter, \
+    factory_find_product_orders
 from app_root.utils import get_curr_server_datetime, get_remain_time
 from core.models.utils import chunk_list
 
@@ -37,7 +38,6 @@ def ts_dump_default(version: RunVersion) -> List[str]:
 def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
     line = '-' * 80
     ret = []
-
     ##########################################################################################
     # dispatcher
     ##########################################################################################
@@ -176,10 +176,8 @@ def ts_dump_destination(version: RunVersion) -> List[str]:
 
     ret.append(f'# [Destination]')
     ret.append(line)
-    now = get_curr_server_datetime(version=version)
-
     for destination in PlayerDestination.objects.filter(version_id=version.id).order_by('pk').all():
-        if destination.is_available(now=now):
+        if destination.is_available(now=version.now):
             remain_time = '사용가능'
         else:
             remain_time = f'{get_remain_time(version=version, finish_at=destination.train_limit_refresh_at)}'
@@ -188,35 +186,24 @@ def ts_dump_destination(version: RunVersion) -> List[str]:
     return ret
 
 
-def ts_dump_factory(version: RunVersion):
+def ts_dump_factory(version: RunVersion, factory_id: int = None):
     ret = []
     line = '-' * 80
 
     ret.append('# [Factory]')
     ret.append(line)
-    now = get_curr_server_datetime(version=version)
-
     queryset = PlayerFactory.objects.filter(version_id=version.id).order_by('id').select_related('factory').all()
+    if factory_id:
+        queryset = queryset.filter(factory_id=factory_id)
 
     for factory in queryset.all():
         ret.append(f"""  Factory - #{factory.factory_id} {factory.factory}""")
-        completed_list = []
-        processing_list = []
-        waiting_list = []
 
-        for order in PlayerFactoryProductOrder.objects.filter(player_factory_id=factory.id).select_related('article').order_by('index').all():
-            if order.is_completed(now):
-                completed_list.append(order)
-            elif order.is_processing(now):
-                processing_list.append(order)
-            elif order.is_waiting(now):
-                waiting_list.append(order)
-            else:
-                raise Exception(str(order))
+        completed_list, processing_list, waiting_list = factory_find_product_orders(version=version, factory_id=factory.factory_id)
 
-        a = [f'[#{o.id}/{o.article.sprite}/{order.amount}개]' for o in completed_list]
-        b = [f'[#{o.id}/{o.article.sprite}/{order.amount}개]' for o in processing_list]
-        c = [f'[#{o.id}/{o.article.sprite}/{order.amount}개]' for o in waiting_list]
+        a = [f'[#{o.article_id:3d}|{o.article.name:10s}|{o.amount}개]' for o in completed_list]
+        b = [f'[#{o.article_id:3d}|{o.article.name:10s}|{o.amount}개]' for o in processing_list]
+        c = [f'[#{o.article_id:3d}|{o.article.name:10s}|{o.amount}개]' for o in waiting_list]
 
         ret.append(f'''    대기 : {' '.join(c)}''')
         ret.append(f'''    생성 : {' '.join(b)}''')
@@ -469,7 +456,7 @@ def ts_dump(version: RunVersion):
 
     str_dt = version.created.strftime('%Y%m%d_%H%M%S')
     filename = base_path / f'{version.id}_{str_dt}.txt'
-    with open(filename, 'wt') as fout:
+    with open(filename, 'at') as fout:
         for row in ret:
             s = f' {row:80s}'
             print(s)

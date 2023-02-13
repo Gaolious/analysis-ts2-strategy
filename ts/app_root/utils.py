@@ -7,7 +7,7 @@ from app_root.servers.models import RunVersion
 
 
 def get_curr_server_datetime(version: RunVersion) -> datetime:
-    return (timezone.now() + version.delta).astimezone(pytz.utc)
+    return version.now.astimezone(pytz.utc)
 
 
 def get_curr_server_str_datetime_s(version: RunVersion) -> str:

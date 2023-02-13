@@ -5,7 +5,7 @@ from core.utils import Logger
 def run():
     init_data = [
         {'username': 'gaolious1', 'android_id': '57316822b8f2aa50'},
-        {'username': 'gaolious', 'android_id': '346c03d6d4042d74', 'has_error': True, 'is_active': False},
+        {'username': 'gaolious', 'android_id': '346c03d6d4042d74'},
     ]
 
     for row in init_data:
