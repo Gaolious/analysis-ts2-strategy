@@ -203,7 +203,7 @@ def command_factory_strategy(version: RunVersion, factory_strategy_dict: Dict[in
                 print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | PASS")
                 continue
 
-            available_slot = player_factory.slot_count - len(processing) + len(waiting)
+            available_slot = player_factory.slot_count - (len(processing) + len(waiting))
             if available_slot <= 0:
                 print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Available Slot:{available_slot} | Reach to Max Slot")
                 continue
