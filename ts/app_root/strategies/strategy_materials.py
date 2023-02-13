@@ -9,7 +9,8 @@ from app_root.strategies.data_types import Material, FactoryStrategy, ArticleSou
 from app_root.strategies.managers import ship_find_iter, factory_find_player_factory, \
     factory_find_destination_and_factory_only_products, factory_find_product_orders, warehouse_countable, \
     article_find_contract, article_find_product, article_find_destination, warehouse_max_capacity, \
-    trains_loads_amount_article_id, warehouse_get_amount, get_number_of_working_dispatchers, trains_find
+    trains_loads_amount_article_id, warehouse_get_amount, get_number_of_working_dispatchers, trains_find, \
+    warehouse_used_capacity
 
 
 def get_ship_materials(version: RunVersion) -> Material:
@@ -316,6 +317,12 @@ def command_send_destination(version: RunVersion, required_article_id: int, requ
             if warehouse_amount + train_loads_amount > required_amount:
                 return
 
+            used = warehouse_used_capacity(version=version)
+            max_capacity = warehouse_max_capacity(version=version)
+            if used + train.capacity() > max_capacity:
+                print(f"    - Dest Location ID #{destination.location_id} / Train[{train.capacity()}] + used Warehouse[{used}] > max Warehouse[{max_capacity}] | PASS")
+                continue
+
             cmd = TrainSendToDestinationCommand(
                 version=version,
                 train=train,
@@ -340,8 +347,16 @@ def command_collect_from_factory(version: RunVersion, required_article_id: int, 
             if required_amount <= warehouse_amount:
                 print(f"    - Factory: {product.factory} | required amount={required_amount} <= warehouse={warehouse_amount}| PASS")
                 break
+
+            used = warehouse_used_capacity(version=version)
+            max_capacity = warehouse_max_capacity(version=version)
+            if used + order.amount > max_capacity:
+                print(f"    - Factory: {product.factory} | Try Collect Item Index={order.index} | amount={required_amount} + used Warehouse[{used}] > max Warehouse[{max_capacity}] | PASS")
+                continue
+
             print(f"    - Factory: {product.factory} | Try Collect Item Index={order.index} | required amount={required_amount} > warehouse={warehouse_amount}")
             order.refresh_from_db()
+
             cmd = FactoryCollectProductCommand(version=version, order=order)
             send_commands(cmd)
 
