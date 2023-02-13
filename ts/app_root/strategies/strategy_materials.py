@@ -128,7 +128,7 @@ def get_factory_materials(version: RunVersion, factory_strategy_dict: Dict[int, 
                 continue
 
             for required_article_id, required_article_amount in product.conditions_to_article_dict.items():
-                material.add(article_id=required_article_id, amount=required_article_amount * need_more_count)
+                material.add(article_id=required_article_id, amount=required_article_amount)
 
     return material
 
@@ -247,10 +247,6 @@ def get_destination_materials(version: RunVersion) -> Material:
         destinations = article_find_destination(version=version, article_id=article_id).get(article_id, [])
         if not destinations:
             continue
-        # train_amount = trains_loads_amount_article_id(version=version, article_id=article_id)
-        #
-        # if avg_amount <= has_amount + train_amount:
-        #     continue
 
         material.add(article_id=article_id, amount=avg_amount)
 
