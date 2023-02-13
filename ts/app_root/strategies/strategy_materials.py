@@ -167,7 +167,7 @@ def command_collect_factory_product_redundancy(version: RunVersion, factory_stra
                 command_collect_from_factory(
                     version=version,
                     required_article_id=article_id,
-                    required_amount=avg_amount - (warehouse_amount + product_amount),
+                    required_amount=avg_amount - product.article_amount,
                     article_source=article_source
                 )
 
