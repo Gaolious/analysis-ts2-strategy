@@ -127,7 +127,7 @@ def get_factory_materials(version: RunVersion, factory_strategy_dict: Dict[int, 
                 continue
 
             for required_article_id, required_article_amount in product.conditions_to_article_dict.items():
-                material.add(article_id=article_id, amount=required_article_amount)
+                material.add(article_id=required_article_id, amount=required_article_amount * need_more_count)
 
     return material
 
@@ -160,14 +160,16 @@ def command_collect_factory_product_redundancy(version: RunVersion, factory_stra
             cnt = completed_count + waiting_count + processing_count
 
             warehouse_amount = warehouse_get_amount(version=version, article_id=product.article_id)
-            product_amount = product.article_amount * min(1, cnt)
+            product_amount = product.article_amount
 
             if warehouse_amount + product_amount < avg_amount:
                 print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Warehouse[{warehouse_amount} | In Factory[{cnt}*{product.article_amount}] Try Collect")
+                material = Material()
+                material.add_dict(product.conditions_to_article_dict)
                 command_collect_from_factory(
                     version=version,
                     required_article_id=article_id,
-                    required_amount=avg_amount - product.article_amount,
+                    required_amount=avg_amount - product_amount,
                     article_source=article_source
                 )
 
