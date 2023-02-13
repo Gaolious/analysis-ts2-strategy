@@ -207,18 +207,21 @@ def command_factory_strategy(version: RunVersion, factory_strategy_dict: Dict[in
             if available_slot <= 0:
                 print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Available Slot:{available_slot} | Reach to Max Slot")
                 continue
+            if len(processing) > 0:
+                print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Available Slot:{available_slot} | Producing Now.")
+                continue
 
-            need_more_count = max(0, min(available_slot, need_more_count))
+            need_more_count = min(1, min(available_slot, need_more_count))
 
             material = Material()
             material.add_dict(product.conditions_to_article_dict)
-            for _ in range(need_more_count):
-                if check_all_has_in_warehouse(version=version, requires=material):
-                    print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Try Order")
-                    cmd = FactoryOrderProductCommand(version=version, product=product)
-                    send_commands(cmd)
-                else:
-                    print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Not Enough Material")
+
+            if check_all_has_in_warehouse(version=version, requires=material):
+                print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Try Order")
+                cmd = FactoryOrderProductCommand(version=version, product=product)
+                send_commands(cmd)
+            else:
+                print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Not Enough Material")
 
 
 def get_destination_materials(version: RunVersion) -> Material:
