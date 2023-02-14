@@ -104,3 +104,37 @@ class FactoryStrategy:
             self.completed_article_count.setdefault(order.article_id, 0)
             self.completed_article_count[order.article_id] += 1
 
+
+class MaterialStrategy:
+
+    # factory id 별로 생성해야 하는 order list
+    # dict [ factory_id, List[ (article id, article amount) ] ]
+    from_factory: Dict[int, Dict[int, int]]
+
+    # dict[ destination_id, amount
+    from_destination: Dict[int, int]
+
+    def __init__(self):
+        self.from_factory = {}
+        self.from_destination = {}
+
+    def add_destination(self, destination: TSDestination, amount: int):
+        if destination:
+
+            if destination.id not in self.from_destination:
+                self.from_destination.update({destination.id: 0})
+
+            self.from_destination[destination.id] += amount
+
+    def add_product(self, product: TSProduct, amount: int):
+        if product:
+            factory_id = int(product.factory_id)
+            article_id = int(product.article_id)
+
+            if factory_id not in self.from_factory:
+                self.from_factory.update({factory_id: {}})
+
+            if article_id not in self.from_factory[factory_id]:
+                self.from_factory[factory_id].update({article_id: 0})
+
+            self.from_factory[factory_id][article_id] += amount

@@ -469,8 +469,8 @@ def test_materials_find_redundancy(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('user_name, run_version_id', [
-    # ('gaolious', 19),  # 약 1분정도 남은 상태.
-    ('gaolious', 6),  # 가능 상태
+    # ('gaolious1', 2),  # 약 1분정도 남은 상태.
+    ('gaolious', 34),  # 가능 상태
 ])
 def test_prepare_contract(
         multidb,
@@ -499,8 +499,8 @@ def test_prepare_contract(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('user_name, run_version_id', [
-    # ('gaolious', 19),  # 약 1분정도 남은 상태.
-    ('gaolious', 9),  # 가능 상태
+    ('gaolious1', 2),  # 약 1분정도 남은 상태.
+    # ('gaolious', 34),  # 가능 상태
 ])
 def test_factory_order_product(
         multidb,

@@ -289,25 +289,29 @@ def ts_dump_contract(version: RunVersion) -> List[str]:
     now = get_curr_server_datetime(version=version)
 
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
-        ret.append(f''' contract_list : {contract_list.contract_list_id} : ''')
-        ret.append(f''' available : {contract_list.available_to} | remain : {get_remain_time(version=version, finish_at=contract_list.available_to)}''')
-        ret.append(f''' next_replace_at : {contract_list.next_replace_at} | remain : {get_remain_time(version=version, finish_at=contract_list.next_replace_at)}''')
-        ret.append(f''' next_video_replace_at : {contract_list.next_video_replace_at} | remain : {get_remain_time(version=version, finish_at=contract_list.next_video_replace_at)}''')
-        ret.append(f''' next_video_rent_at : {contract_list.next_video_rent_at} | remain : {get_remain_time(version=version, finish_at=contract_list.next_video_rent_at)}''')
-        ret.append(f''' next_video_speed_up_at : {contract_list.next_video_speed_up_at} | remain : {get_remain_time(version=version, finish_at=contract_list.next_video_speed_up_at)}''')
+        available_to = get_remain_time(version=version, finish_at=contract_list.available_to)
+        next_replace_at = get_remain_time(version=version, finish_at=contract_list.next_replace_at)
+        next_video_replace_at = get_remain_time(version=version, finish_at=contract_list.next_video_replace_at)
+        next_video_rent_at = get_remain_time(version=version, finish_at=contract_list.next_video_rent_at)
+        next_video_speed_up_at = get_remain_time(version=version, finish_at=contract_list.next_video_speed_up_at)
+        expires_at = get_remain_time(version=version, finish_at=contract_list.expires_at)
+
+        ret.append(f'''# Contract List ID #{contract_list.contract_list_id}''')
+        ret.append(f'''   Available : {available_to} | Expires At: {expires_at} | Next Replace : {next_replace_at}''')
+        ret.append(f'''   Video : Replace : {next_video_replace_at} | Rent At: {next_video_rent_at} | SpeedUp At: {next_video_speed_up_at}''')
 
         for contract in PlayerContract.objects.filter(contract_list_id=contract_list.id).all():
             reward_dict = contract.reward_to_article_dict
             reward_articles = {o.id: o for o in TSArticle.objects.filter(id__in=reward_dict.keys()).all()}
             str_reward = [
-                f'''[{article_id}|{reward_articles[article_id].name}:{article_amount}]'''
+                f'''[{article_id}|{reward_articles[article_id].name[:10]}:{article_amount}]'''
                 for article_id, article_amount in reward_dict.items()
             ]
 
             condition_dict = contract.conditions_to_article_dict
             condition_articles = {o.id: o for o in TSArticle.objects.filter(id__in=condition_dict.keys()).all()}
             str_condition = [
-                f'''[{article_id}|{condition_articles[article_id].name}:{article_amount}]'''
+                f'''[{article_id}|{condition_articles[article_id].name[:10]}:{article_amount}]'''
                 for article_id, article_amount in condition_dict.items()
             ]
 
@@ -315,7 +319,11 @@ def ts_dump_contract(version: RunVersion) -> List[str]:
                 msg = '가능'
             else:
                 msg = '대기'
-            ret.append(f'''   Slot : {contract.slot:2d} | {msg} / 필요: {' '.join(str_condition):20s} / 보상: {' '.join(str_reward):20s} | remain : {get_remain_time(version=version, finish_at=contract.usable_from)}''')
+            usable_from = get_remain_time(version=version, finish_at=contract.usable_from)
+            expires_at = get_remain_time(version=version, finish_at=contract.expires_at)
+            available_from = get_remain_time(version=version, finish_at=contract.available_from)
+            available_to = get_remain_time(version=version, finish_at=contract.available_to)
+            ret.append(f'''   Slot : {contract.slot:2d} | {msg} / 필요: {' '.join(str_condition):24s} / 보상: {' '.join(str_reward):24s} | usable_from : {usable_from} | expires_at : {expires_at} | available:[{available_from} ~ {available_to}]''')
             # ret.append(f'''   usable_from : {contract.usable_from} | remain : {get_remain_time(version=version, finish_at=contract.usable_from)}''')
             # ret.append(f'''   available_from : {contract.available_from} | remain : {get_remain_time(version=version, finish_at=contract.available_from)}''')
             # ret.append(f'''   available_to : {contract.available_to} | remain : {get_remain_time(version=version, finish_at=contract.available_to)}''')

@@ -472,7 +472,7 @@ def Player_destination_set_used(version: RunVersion, dest: PlayerDestination):
 ###########################################################################
 def contract_set_used(version: RunVersion, contract: PlayerContract):
     if contract:
-        contract.expires_at = version.init_server_1 + timedelta(hours=-1)
+        contract.expires_at = version.init_server_1 + timedelta(hours=-24)
         contract.save(update_fields=[
             'expires_at',
         ])
@@ -480,7 +480,7 @@ def contract_set_used(version: RunVersion, contract: PlayerContract):
 
 def contract_set_active(version: RunVersion, contract: PlayerContract):
     if contract:
-        contract.expires_at = contract.available_to
+        contract.expires_at = version.now + timedelta(hours=10)
         contract.save(update_fields=[
             'expires_at',
         ])
@@ -1043,6 +1043,18 @@ def warehouse_used_capacity(version: RunVersion):
     data_list = list(queryset.filter(article__type__in=[2, 3]).values_list('amount', flat=True))
     capacity = sum(data_list) if data_list else 0
     return capacity
+
+
+def warehouse_avg_count(version: RunVersion, warehouse_countable_articles=None, warehouse_capacity=None) -> int:
+
+    if warehouse_capacity is None:
+        warehouse_capacity = warehouse_max_capacity(version=version)
+
+    if warehouse_countable_articles is None:
+        warehouse_countable_articles = warehouse_countable(version=version, basic=True, event=False, union=False)
+
+    avg_amount = int(warehouse_capacity / len(warehouse_countable_articles) * 0.7)
+    return avg_amount
 
 
 def warehouse_countable(version: RunVersion, basic: bool, event: bool, union: bool) -> Dict[int, Tuple[TSArticle, int]]:

@@ -39,7 +39,17 @@ def get_curr_server_str_datetime_us(version: RunVersion) -> str:
     return get_curr_server_datetime(version=version).isoformat(sep='T', timespec='microseconds').replace('+00:00', 'Z')
 
 
-def get_remain_time(version: RunVersion, finish_at: datetime) -> timedelta:
+def get_remain_time(version: RunVersion, finish_at: datetime) -> str:
     if finish_at:
-        now = get_curr_server_datetime(version=version)
-        return finish_at - now
+        remain = int((finish_at - version.now).total_seconds())
+        flag = ' '
+        if remain < 0:
+            remain = -remain
+            flag = '-'
+
+        hours, rem = divmod(remain, 3600)
+        minutes, seconds = divmod(rem, 60)
+        if hours > 99:
+            hours, minutes, seconds = 99, 99, 99
+        return f'''{flag}{hours:02d}:{minutes:02d}:{seconds:02d}'''
+    return ' --:--:--'

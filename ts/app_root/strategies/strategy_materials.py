@@ -1,16 +1,16 @@
 import math
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 from app_root.players.models import PlayerContract
-from app_root.servers.models import RunVersion, TSDestination
+from app_root.servers.models import RunVersion, TSDestination, TSProduct
 from app_root.strategies.commands import ContractActivateCommand, ContractAcceptCommand, send_commands, \
     TrainSendToDestinationCommand, FactoryCollectProductCommand, FactoryOrderProductCommand
-from app_root.strategies.data_types import Material, FactoryStrategy, ArticleSource
+from app_root.strategies.data_types import Material, FactoryStrategy, ArticleSource, MaterialStrategy
 from app_root.strategies.managers import ship_find_iter, factory_find_player_factory, \
     factory_find_destination_and_factory_only_products, factory_find_product_orders, warehouse_countable, \
     article_find_contract, article_find_product, article_find_destination, warehouse_max_capacity, \
     trains_loads_amount_article_id, warehouse_get_amount, get_number_of_working_dispatchers, trains_find, \
-    warehouse_used_capacity
+    warehouse_used_capacity, warehouse_avg_count
 
 
 def get_ship_materials(version: RunVersion) -> Material:
@@ -141,10 +141,7 @@ def command_collect_factory_product_redundancy(version: RunVersion, factory_stra
     :param article_source:
     :return:
     """
-    warehouse_capacity = warehouse_max_capacity(version=version)
-    warehouse_countable_articles = warehouse_countable(version=version, basic=True, event=False, union=False)
-
-    avg_amount = warehouse_capacity // len(warehouse_countable_articles)
+    avg_amount = warehouse_avg_count(version=version)
 
     for factory_id, strategy in factory_strategy_dict.items():
         completed, processing, waiting = factory_find_product_orders(
@@ -167,7 +164,7 @@ def command_collect_factory_product_redundancy(version: RunVersion, factory_stra
                 print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Warehouse[{warehouse_amount} | In Factory[{cnt}*{product.article_amount}] Try Collect")
                 material = Material()
                 material.add_dict(product.conditions_to_article_dict)
-                command_collect_from_factory(
+                command_collect_factory_if_possible(
                     version=version,
                     required_article_id=article_id,
                     required_amount=avg_amount - product_amount,
@@ -230,10 +227,9 @@ def command_factory_strategy(version: RunVersion, factory_strategy_dict: Dict[in
 def get_destination_materials(version: RunVersion) -> Material:
     material = Material()
 
-    warehouse_capacity = warehouse_max_capacity(version=version)
     warehouse_countable_articles = warehouse_countable(version=version, basic=True, event=False, union=False)
 
-    avg_amount = int(warehouse_capacity / len(warehouse_countable_articles) * 0.8)
+    avg_amount = warehouse_avg_count(version=version, warehouse_countable_articles=warehouse_countable_articles)
 
     for article_id, (article, has_amount) in warehouse_countable_articles.items():
 
@@ -260,11 +256,12 @@ def check_all_has_in_warehouse(version: RunVersion, requires: Material) -> bool:
     return True
 
 
-def command_accept_contract(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
+def command_collect_contract_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
     # 계약서 사용 가능하면
     source = article_source[required_article_id]
 
     for contract in source.contracts:
+        contract.refresh_from_db()
         warehouse_amount = warehouse_get_amount(version=version, article_id=required_article_id)
         if required_amount <= warehouse_amount:
             print(f"    - #{required_article_id} : required:{required_amount} <= {warehouse_amount} | PASS")
@@ -276,14 +273,14 @@ def command_accept_contract(version: RunVersion, required_article_id: int, requi
         contract_materials = Material()
         contract_materials.add_dict(contract.conditions_to_article_dict)
         # 계약서 재료를 수집 시도 해보고,
-        command_collect_materials(version=version, requires=contract_materials, article_source=article_source)
+        command_collect_materials_if_possible(version=version, requires=contract_materials, article_source=article_source)
 
         # 계약서 재료가 없으면 pass
         if not check_all_has_in_warehouse(version=version, requires=contract_materials):
             continue
 
         cmd_list = []
-        if not contract.expires_at:
+        if contract.expires_at is None:
             cmd = ContractActivateCommand(version=version, contract=contract)
             cmd_list.append(cmd)
 
@@ -293,7 +290,7 @@ def command_accept_contract(version: RunVersion, required_article_id: int, requi
         send_commands(cmd_list)
 
 
-def command_send_destination(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
+def command_collect_destination_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
 
     normal_workers, union_workers = get_number_of_working_dispatchers(version=version)
     source = article_source[required_article_id]
@@ -330,7 +327,7 @@ def command_send_destination(version: RunVersion, required_article_id: int, requ
             normal_workers += 1
 
 
-def command_collect_from_factory(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
+def command_collect_factory_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
     source = article_source[required_article_id]
 
     if source.destinations:
@@ -357,7 +354,7 @@ def command_collect_from_factory(version: RunVersion, required_article_id: int, 
             send_commands(cmd)
 
 
-def command_collect_materials(version: RunVersion, requires: Material, article_source: Dict[int, ArticleSource]):
+def command_collect_materials_if_possible(version: RunVersion, requires: Material, article_source: Dict[int, ArticleSource]):
     """
     필요한 재료만큼 수집
 
@@ -368,9 +365,121 @@ def command_collect_materials(version: RunVersion, requires: Material, article_s
     """
     for required_article_id, required_amount in requires.items():
 
-        command_accept_contract(version=version, required_article_id=required_article_id, required_amount=required_amount, article_source=article_source)
+        command_collect_contract_if_possible(version=version, required_article_id=required_article_id, required_amount=required_amount, article_source=article_source)
 
-        command_send_destination(version=version, required_article_id=required_article_id, required_amount=required_amount, article_source=article_source)
+        command_collect_destination_if_possible(version=version, required_article_id=required_article_id, required_amount=required_amount, article_source=article_source)
 
-        command_collect_from_factory(version=version, required_article_id=required_article_id, required_amount=required_amount, article_source=article_source)
+        command_collect_factory_if_possible(version=version, required_article_id=required_article_id, required_amount=required_amount, article_source=article_source)
 
+
+def expand_condition_materials_to_material_strategy(version: RunVersion, requires: Material, article_source: Dict[int, ArticleSource]) -> Tuple[bool, MaterialStrategy]:
+    """
+        필요한 재료 material 에 대해
+
+        창고 수량을 체크하여, 추가 필요분 체크.
+
+    :param version:
+    :param requires:
+    :param article_source:
+    :return:
+    """
+    warehouse_count = warehouse_countable(version=version, basic=True, event=False, union=True)
+    strategy = MaterialStrategy()
+
+    ret = True
+    queue = [(a, b) for a, b in requires.items()]
+    add_minus_warehouse = {}
+    add_minus_product = {}
+
+    print('# [Expand Material Condition]')
+    print('--------------------------------------------------------------------------------')
+    while queue:
+        required_article_id, required_article_amount = queue[0]
+        del queue[0]
+
+        if required_article_id not in add_minus_warehouse:
+            add_minus_warehouse.update({required_article_id: 0})
+
+        if required_article_id not in add_minus_product:
+            add_minus_product.update({required_article_id: 0})
+
+        source = article_source.get(required_article_id)
+        warehouse = warehouse_count.get(required_article_id)
+
+        if not source:
+            ret = False
+            break
+
+        article = source.article
+        warehouse_amount = warehouse[1] if warehouse else 0
+        before_used = add_minus_warehouse.get(required_article_id, 0)
+
+        need_amount = required_article_amount - (warehouse_amount + before_used)
+
+        print(f"Required : #{article.id}|{article.name[:10]} / Amount={required_article_amount} | warehouse={warehouse_amount} | Before Used={before_used} | Need={need_amount}")
+
+        arr = [
+            f'#{article_source[pk].article.id}[{article_source[pk].article.name[:10]}] Used:{amount}' for pk, amount in add_minus_warehouse.items()
+        ]
+        for s in arr:
+            print(f' => {s}')
+
+        if need_amount < 0:
+            print(f"   - Enough in warehouse - PASS")
+            add_minus_warehouse[required_article_id] -= required_article_amount
+            continue
+
+        if source.contracts:
+            contract_sum = 0
+            for contract in source.contracts:
+                if contract_sum >= need_amount:
+                    break
+
+                for pk, amount in contract.conditions_to_article_dict.items():
+                    print(f"   - from Contract To get {amount} - Need article_id=#{pk} / amount={amount}")
+                    queue.append((pk, amount))
+                    contract_sum += amount
+
+        elif source.destinations:
+            train_loads_amount = trains_loads_amount_article_id(version=version, article_id=required_article_id)
+            need_amount -= train_loads_amount
+            if need_amount > 0:
+                destination: TSDestination = source.destinations[0]
+                strategy.add_destination(destination=destination, amount=need_amount - train_loads_amount)
+            print(f"   - from Destination - PASS")
+
+            add_minus_warehouse[required_article_id] -= required_article_amount
+
+        elif source.products:
+            product: TSProduct = source.products[0]
+
+            completed, processing, waiting = factory_find_product_orders(
+                version=version,
+                factory_id=int(product.factory_id),
+                article_id=required_article_id
+            )
+            num_in_slot = len(completed) + len(processing) + len(waiting)
+            factory_amount = num_in_slot * product.article_amount + add_minus_product[required_article_id]
+
+            if factory_amount >= need_amount:
+                # warehouse 100 / product 에 80 짜리 1개 있음.
+                strategy.add_product(product=product, amount=need_amount)
+                add_minus_product[required_article_id] -= required_article_amount
+                print(f"   - from Factory used {required_article_amount}")
+            else:
+                need_count = math.ceil((need_amount - factory_amount) / product.article_amount)
+                add_minus_warehouse[required_article_id] += product.article_amount * need_count
+                print(f"   - from Factory need {need_count} products")
+                for pk, amount in product.conditions_to_article_dict.items():
+                    queue.append((pk, amount * need_count))
+
+    print('# [Expand Material Condition] - Result')
+    print('--------------------------------------------------------------------------------')
+    for factory_id, article_list in strategy.from_factory.items():
+        for article_id, amount in article_list.items():
+            print(f" Factory[{factory_id:3d}] : article[{article_id}] = {amount}")
+
+    for destination_id, amount in strategy.from_destination.items():
+        print(f" Destination[{destination_id:3d}] = {amount}")
+
+    return ret, strategy
