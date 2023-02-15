@@ -273,7 +273,19 @@ class Strategy(object):
 
         next_dt = self._command_union_job()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
-
+        """
+            Queue 형태
+            
+            Factory[ 1 ~ 6 ] - need product list
+            destination [ 1 ~ 6 ] - need article list 
+            
+            step 1. union Quest.
+                - contract material - required.
+                    - short? add to factory, destination
+                        - loop. in factory - required material & available to add
+                            - add to factory, destination, ...
+            step 2. 
+        """
         self.ship_material = get_ship_materials(version=self.version)
         self.dump_material(title='Step 0. Ship 재료 (Pass)', material=self.ship_material)
 

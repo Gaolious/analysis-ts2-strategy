@@ -390,14 +390,7 @@ def command_collect_factory_if_possible(version: RunVersion, required_article_id
 
             print(f"    - Factory: {product.factory} | Try Collect Item Index={order.index} | required amount={required_amount} > warehouse={warehouse_amount}")
             order.refresh_from_db()
-
-            material = Material()
-            material.add_dict(product.conditions_to_article_dict)
-
-            if check_all_has_in_warehouse(version=version, requires=material):
-                print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Try Order")
-                cmd = FactoryOrderProductCommand(version=version, product=product)
-                send_commands(cmd)
+            command_order_product_in_factory(version=version, product=product, count=1)
 
             cmd = FactoryCollectProductCommand(version=version, order=order)
             send_commands(cmd)
