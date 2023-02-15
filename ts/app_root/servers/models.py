@@ -303,7 +303,7 @@ class TSArticle(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
         verbose_name_plural = 'Articles'
 
     def __str__(self):
-        return f'[{self.sprite}/{self.get_content_category_display()}]'  #/type:{self.type}/event:{self.event}]'
+        return f'#{self.id}/{self.name}'  #/type:{self.type}/event:{self.event}]'
 
     @cached_property
     def name(self):

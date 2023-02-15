@@ -222,6 +222,7 @@ def command_send_destination(version: RunVersion, destination: TSDestination, am
     used = warehouse_used_capacity(version=version)
     max_capacity = warehouse_max_capacity(version=version)
     train_loads_amount = trains_loads_amount_article_id(version=version, article_id=required_article_id)
+    amount -= train_loads_amount
 
     for train in possible_train:
         if normal_workers >= version.dispatchers + 2:
@@ -232,7 +233,7 @@ def command_send_destination(version: RunVersion, destination: TSDestination, am
             print(
                 f"    - Dest Location ID #{destination.location_id} / Train[{train.capacity()}] + used Warehouse[{used}] > max Warehouse[{max_capacity}] | PASS")
             break
-        if send_amount + train_loads_amount >= amount:
+        if send_amount >= amount:
             break
 
         cmd = TrainSendToDestinationCommand(
@@ -514,10 +515,13 @@ def material_strategy_add_queue(
         requires: Material,
         article_source: Dict[int, ArticleSource],
         strategy: MaterialStrategy,
+        warehouse_count: Dict[int, Tuple[TSArticle, int]],
+        depth: int = 1
 ):
+    ret = []
+
     for required_article_id, required_article_amount in requires.items():
         source = article_source.get(required_article_id)
-
         if source.contracts:
             s = 0
             for contract in source.contracts:
@@ -525,46 +529,76 @@ def material_strategy_add_queue(
                 amount = sum([v for k, v in contract.reward_to_article_dict.items() if k == required_article_id])
                 s += amount
                 strategy.push_contract(contract)
+                ret.append(f'''{'  ' * depth} - Required:[{source.article}] - Contract Slot[{contract.slot}][{amount} 개]''')
 
         elif source.destinations:
-            strategy.push_destination(source.destinations[0], required_article_amount)
+            warehouse_amount = 0
+            wc = warehouse_count.get(required_article_id)
+            if wc:
+                warehouse_amount = wc[1]
+
+            remain_warehouse_amount = warehouse_amount - strategy.get_used_warehouse(required_article_id)
+            used_warehouse_amount = min(required_article_amount, remain_warehouse_amount)
+            strategy.add_used_warehouse(article_id=required_article_id, amount=used_warehouse_amount)
+            required_article_amount -= used_warehouse_amount
+
+            if required_article_amount > 0:
+                ret.append(f'''{'  ' * depth} - Required:[{source.article}] - Destination[{source.destinations[0].id}][{required_article_amount} 개]''')
+                strategy.push_destination(source.destinations[0], required_article_amount)
 
         elif source.products:
+            ret.append(f'''{'  ' * depth} - Required:[{source.article}] - Product[{required_article_amount} 개]''')
             strategy.push_factory(source.products[0], required_article_amount)
+
+    print(f'''{'  ' * depth}# material_strategy_add_queue''')
+    print('\n'.join(ret))
 
 
 def material_strategy_contract(
         version: RunVersion,
         article_source: Dict[int, ArticleSource],
         strategy: MaterialStrategy,
-        warehouse_count: Dict[int, Tuple[TSArticle, int]]
+        warehouse_count: Dict[int, Tuple[TSArticle, int]],
+        depth: int = 1
 ):
     while not strategy.empty_contract():
         contract = strategy.pop_contract()
 
         material = Material()
         material.add_dict(contract.conditions_to_article_dict)
+        required_material_name = []
 
         all_satisfied = True
         for required_article_id, required_article_amount in material.items():
             warehouse_amount = 0
             ret = warehouse_count.get(required_article_id)
+            article = None
             if ret:
+                article = ret[0]
                 warehouse_amount = ret[1]
-
+            if article:
+                required_material_name.append(
+                    f'[{article}:{required_article_amount}개]'
+                )
             if warehouse_amount < required_article_amount + strategy.get_used_warehouse(required_article_id):
                 all_satisfied = False
                 break
 
         if all_satisfied:
+            print(f'''{'  ' * depth} - Check Contract Slot[{contract.slot}] (Require:{'|'.join(required_material_name)}) - You Can collect''')
             strategy.add_collectable_contract(contract)
         else:
+            print(f'''{'  ' * depth} - Check Contract Slot[{contract.slot}] (Require:{'|'.join(required_material_name)}) - Not Enough''')
+
             material_strategy_add_queue(
                 version=version,
                 requires=material,
                 article_source=article_source,
-                strategy=strategy
+                strategy=strategy,
+                warehouse_count=warehouse_count,
+                depth=depth+1,
             )
+
 
 def material_strategy_factory(
         version: RunVersion,
@@ -654,7 +688,13 @@ def material_strategy_factory(
                     # product#13의 부품 * 2배.
                     material.add(article_id=k, amount=v * cnt)
 
-        material_strategy_add_queue(version=version, requires=material, article_source=article_source, strategy=strategy)
+        material_strategy_add_queue(
+            version=version,
+            requires=material,
+            article_source=article_source,
+            strategy=strategy,
+            warehouse_count=warehouse_count
+        )
 
 
 def expand_material_strategy(
@@ -679,8 +719,7 @@ def expand_material_strategy(
     print('# [Expand Material Condition]')
     print('--------------------------------------------------------------------------------')
 
-
-    material_strategy_add_queue(version=version, requires=requires, article_source=article_source, strategy=strategy)
+    material_strategy_add_queue(version=version, requires=requires, article_source=article_source, strategy=strategy, warehouse_count=warehouse_count)
 
     # Step 1. Contracts.
     material_strategy_contract(version=version, article_source=article_source, strategy=strategy, warehouse_count=warehouse_count)
