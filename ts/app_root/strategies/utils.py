@@ -296,7 +296,7 @@ class Strategy(object):
         for instance in self.union_job_dispatching_priority:
             article_id = int(instance.job.required_article_id)
             article_amount = int(instance.amount)
-            self.job_material.add(article_id=article_id, amount=int(article_amount*2))
+            self.job_material.add(article_id=article_id, amount=int(article_amount))
 
         self.dump_material(title="Step 1. Union Quest 재료", material=self.job_material)
         strategy = MaterialStrategy()
@@ -315,11 +315,11 @@ class Strategy(object):
             strategy=strategy
         )
 
-        command_collect_materials_if_possible(
-            version=self.version,
-            requires=self.job_material,
-            article_source=self.article_source
-        )
+        # command_collect_materials_if_possible(
+        #     version=self.version,
+        #     requires=self.job_material,
+        #     article_source=self.article_source
+        # )
 
         # Step 2. Destination 여분 재료 채우기
         self.destination_material = get_destination_materials(version=self.version)

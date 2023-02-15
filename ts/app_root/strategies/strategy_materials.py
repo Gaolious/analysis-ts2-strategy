@@ -221,17 +221,19 @@ def command_send_destination(version: RunVersion, destination: TSDestination, am
 
     used = warehouse_used_capacity(version=version)
     max_capacity = warehouse_max_capacity(version=version)
+    train_loads_amount = trains_loads_amount_article_id(version=version, article_id=required_article_id)
 
     for train in possible_train:
         if normal_workers >= version.dispatchers + 2:
             print(
                 f"    - Dest Location ID #{destination.location_id} / Dispatcher Working:{normal_workers} >= {version.dispatchers + 2} | PASS")
-            return
-
+            break
         if used + train.capacity() + send_amount > max_capacity:
             print(
                 f"    - Dest Location ID #{destination.location_id} / Train[{train.capacity()}] + used Warehouse[{used}] > max Warehouse[{max_capacity}] | PASS")
-            continue
+            break
+        if send_amount + train_loads_amount >= amount:
+            break
 
         cmd = TrainSendToDestinationCommand(
             version=version,
@@ -334,6 +336,34 @@ def check_all_has_in_warehouse(version: RunVersion, requires: Material) -> bool:
     return True
 
 
+def command_collect_contract(version: RunVersion, contract: PlayerContract):
+    # 계약서 사용 가능하면
+    contract.refresh_from_db()
+
+    if not contract.is_available(version.now):
+        print(f"    - Contract Slot : {contract.slot} Not Available | PASS")
+        return
+
+    if contract.expires_at is None:
+        cmd = ContractActivateCommand(version=version, contract=contract)
+        send_commands([cmd])
+
+    contract.refresh_from_db()
+    if contract.expires_at is None:
+        return
+
+    contract_materials = Material()
+    contract_materials.add_dict(contract.conditions_to_article_dict)
+
+    # 계약서 재료가 없으면 pass
+    if not check_all_has_in_warehouse(version=version, requires=contract_materials):
+        print(f"    - Contract Slot : {contract.slot} Not enough material | PASS")
+        return
+
+    cmd = ContractAcceptCommand(version=version, contract=contract)
+    send_commands([cmd])
+
+
 def command_collect_contract_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
     # 계약서 사용 가능하면
     source = article_source[required_article_id]
@@ -351,7 +381,6 @@ def command_collect_contract_if_possible(version: RunVersion, required_article_i
         contract.refresh_from_db()
         if contract.expires_at is None:
             continue
-
 
         warehouse_amount = warehouse_get_amount(version=version, article_id=required_article_id)
         if required_amount <= warehouse_amount:
@@ -537,7 +566,6 @@ def material_strategy_contract(
                 strategy=strategy
             )
 
-
 def material_strategy_factory(
         version: RunVersion,
         article_source: Dict[int, ArticleSource],
@@ -682,3 +710,6 @@ def command_material_strategy(
         for product, amount in strategy.factory_collectable[factory_id]:
             cnt = math.ceil(amount / product.article_amount)
             command_collect_factory(version=version, product=product, count=cnt)
+
+    for contract in strategy.contract_collectable:
+        command_collect_contract(version=version, contract=contract)
