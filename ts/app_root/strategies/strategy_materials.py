@@ -210,6 +210,41 @@ def command_order_product_in_factory(version: RunVersion, product: TSProduct, co
     return False
 
 
+def command_send_destination(version: RunVersion, destination: TSDestination, amount: int):
+    normal_workers, union_workers = get_number_of_working_dispatchers(version=version)
+    required_article_id = int(destination.article_id)
+
+    possible_train = list(trains_find(version=version, **destination.requirements_to_dict, is_idle=True))
+    possible_train.sort(key=lambda x: x.capacity(), reverse=True)
+
+    send_amount = 0
+
+    used = warehouse_used_capacity(version=version)
+    max_capacity = warehouse_max_capacity(version=version)
+
+    for train in possible_train:
+        if normal_workers >= version.dispatchers + 2:
+            print(
+                f"    - Dest Location ID #{destination.location_id} / Dispatcher Working:{normal_workers} >= {version.dispatchers + 2} | PASS")
+            return
+
+        if used + train.capacity() + send_amount > max_capacity:
+            print(
+                f"    - Dest Location ID #{destination.location_id} / Train[{train.capacity()}] + used Warehouse[{used}] > max Warehouse[{max_capacity}] | PASS")
+            continue
+
+        cmd = TrainSendToDestinationCommand(
+            version=version,
+            train=train,
+            dest=destination,
+            article_id=required_article_id,
+            amount=train.capacity(),
+        )
+        send_commands(cmd)
+        send_amount += train.capacity()
+        normal_workers += 1
+
+
 def command_factory_strategy(version: RunVersion, factory_strategy_dict: Dict[int, FactoryStrategy], article_source: Dict[int, ArticleSource]):
     """
         계획된 개수만큼 Factory를 채운다.
@@ -397,6 +432,7 @@ def command_collect_factory(version: RunVersion, product: TSProduct, count: int)
 
         cmd = FactoryCollectProductCommand(version=version, order=order)
         send_commands(cmd)
+
 
 def command_collect_factory_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
     source = article_source[required_article_id]
@@ -624,3 +660,25 @@ def expand_material_strategy(
     # Step 2. material_strategy_factory
     material_strategy_factory(version=version, article_source=article_source, strategy=strategy, warehouse_count=warehouse_count)
 
+
+def command_material_strategy(
+        version: RunVersion,
+        strategy: MaterialStrategy,
+):
+
+    for destination, amount in strategy.destination_queue:
+        article_id = int(destination.article_id)
+        train_loads_amount = trains_loads_amount_article_id(version=version, article_id=article_id)
+        amount -= train_loads_amount
+        if amount > 0:
+            command_send_destination(version=version, destination=destination, amount=amount)
+
+    for factory_id in strategy.factory_uncollectable:
+        for product, amount in strategy.factory_uncollectable[factory_id]:
+            cnt = math.ceil(amount / product.article_amount)
+            command_order_product_in_factory(version=version, product=product, count=cnt)
+
+    for factory_id in strategy.factory_collectable:
+        for product, amount in strategy.factory_collectable[factory_id]:
+            cnt = math.ceil(amount / product.article_amount)
+            command_collect_factory(version=version, product=product, count=cnt)

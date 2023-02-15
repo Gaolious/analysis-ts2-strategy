@@ -23,7 +23,8 @@ from app_root.strategies.managers import jobs_find, trains_find, \
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
     get_destination_materials, get_factory_materials, command_collect_materials_if_possible, \
-    command_collect_factory_product_redundancy, command_factory_strategy, expand_material_strategy
+    command_collect_factory_product_redundancy, command_factory_strategy, expand_material_strategy, \
+    command_material_strategy
 from app_root.strategies.strategy_union_quest import strategy_dispatching_gold_destinations, dispatching_job
 from app_root.utils import get_curr_server_datetime
 
@@ -298,16 +299,21 @@ class Strategy(object):
             self.job_material.add(article_id=article_id, amount=int(article_amount*2))
 
         self.dump_material(title="Step 1. Union Quest 재료", material=self.job_material)
-        # strategy = MaterialStrategy()
-        # expand_material_strategy(
-        #     version=self.version,
-        #     requires=self.job_material,
-        #     article_source=self.article_source,
-        #     strategy=strategy,
-        # )
+        strategy = MaterialStrategy()
+        expand_material_strategy(
+            version=self.version,
+            requires=self.job_material,
+            article_source=self.article_source,
+            strategy=strategy,
+        )
         # 다음 재료 수집.
         # factory 별 생산해야 하는 것 리스트.
         # destination order별 보내기.
+
+        command_material_strategy(
+            version=self.version,
+            strategy=strategy
+        )
 
         command_collect_materials_if_possible(
             version=self.version,
@@ -345,7 +351,6 @@ class Strategy(object):
             factory_strategy_dict=self.factory_strategy,
             article_source=self.article_source
         )
-
 
         return ret
 
