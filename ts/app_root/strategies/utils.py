@@ -13,7 +13,7 @@ from app_root.strategies.commands import HeartBeat, StartGame, \
     TrainSendToDestinationCommand, ContractAcceptCommand, \
     FactoryCollectProductCommand, ContractActivateCommand, send_commands
 from app_root.strategies.data_types import JobPriority, ArticleSource, Material, \
-    FactoryStrategy
+    FactoryStrategy, MaterialStrategy
 from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, \
     update_next_event_time, warehouse_max_capacity, jobs_find_priority, \
@@ -23,7 +23,7 @@ from app_root.strategies.managers import jobs_find, trains_find, \
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
     get_destination_materials, get_factory_materials, command_collect_materials_if_possible, \
-    command_collect_factory_product_redundancy, command_factory_strategy, expand_condition_materials_to_material_strategy
+    command_collect_factory_product_redundancy, command_factory_strategy, expand_material_strategy
 from app_root.strategies.strategy_union_quest import strategy_dispatching_gold_destinations, dispatching_job
 from app_root.utils import get_curr_server_datetime
 
@@ -285,14 +285,25 @@ class Strategy(object):
             self.job_material.add(article_id=article_id, amount=int(article_amount*2))
 
         self.dump_material(title="Step 1. Union Quest 재료", material=self.job_material)
-        expand_condition_materials_to_material_strategy(
+        strategy = MaterialStrategy()
+        # expand_material_strategy(
+        #     version=self.version,
+        #     requires=self.job_material,
+        #     article_source=self.article_source,
+        #     strategy=strategy,
+        # )
+        command_collect_materials_if_possible(
             version=self.version,
             requires=self.job_material,
             article_source=self.article_source
         )
+
+        # Step 2. Destination 여분 재료 채우기
+        self.destination_material = get_destination_materials(version=self.version)
+        self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
         command_collect_materials_if_possible(
             version=self.version,
-            requires=self.job_material,
+            requires=self.destination_material,
             article_source=self.article_source
         )
 
@@ -303,7 +314,6 @@ class Strategy(object):
             factory_strategy_dict=self.factory_strategy,
             article_source=self.article_source
         )
-        return
 
         # Step 2. Factory 여분 재료 채우기
         self.factory_material = get_factory_materials(version=self.version, factory_strategy_dict=self.factory_strategy)
@@ -319,14 +329,6 @@ class Strategy(object):
             article_source=self.article_source
         )
 
-        # Step 2. Destination 여분 재료 채우기
-        self.destination_material = get_destination_materials(version=self.version)
-        self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
-        command_collect_materials_if_possible(
-            version=self.version,
-            requires=self.destination_material,
-            article_source=self.article_source
-        )
 
         return ret
 
@@ -343,6 +345,7 @@ class Strategy(object):
                 self.on_queued_status()
                 self.version.set_processing(save=True, update_fields=[])
 
+            # build_possible_location(version=self.version)
             self.article_source = build_article_sources(version=self.version)
             self.factory_strategy = build_factory_strategy(version=self.version)
             self.dump_factory_strategies()

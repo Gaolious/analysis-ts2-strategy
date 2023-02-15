@@ -1,4 +1,4 @@
-from typing import List, Dict, Type, Optional
+from typing import List, Dict, Type, Optional, Tuple
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerFactory, PlayerContract, PlayerFactoryProductOrder
 from app_root.servers.models import TSDestination, TSArticle, TSProduct
@@ -107,34 +107,30 @@ class FactoryStrategy:
 
 class MaterialStrategy:
 
-    # factory id 별로 생성해야 하는 order list
-    # dict [ factory_id, List[ (article id, article amount) ] ]
-    from_factory: Dict[int, Dict[int, int]]
+    required_articles: List[Tuple[int, int]]
+    cumulate_articles: Dict[int, int]
 
-    # dict[ destination_id, amount
-    from_destination: Dict[int, int]
+    destinations: Dict[int, int]
+
 
     def __init__(self):
-        self.from_factory = {}
-        self.from_destination = {}
+        self.required_articles = []
+        self.cumulate_articles = {}
+        self.destinations = {}
+
+    def required_empty(self):
+        if self.required_articles:
+            return False
+        return True
+
+    def add_required_article(self, article_id: int, amount: int):
+        self.required_articles.append(
+            (article_id, amount)
+        )
+        self.cumulate_articles.setdefault(article_id, 0)
+        self.cumulate_articles[article_id] += amount
 
     def add_destination(self, destination: TSDestination, amount: int):
-        if destination:
+        self.destinations.setdefault(destination.id, 0)
+        self.destinations[destination.id] += amount
 
-            if destination.id not in self.from_destination:
-                self.from_destination.update({destination.id: 0})
-
-            self.from_destination[destination.id] += amount
-
-    def add_product(self, product: TSProduct, amount: int):
-        if product:
-            factory_id = int(product.factory_id)
-            article_id = int(product.article_id)
-
-            if factory_id not in self.from_factory:
-                self.from_factory.update({factory_id: {}})
-
-            if article_id not in self.from_factory[factory_id]:
-                self.from_factory[factory_id].update({article_id: 0})
-
-            self.from_factory[factory_id][article_id] += amount

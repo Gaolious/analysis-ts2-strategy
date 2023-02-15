@@ -580,8 +580,13 @@ class TSJobLocation(BaseModelMixin, TimeStampedMixin):
         verbose_name_plural = 'Job Locations'
 
     def __str__(self):
-        return f'[{self.region}:{self.name_local_key}]'
+        return f'#{self.id} {self.condition_job_locations()}'
 
+    def condition_job_locations(self) -> List[int]:
+        ret = []
+        if self.unlocked_by:
+            ret = json.loads(self.unlocked_by, strict=False)
+        return ret
 
 class TSDestination(BaseModelMixin, TimeStampedMixin):
     """

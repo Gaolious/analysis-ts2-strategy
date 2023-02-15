@@ -7,7 +7,7 @@ from django.conf import settings
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
-    PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder
+    PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory
 from app_root.strategies.data_types import JobPriority
 
@@ -342,6 +342,7 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
     visited_region_list = list(
         PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
     )
+    location_id_set = set(PlayerQuest.objects.filter(version=version).values_list('job_location__location_id', flat=True)) | {150, 151}
 
     queryset = TSDestination.objects.filter(
         region_id__in=visited_region_list,
@@ -354,6 +355,8 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
 
     ret: Dict[int, List[TSDestination]] = {}
     for row in queryset.all():
+        if row.location_id not in location_id_set:
+            continue
         if row.article_id not in ret:
             ret.update({row.article_id: []})
 

@@ -1491,6 +1491,9 @@ class PlayerQuestMixin(BaseVersionMixin):
     class Meta:
         abstract = True
 
+    def __str__(self):
+        return f'''#{self.job_location_id}/{self.milestone}/{self.progress}'''
+
     @classmethod
     def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
         ret = []
