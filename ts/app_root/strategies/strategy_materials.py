@@ -177,32 +177,32 @@ def command_order_product_in_factory(version: RunVersion, product: TSProduct, co
     article_id = int(product.article_id)
     factory_id = int(product.factory_id)
 
-    completed, processing, waiting = factory_find_product_orders(
-        version=version,
-        factory_id=factory_id
-    )
     player_factory = factory_find_player_factory(version=version, factory_id=factory_id)
     if isinstance(player_factory, list):
         player_factory = player_factory[0]
 
-    completed_count = len(completed)
-    waiting_count = len(waiting)
-    processing_count = len(processing)
+    material = Material()
+    material.add_dict(product.conditions_to_article_dict)
 
-    available_slot = player_factory.slot_count - processing_count - waiting_count
-    while available_slot > 0 and count > 0:
-        material = Material()
-        material.add_dict(product.conditions_to_article_dict)
-
-        if check_all_has_in_warehouse(version=version, requires=material):
-            cmd = FactoryOrderProductCommand(version=version, product=product)
-            send_commands(cmd)
-
-            available_slot -= 1
-            count -= 1
-            waiting_count += 1
-        else:
+    for _ in range(count):
+        completed, processing, waiting = factory_find_product_orders(
+            version=version,
+            factory_id=factory_id
+        )
+        completed_count = len(completed)
+        waiting_count = len(waiting)
+        processing_count = len(processing)
+        available_slot = player_factory.slot_count - processing_count - waiting_count
+        print(f"# DEBUG [command_order_product_in_factory] / article={product.article} / factory_id={product.factory_id} / count={count}")
+        print(f"     - completed_count={completed_count} / waiting={waiting_count} / processing_count={processing_count} | slot={player_factory.slot_count} / available_slot={available_slot}")
+        if available_slot < 1:
             break
+
+        if not check_all_has_in_warehouse(version=version, requires=material):
+            break
+
+        cmd = FactoryOrderProductCommand(version=version, product=product)
+        send_commands(cmd)
 
     if count == 0:
         return True
