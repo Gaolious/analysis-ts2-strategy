@@ -255,8 +255,7 @@ def command_factory_strategy(version: RunVersion, factory_strategy_dict: Dict[in
 
             if check_all_has_in_warehouse(version=version, requires=material):
                 print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Try Order")
-                cmd = FactoryOrderProductCommand(version=version, product=product)
-                send_commands(cmd)
+                command_order_product_in_factory(version=version, product=product, count=1)
             else:
                 print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Not Enough Material")
 
