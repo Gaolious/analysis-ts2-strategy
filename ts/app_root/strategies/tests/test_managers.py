@@ -23,8 +23,6 @@ from core.tests.factory import AbstractFakeResp
 from core.utils import convert_datetime, hash10
 
 
-
-
 def prepare(initdata_filepath: Union[List[Path], Path]):
     user = User.objects.create_user(
         username='test', android_id='test', game_access_token='1', player_id='1'
