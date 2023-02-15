@@ -106,31 +106,127 @@ class FactoryStrategy:
 
 
 class MaterialStrategy:
+    warehouse_used: Dict[int, int]
 
-    required_articles: List[Tuple[int, int]]
-    cumulate_articles: Dict[int, int]
+    # contract, amount
+    contract_queue: List[PlayerContract]
+    contract_collectable: List[PlayerContract]
 
-    destinations: Dict[int, int]
+    # factory_id, [ TSProduct, amount ]
+    factory_queue: Dict[int, List[Tuple[TSProduct, int]]]
+    factory_collectable: Dict[int, List[Tuple[TSProduct, int]]]
+    factory_uncollectable: Dict[int, List[Tuple[TSProduct, int]]]
+    factory_prepare: Dict[int, List[Tuple[TSProduct, int]]]
 
+    # destination_id, [TSdestination, amount
+    destination_queue: List[Tuple[TSDestination, int]]
 
     def __init__(self):
-        self.required_articles = []
-        self.cumulate_articles = {}
-        self.destinations = {}
+        self.clear()
 
-    def required_empty(self):
-        if self.required_articles:
+    def clear(self):
+        self.warehouse_used = {}
+
+        self.contract_queue = []
+        self.contract_collectable = []
+
+        self.factory_queue = {}
+        self.factory_collectable = {}
+        self.factory_uncollectable = {}
+        self.factory_prepare = {}
+
+        self.destination_queue = []
+
+    def get_used_warehouse(self, article_id: int) -> int:
+        return self.warehouse_used.get(article_id, 0)
+
+    def add_used_warehouse(self, article_id: int, amount: int):
+        self.warehouse_used.setdefault(article_id, 0)
+        self.warehouse_used[article_id] += amount
+
+    def push_contract(self, contract: PlayerContract):
+        self.contract_queue.append(contract)
+
+    def push_factory(self, product: TSProduct, amount: int):
+        factory_id = int(product.factory_id)
+        if factory_id not in self.factory_queue:
+            self.factory_queue.update({factory_id: []})
+        self.factory_queue[factory_id].append((product, amount))
+
+    def push_destination(self, destination: TSDestination, amount: int):
+        self.destination_queue.append((destination, amount))
+
+    def empty_contract(self) -> bool:
+        if self.contract_queue:
             return False
         return True
 
-    def add_required_article(self, article_id: int, amount: int):
-        self.required_articles.append(
-            (article_id, amount)
-        )
-        self.cumulate_articles.setdefault(article_id, 0)
-        self.cumulate_articles[article_id] += amount
+    def pop_contract(self) -> PlayerContract:
+        ret = self.contract_queue.pop(0)
+        return ret
 
-    def add_destination(self, destination: TSDestination, amount: int):
-        self.destinations.setdefault(destination.id, 0)
-        self.destinations[destination.id] += amount
+    def add_collectable_contract(self, contract: PlayerContract):
+        for k, v in contract.conditions_to_article_dict.items():
+            self.add_used_warehouse(k, v)
 
+        self.contract_collectable.append(contract)
+
+    def all_empty_factory(self) -> bool:
+        for k in self.factory_queue:
+            if self.factory_queue[k]:
+                return False
+        return True
+
+    def empty_factory_queue(self, factory_id: int) -> bool:
+        if self.factory_queue.get(factory_id):
+            return False
+        return True
+
+    def pop_factory(self, factory_id):
+        ret = self.factory_queue[factory_id].pop(0)
+        return ret
+
+    def add_collectable_factory(self, product: TSProduct, amount: int):
+        factory_id = int(product.factory_id)
+        if factory_id not in self.factory_collectable:
+            self.factory_collectable.update({factory_id: []})
+        self.factory_collectable[factory_id].append((product, amount))
+
+    def get_used_collectable_factory(self, product: TSProduct) -> int :
+        factory_id = int(product.factory_id)
+        ret = 0
+        for prod, amount in self.factory_collectable.get(factory_id, []):
+            prod: TSProduct
+            if prod.article_id == product.article_id:
+                ret += amount
+        return ret
+
+    def get_used_uncollectable_factory(self, product: TSProduct) -> int:
+        factory_id = int(product.factory_id)
+        ret = 0
+        for prod, amount in self.factory_uncollectable.get(factory_id, []):
+            prod: TSProduct
+            if prod.article_id == product.article_id:
+                ret += amount
+        return ret
+
+    def add_uncollectable_factory(self, product: TSProduct, amount: int):
+        factory_id = int(product.factory_id)
+        if factory_id not in self.factory_uncollectable:
+            self.factory_uncollectable.update({factory_id: []})
+        self.factory_uncollectable[factory_id].append((product, amount))
+
+    def add_prepare_factory(self, product: TSProduct, amount: int):
+        factory_id = int(product.factory_id)
+        if factory_id not in self.factory_prepare:
+            self.factory_prepare.update({factory_id: []})
+        self.factory_prepare[factory_id].append((product, amount))
+
+    def empty_factory_prepare(self, factory_id: int) -> bool:
+        if self.factory_prepare.get(factory_id):
+            return False
+        return True
+
+    def pop_factory_prepare(self, factory_id: int):
+        ret = self.factory_prepare[factory_id].pop(0)
+        return ret

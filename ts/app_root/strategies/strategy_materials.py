@@ -1,7 +1,8 @@
 import math
 from typing import List, Dict, Tuple
 
-from app_root.players.models import PlayerContract, PlayerQuest, PlayerVisitedRegion, PlayerJob
+from app_root.players.models import PlayerContract, PlayerQuest, PlayerVisitedRegion, PlayerJob, PlayerFactory, \
+    PlayerFactoryProductOrder
 from app_root.servers.models import RunVersion, TSDestination, TSProduct, TSArticle, TSJobLocation
 from app_root.strategies.commands import ContractActivateCommand, ContractAcceptCommand, send_commands, \
     TrainSendToDestinationCommand, FactoryCollectProductCommand, FactoryOrderProductCommand
@@ -236,8 +237,14 @@ def command_factory_strategy(version: RunVersion, factory_strategy_dict: Dict[in
             required_count = strategy.strategy_article_count.get(article_id, 0)
 
             need_more_count = required_count - (processing_count + waiting_count + completed_count)
-            if need_more_count <= 0:
-                print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | PASS")
+
+            if need_more_count < 0:
+                print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Need {need_more_count} | Try Collect")
+                command_collect_factory(version=version, product=product, count=-need_more_count)
+                continue
+
+            if need_more_count == 0:
+                print(f"    - Factory: {product.factory} | Article[#{product.article_id}|{product.article.name}] | Satisfied | PASS")
                 continue
 
             available_slot = player_factory.slot_count - (len(processing) + len(waiting))
@@ -367,6 +374,29 @@ def command_collect_destination_if_possible(version: RunVersion, required_articl
             normal_workers += 1
 
 
+def command_collect_factory(version: RunVersion, product: TSProduct, count: int):
+    factory_id = int(product.factory_id)
+    article_id = int(product.article_id)
+
+    completed, processing, waiting = factory_find_product_orders(version=version, factory_id=factory_id, article_id=article_id)
+
+    cnt = 0
+    for order in completed:
+        if cnt >= count:
+            return
+
+        order: PlayerFactoryProductOrder
+        order.refresh_from_db()
+
+        used = warehouse_used_capacity(version=version)
+        max_capacity = warehouse_max_capacity(version=version)
+
+        if used + order.amount > max_capacity:
+            continue
+
+        cmd = FactoryCollectProductCommand(version=version, order=order)
+        send_commands(cmd)
+
 def command_collect_factory_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
     source = article_source[required_article_id]
 
@@ -413,6 +443,155 @@ def command_collect_materials_if_possible(version: RunVersion, requires: Materia
         command_collect_factory_if_possible(version=version, required_article_id=required_article_id, required_amount=required_amount, article_source=article_source)
 
 
+def material_strategy_add_queue(
+        version: RunVersion,
+        requires: Material,
+        article_source: Dict[int, ArticleSource],
+        strategy: MaterialStrategy,
+):
+    for required_article_id, required_article_amount in requires.items():
+        source = article_source.get(required_article_id)
+
+        if source.contracts:
+            s = 0
+            for contract in source.contracts:
+                if s >= required_article_amount: break
+                amount = sum([v for k, v in contract.reward_to_article_dict.items() if k == required_article_id])
+                s += amount
+                strategy.push_contract(contract)
+
+        elif source.destinations:
+            strategy.push_destination(source.destinations[0], required_article_amount)
+
+        elif source.products:
+            strategy.push_factory(source.products[0], required_article_amount)
+
+
+def material_strategy_contract(
+        version: RunVersion,
+        article_source: Dict[int, ArticleSource],
+        strategy: MaterialStrategy,
+        warehouse_count: Dict[int, Tuple[TSArticle, int]]
+):
+    while not strategy.empty_contract():
+        contract = strategy.pop_contract()
+
+        material = Material()
+        material.add_dict(contract.conditions_to_article_dict)
+
+        all_satisfied = True
+        for required_article_id, required_article_amount in material.items():
+            warehouse_amount = 0
+            ret = warehouse_count.get(required_article_id)
+            if ret:
+                warehouse_amount = ret[1]
+
+            if warehouse_amount < required_article_amount + strategy.get_used_warehouse(required_article_id):
+                all_satisfied = False
+                break
+
+        if all_satisfied:
+            strategy.add_collectable_contract(contract)
+        else:
+            material_strategy_add_queue(
+                version=version,
+                requires=material,
+                article_source=article_source,
+                strategy=strategy
+            )
+
+
+def material_strategy_factory(
+        version: RunVersion,
+        article_source: Dict[int, ArticleSource],
+        strategy: MaterialStrategy,
+        warehouse_count: Dict[int, Tuple[TSArticle, int]]
+):
+    player_factories = factory_find_player_factory(version=version)
+    product_orders = {}
+
+    for player_factory in player_factories:
+        factory_id = int(player_factory.factory_id)
+        product_orders.update({
+            factory_id: factory_find_product_orders(version=version, factory_id=factory_id)
+        })
+
+    while not strategy.all_empty_factory():
+
+        for player_factory in player_factories:
+            factory_id = int(player_factory.factory_id)
+
+            completed, processing, waiting = product_orders[factory_id]
+
+            while not strategy.empty_factory_queue(factory_id=factory_id):
+                product, required_article_amount = strategy.pop_factory(factory_id=factory_id)
+                required_article_id = product.article_id
+
+                completed_amount = sum([c.amount for c in completed if c.article_id == required_article_id])
+                processing_amount = sum([c.amount for c in processing if c.article_id == required_article_id])
+                waiting_amount = sum([c.amount for c in waiting if c.article_id == required_article_id])
+                uncompleted_amount = processing_amount + waiting_amount
+
+                completed_amount -= strategy.get_used_collectable_factory(product=product)
+                uncompleted_amount -= strategy.get_used_uncollectable_factory(product=product)
+
+                warehouse_amount = 0
+                ret = warehouse_count.get(required_article_id)
+                if ret:
+                    warehouse_amount = ret[1]
+
+                remain_warehouse_amount = warehouse_amount - strategy.get_used_warehouse(required_article_id)
+
+                used_warehouse_amount = min(required_article_amount, remain_warehouse_amount)
+                if used_warehouse_amount > 0:
+                    strategy.add_used_warehouse(product.article_id, required_article_amount)
+                    remain_warehouse_amount -= used_warehouse_amount
+                    required_article_amount -= used_warehouse_amount
+
+                used_completed_product_amount = min(completed_amount, required_article_amount)
+                if used_completed_product_amount > 0:
+                    strategy.add_collectable_factory(product, used_completed_product_amount)
+                    completed_amount -= used_completed_product_amount
+                    required_article_amount -= used_completed_product_amount
+
+                used_uncompleted_product_amount = min(uncompleted_amount, required_article_amount)
+                if used_uncompleted_product_amount > 0:
+                    strategy.add_uncollectable_factory(product, used_uncompleted_product_amount)
+                    uncompleted_amount -= used_uncompleted_product_amount
+                    required_article_amount -= used_uncompleted_product_amount
+
+                if required_article_amount > 0:
+                    strategy.add_prepare_factory(product, required_article_amount)
+
+        material = Material()
+
+        for player_factory in player_factories:
+            factory_id = int(player_factory.factory_id)
+            condition = {}
+            products = {}
+
+            while not strategy.empty_factory_prepare(factory_id=factory_id):
+                product, amount = strategy.pop_factory_prepare(factory_id=factory_id)
+                article_id = product.article_id
+                products.update({article_id: product})
+
+                condition.setdefault(article_id, 0)
+                condition[article_id] += amount
+
+            for article_id, amount in condition.items():
+                if amount < 1: continue
+
+                product: TSProduct = products[article_id]
+                cnt = math.ceil(amount / product.article_amount)
+
+                for k, v in product.conditions_to_article_dict.items():
+                    # product#13 / 40개 짜리 - 43개 필요시
+                    # product#13의 부품 * 2배.
+                    material.add(article_id=k, amount=v * cnt)
+
+        material_strategy_add_queue(version=version, requires=material, article_source=article_source, strategy=strategy)
+
+
 def expand_material_strategy(
         version: RunVersion,
         requires: Material,
@@ -435,71 +614,12 @@ def expand_material_strategy(
     print('# [Expand Material Condition]')
     print('--------------------------------------------------------------------------------')
 
-    while True:
 
-        is_all_satisfied = True
+    material_strategy_add_queue(version=version, requires=requires, article_source=article_source, strategy=strategy)
 
-        cumulate = {}
+    # Step 1. Contracts.
+    material_strategy_contract(version=version, article_source=article_source, strategy=strategy, warehouse_count=warehouse_count)
 
-        for idx, (required_article_id, required_article_amount) in enumerate(strategy.required_articles):
-            if required_article_id not in cumulate:
-                cumulate.update({required_article_id: 0})
-            cumulate[required_article_id] += required_article_amount
-
-        for required_article_id, required_article_amount in cumulate.items():
-            warehouse_amount = 0
-            ret = warehouse_count.get(required_article_id)
-            if ret:
-                warehouse_count = ret[1]
-
-            need_amount = required_article_amount - warehouse_amount
-            if need_amount < 0:
-                continue
-
-            source = article_source.get(required_article_id)
-
-            if source.contracts:
-                contract_sum = 0
-
-                for contract in source.contracts:
-                    if contract_sum >= need_amount:
-                        break
-
-                    for condition_pk, condition_amount in contract.conditions_to_article_dict.items():
-                        strategy.add_required_article(condition_pk, condition_amount)
-
-                    for required_article_id, required_article_amount in contract.reward_to_article_dict.items():
-                        if required_article_id == required_article_id:
-                            contract_sum += required_article_amount
-
-                strategy.add_required_article(required_article_id, -required_article_amount)
-
-            elif source.destinations:
-                destination: TSDestination = source.destinations[0]
-                strategy.add_required_article(required_article_id, -required_article_amount)
-                strategy.add_destination(destination, required_article_amount)
-
-            elif source.products:
-                product = source.products[0]
-                additional = {}
-
-                completed, processing, waiting = factory_find_product_orders(
-                    version=version,
-                    factory_id=int(product.factory_id),
-                    article_id=required_article_id,
-                )
-
-                for required_article_id, required_article_amount in product.conditions_to_article_dict.items():
-                    queue.append((required_article_id, required_article_amount * need_count))
-
-    print('# [Expand Material Condition] - Result')
-    print('--------------------------------------------------------------------------------')
-    for factory_id, article_list in strategy.from_factory.items():
-        for article_id, amount in article_list.items():
-            print(f" Factory[{factory_id:3d}] : article[{article_id}] = {amount}")
-
-    for destination_id, amount in strategy.from_destination.items():
-        print(f" Destination[{destination_id:3d}] = {amount}")
-
-    return ret, strategy
+    # Step 2. material_strategy_factory
+    material_strategy_factory(version=version, article_source=article_source, strategy=strategy, warehouse_count=warehouse_count)
 
