@@ -98,7 +98,7 @@ def collect_offer_container(version: RunVersion) -> datetime:
     ret = None
 
     for offer in container_offer_find_iter(version=version, available_only=True):
-
+        offer.refresh_from_db()
         cmd_no = None
         cmd_list = []
 
