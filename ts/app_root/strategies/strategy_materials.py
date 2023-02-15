@@ -384,6 +384,7 @@ def command_collect_factory(version: RunVersion, product: TSProduct, count: int)
     for order in completed:
         if cnt >= count:
             return
+        cnt += 1
 
         order: PlayerFactoryProductOrder
         order.refresh_from_db()

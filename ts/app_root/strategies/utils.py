@@ -243,6 +243,7 @@ class Strategy(object):
                 ret = update_next_event_time(previous=ret, event_time=train.route_arrival_time)
 
         for player_factory in factory_find_player_factory(version=self.version):
+
             completed, processing, waiting = factory_find_product_orders(version=self.version, factory_id=player_factory.factory_id)
             if processing:
                 if processing[0].finishes_at and processing[0].finishes_at > self.version.now:
