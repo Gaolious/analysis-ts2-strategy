@@ -298,7 +298,14 @@ def command_collect_contract_if_possible(version: RunVersion, required_article_i
     source = article_source[required_article_id]
 
     for contract in source.contracts:
+        if contract.expires_at is None:
+            cmd = ContractActivateCommand(version=version, contract=contract)
+            send_commands([cmd])
+
         contract.refresh_from_db()
+        if contract.expires_at is None:
+            continue
+
         warehouse_amount = warehouse_get_amount(version=version, article_id=required_article_id)
         if required_amount <= warehouse_amount:
             print(f"    - #{required_article_id} : required:{required_amount} <= {warehouse_amount} | PASS")
@@ -314,15 +321,8 @@ def command_collect_contract_if_possible(version: RunVersion, required_article_i
         if not check_all_has_in_warehouse(version=version, requires=contract_materials):
             continue
 
-        cmd_list = []
-        if contract.expires_at is None:
-            cmd = ContractActivateCommand(version=version, contract=contract)
-            cmd_list.append(cmd)
-
         cmd = ContractAcceptCommand(version=version, contract=contract)
-        cmd_list.append(cmd)
-
-        send_commands(cmd_list)
+        send_commands([cmd])
 
 
 def command_collect_destination_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
