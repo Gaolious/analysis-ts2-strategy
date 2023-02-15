@@ -272,7 +272,8 @@ LANGUAGES = [
 ]
 
 LANGUAGE_CODE = 'ko-kr'
-TIME_ZONE = 'Asia/Seoul'
+# TIME_ZONE = 'Asia/Seoul'
+TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_L10N = False
 USE_TZ = True
@@ -296,5 +297,7 @@ AUTH_USER_MODEL = 'users.User'
 # Client Information
 ###########################################################
 CLIENT_INFORMATION_STORE = 'google_play'
-CLIENT_INFORMATION_VERSION = '2.6.3.4068'
+CLIENT_INFORMATION_VERSION = '2.7.0.4123'
 CLIENT_INFORMATION_LANGUAGE = 'ko'
+
+WHISTLE_INTERVAL_SECOND = 4 * 60

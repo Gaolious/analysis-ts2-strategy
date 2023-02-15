@@ -9,12 +9,13 @@ from django.utils import timezone
 from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.servers.models import EndPoint, SQLDefinition, TSJobLocation, TSDestination, TSLocation, TSRegion, \
-    TSTrainLevel, TSTrain, TSProduct, TSFactory, TSWarehouseLevel, TSUserLevel, TSArticle
+    TSTrainLevel, TSTrain, TSProduct, TSFactory, TSWarehouseLevel, TSUserLevel, TSArticle, TSOfferContainer
 from app_root.utils import get_curr_server_str_datetime_ms
 from core.utils import download_file
 
 
 class EndpointHelper(ImportHelperMixin):
+    NAME = 'endpoint'
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
         yield 'https://game.trainstation2.com/get-endpoints', 'ep_sent', 'ep_server', 'ep_recv'
@@ -74,6 +75,7 @@ class LoginHelper(ImportHelperMixin):
     FIELD_REQUEST_DATETIME = 'login_sent'
     FIELD_SERVER_DATETIME = 'login_server'
     FIELD_RESPONSE_DATETIME = 'login_recv'
+    NAME = 'login'
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
         for url in EndPoint.get_login_urls():
@@ -152,6 +154,7 @@ class LoginHelper(ImportHelperMixin):
 
 class SQLDefinitionHelper(ImportHelperMixin):
     BASE_PATH = settings.SITE_PATH / 'download' / 'definition'
+    NAME = 'definition'
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
         for url in EndPoint.get_definition_urls():
@@ -399,6 +402,27 @@ class SQLDefinitionHelper(ImportHelperMixin):
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
+    def _read_offer_container(self, cur):
+        model = TSOfferContainer
+        remote_table_name = 'offer_container'
+        mapping = {  # local DB field : remote db field
+            'id': 'id',
+            'content_category': 'content_category',
+            'offer_presentation_id': 'offer_presentation_id',
+            'priority': 'priority',
+            'price_article_id': 'price_article_id',
+            'price_article_amount': 'price_article_amount',
+            'cool_down_duration': 'cool_down_duration',
+            'cooldown_duration': 'cooldown_duration',
+            'availability_count': 'availability_count',
+            'containers': 'containers',
+            'offer_rarity': 'offer_rarity',
+            'min_player_level': 'min_player_level',
+            'level_from': 'level_from',
+            'in_app_purchase_id': 'in_app_purchase_id',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
     def _read_job_location(self, cur):
         model = TSJobLocation
         remote_table_name = 'job_location_v2'
@@ -409,6 +433,10 @@ class SQLDefinitionHelper(ImportHelperMixin):
             'local_key': 'loca_key',
             'name_local_key': 'name_loca_key',
             'contractor_id': 'contractor_id',
+            'unlocked_by': 'unlocked_by',
+            'level_from': 'level_from',
+            'available_from': 'available_from',
+            'available_to': 'available_to',
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
@@ -427,4 +455,5 @@ class SQLDefinitionHelper(ImportHelperMixin):
             self._read_location(cur=cur)
             self._read_destination(cur=cur)
             self._read_job_location(cur=cur)
+            self._read_offer_container(cur=cur)
             con.close()

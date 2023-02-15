@@ -1,12 +1,16 @@
+import datetime
+import json
 from typing import List, Dict
 
 from django.conf import settings
 
 from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerWarehouse, \
-    PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle
+    PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle, PlayerDailyOfferContainer, \
+    PlayerDailyOffer, PlayerDailyOfferItem
 from app_root.servers.models import RunVersion, TSArticle
-from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, find_trains, find_jobs, \
-    find_destination
+from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, trains_find, jobs_find, \
+    destination_find, warehouse_used_capacity, warehouse_max_capacity, container_offer_find_iter, \
+    factory_find_product_orders
 from app_root.utils import get_curr_server_datetime, get_remain_time
 from core.models.utils import chunk_list
 
@@ -22,10 +26,11 @@ def ts_dump_default(version: RunVersion) -> List[str]:
     key = f'Key: {find_key(version):,d}'
     gem = f'Gem: {find_gem(version):,d}'
     gold = f'Gold: {find_gold(version):,d}'
-
+    warehouse = f'Warehouse : {warehouse_used_capacity(version)} / {warehouse_max_capacity(version)}'
     ret.append('# [Default]')
     ret.append(line)
     ret.append(f'{lv:10s} | {xp:20s} | {key:10s} | {gem:10s} | {gold:10s}')
+    ret.append(warehouse)
     ret.append('')
     return ret
 
@@ -33,11 +38,10 @@ def ts_dump_default(version: RunVersion) -> List[str]:
 def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
     line = '-' * 80
     ret = []
-
     ##########################################################################################
     # dispatcher
     ##########################################################################################
-    trains = list(find_trains(version=version, available_only=False))
+    trains = list(trains_find(version=version, is_idle=False))
 
     normal_dispatchers: Dict[str, Dict[int, List]] = {}
     union_dispatchers: Dict[str, Dict[int, List]] = {}
@@ -75,16 +79,19 @@ def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
         data = None
 
         if train.is_job_route:
-            ret_list = list(find_jobs(version=version, job_location_id=train.route_definition_id))
+            ret_list = list(jobs_find(version=version, job_location_id=train.route_definition_id))
             if ret_list:
                 data = ret_list[0]
                 is_union = data.job_location.region.is_union
                 jobs.setdefault(data.id, data)
 
         elif train.is_destination_route:
-            data = find_destination(version=version, destination_id=train.route_definition_id)
+            data = destination_find(version=version, destination_id=train.route_definition_id)
             is_union = data.region.is_union
             destinations.setdefault(data.id, data)
+
+        if not data:
+            continue
 
         if is_union:
             working_union_dispatcher_count += 1
@@ -135,7 +142,7 @@ def ts_dump_jobs(version: RunVersion) -> List[str]:
 
     ret.append(f'# [Jobs]')
     ret.append(line)
-    union_jobs = list(find_jobs(version=version, union_jobs=True))
+    union_jobs = list(jobs_find(version=version, union_jobs=True))
     if len(union_jobs) > 0:
         ret.append('Union Jobs')
         for job in union_jobs:
@@ -143,7 +150,7 @@ def ts_dump_jobs(version: RunVersion) -> List[str]:
     else:
         ret.append('Union Jobs 없음')
 
-    event_jobs = list(find_jobs(version=version, event_jobs=True))
+    event_jobs = list(jobs_find(version=version, event_jobs=True))
     if len(event_jobs) > 0:
         ret.append('Event Jobs')
         for job in event_jobs:
@@ -151,7 +158,7 @@ def ts_dump_jobs(version: RunVersion) -> List[str]:
     else:
         ret.append('Event Jobs 없음')
 
-    story_jobs = list(find_jobs(version=version, story_jobs=True))
+    story_jobs = list(jobs_find(version=version, story_jobs=True))
     if len(story_jobs) > 0:
         ret.append('Story Jobs')
         for job in story_jobs:
@@ -169,46 +176,34 @@ def ts_dump_destination(version: RunVersion) -> List[str]:
 
     ret.append(f'# [Destination]')
     ret.append(line)
-    now = get_curr_server_datetime(version=version)
-
     for destination in PlayerDestination.objects.filter(version_id=version.id).order_by('pk').all():
-        if destination.is_available(now=now):
+        if destination.is_available(now=version.now):
             remain_time = '사용가능'
         else:
             remain_time = f'{get_remain_time(version=version, finish_at=destination.train_limit_refresh_at)}'
         ret.append(f' - Location : {destination.location_id} / remain: {remain_time}')
+    ret.append('')
     return ret
 
 
-def ts_dump_factory(version: RunVersion):
+def ts_dump_factory(version: RunVersion, factory_id: int = None):
     ret = []
     line = '-' * 80
 
     ret.append('# [Factory]')
     ret.append(line)
-    now = get_curr_server_datetime(version=version)
-
     queryset = PlayerFactory.objects.filter(version_id=version.id).order_by('id').select_related('factory').all()
+    if factory_id:
+        queryset = queryset.filter(factory_id=factory_id)
 
     for factory in queryset.all():
         ret.append(f"""  Factory - #{factory.factory_id} {factory.factory}""")
-        completed_list = []
-        processing_list = []
-        waiting_list = []
 
-        for order in PlayerFactoryProductOrder.objects.filter(player_factory_id=factory.id).select_related('article').order_by('index').all():
-            if order.is_completed(now):
-                completed_list.append(order)
-            elif order.is_processing(now):
-                processing_list.append(order)
-            elif order.is_waiting(now):
-                waiting_list.append(order)
-            else:
-                raise Exception(str(order))
+        completed_list, processing_list, waiting_list = factory_find_product_orders(version=version, factory_id=factory.factory_id)
 
-        a = [f'[#{o.id}/{o.article.sprite}/{order.amount}개]' for o in completed_list]
-        b = [f'[#{o.id}/{o.article.sprite}/{order.amount}개]' for o in processing_list]
-        c = [f'[#{o.id}/{o.article.sprite}/{order.amount}개]' for o in waiting_list]
+        a = [f'[#{o.article_id:3d}|{o.article.name:10s}|{o.amount}개]' for o in completed_list]
+        b = [f'[#{o.article_id:3d}|{o.article.name:10s}|{o.amount}개]' for o in processing_list]
+        c = [f'[#{o.article_id:3d}|{o.article.name:10s}|{o.amount}개]' for o in waiting_list]
 
         ret.append(f'''    대기 : {' '.join(c)}''')
         ret.append(f'''    생성 : {' '.join(b)}''')
@@ -245,7 +240,7 @@ def ts_dump_warehouse(version: RunVersion) -> List[str]:
     for article_type in countable:
         ret.append(f'  + [Article Type : {article_type}]')
         for rows in chunk_list(countable[article_type], chunk_size=6):
-            s = [f'[{o.article_id:5d}|{o.article.name:15s}:{o.amount:5d}]' for o in rows]
+            s = [f'[{o.article_id:6d}|{o.article.name:18s}:{o.amount:5d}]' for o in rows]
 
             ret.append(f'''    {' '.join(s)}''')
 
@@ -294,25 +289,29 @@ def ts_dump_contract(version: RunVersion) -> List[str]:
     now = get_curr_server_datetime(version=version)
 
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
-        ret.append(f''' contract_list : {contract_list.contract_list_id} : ''')
-        ret.append(f''' available : {contract_list.available_to} | remain : {get_remain_time(version=version, finish_at=contract_list.available_to)}''')
-        ret.append(f''' next_replace_at : {contract_list.next_replace_at} | remain : {get_remain_time(version=version, finish_at=contract_list.next_replace_at)}''')
-        ret.append(f''' next_video_replace_at : {contract_list.next_video_replace_at} | remain : {get_remain_time(version=version, finish_at=contract_list.next_video_replace_at)}''')
-        ret.append(f''' next_video_rent_at : {contract_list.next_video_rent_at} | remain : {get_remain_time(version=version, finish_at=contract_list.next_video_rent_at)}''')
-        ret.append(f''' next_video_speed_up_at : {contract_list.next_video_speed_up_at} | remain : {get_remain_time(version=version, finish_at=contract_list.next_video_speed_up_at)}''')
+        available_to = get_remain_time(version=version, finish_at=contract_list.available_to)
+        next_replace_at = get_remain_time(version=version, finish_at=contract_list.next_replace_at)
+        next_video_replace_at = get_remain_time(version=version, finish_at=contract_list.next_video_replace_at)
+        next_video_rent_at = get_remain_time(version=version, finish_at=contract_list.next_video_rent_at)
+        next_video_speed_up_at = get_remain_time(version=version, finish_at=contract_list.next_video_speed_up_at)
+        expires_at = get_remain_time(version=version, finish_at=contract_list.expires_at)
+
+        ret.append(f'''# Contract List ID #{contract_list.contract_list_id}''')
+        ret.append(f'''   Available : {available_to} | Expires At: {expires_at} | Next Replace : {next_replace_at}''')
+        ret.append(f'''   Video : Replace : {next_video_replace_at} | Rent At: {next_video_rent_at} | SpeedUp At: {next_video_speed_up_at}''')
 
         for contract in PlayerContract.objects.filter(contract_list_id=contract_list.id).all():
             reward_dict = contract.reward_to_article_dict
             reward_articles = {o.id: o for o in TSArticle.objects.filter(id__in=reward_dict.keys()).all()}
             str_reward = [
-                f'''[{article_id}|{reward_articles[article_id].name}:{article_amount}]'''
+                f'''[{article_id}|{reward_articles[article_id].name[:10]}:{article_amount}]'''
                 for article_id, article_amount in reward_dict.items()
             ]
 
             condition_dict = contract.conditions_to_article_dict
             condition_articles = {o.id: o for o in TSArticle.objects.filter(id__in=condition_dict.keys()).all()}
             str_condition = [
-                f'''[{article_id}|{condition_articles[article_id].name}:{article_amount}]'''
+                f'''[{article_id}|{condition_articles[article_id].name[:10]}:{article_amount}]'''
                 for article_id, article_amount in condition_dict.items()
             ]
 
@@ -320,7 +319,11 @@ def ts_dump_contract(version: RunVersion) -> List[str]:
                 msg = '가능'
             else:
                 msg = '대기'
-            ret.append(f'''   Slot : {contract.slot:2d} | {msg} / 필요: {' '.join(str_condition):20s} / 보상: {' '.join(str_reward):20s}''')
+            usable_from = get_remain_time(version=version, finish_at=contract.usable_from)
+            expires_at = get_remain_time(version=version, finish_at=contract.expires_at)
+            available_from = get_remain_time(version=version, finish_at=contract.available_from)
+            available_to = get_remain_time(version=version, finish_at=contract.available_to)
+            ret.append(f'''   Slot : {contract.slot:2d} | {msg} / 필요: {' '.join(str_condition):24s} / 보상: {' '.join(str_reward):24s} | usable_from : {usable_from} | expires_at : {expires_at} | available:[{available_from} ~ {available_to}]''')
             # ret.append(f'''   usable_from : {contract.usable_from} | remain : {get_remain_time(version=version, finish_at=contract.usable_from)}''')
             # ret.append(f'''   available_from : {contract.available_from} | remain : {get_remain_time(version=version, finish_at=contract.available_from)}''')
             # ret.append(f'''   available_to : {contract.available_to} | remain : {get_remain_time(version=version, finish_at=contract.available_to)}''')
@@ -347,6 +350,66 @@ def ts_dump_daily_reward(version: RunVersion):
     ret.append('')
     return ret
 
+
+def ts_dump_daily_offer(version: RunVersion):
+    ret = []
+    line = '-' * 80
+
+    ret.append('# [Daily Offer]')
+    ret.append(line)
+    now = get_curr_server_datetime(version=version)
+    queryset = PlayerDailyOffer.objects.filter(version_id=version.id).all()
+    for daily in queryset:
+        ret.append(f'''   expire_at : {daily.expire_at} | remain : {get_remain_time(version=version, finish_at=daily.expire_at)}''')
+        ret.append(f'''   expires_at : {daily.expires_at} | remain : {get_remain_time(version=version, finish_at=daily.expires_at)}''')
+
+        for item in PlayerDailyOfferItem.objects.filter(daily_offer_id=daily.id).all():
+            purchased = '가능' if item.purchased == False else '완료'
+
+            required = f'''[{item.price_id}|{item.price.name}:{item.price_amount}]'''
+            rewards = []
+            for reward in json.loads(item.reward)['Items']:
+                _id = reward.get('Id')
+                _value = reward.get('Value')
+                _amount = reward.get('Amount')
+
+                article = TSArticle.objects.filter(id=_value).first()
+                if not article:
+                    rewards.append(
+                        f'''[{reward}]'''
+                    )
+                elif _amount:
+                    rewards.append(
+                        f'''[{article.id}|{article.name}:{_amount}]'''
+                    )
+                else:
+                    rewards.append(
+                        f'''[{article.id}|{article.name}]'''
+                    )
+
+            ret.append(f'''       Slot: {item.slot:2d} | {purchased} | {required:20s} | {','.join(rewards)}''')
+
+    ret.append('')
+    return ret
+
+
+def ts_dump_offer_container(version: RunVersion):
+    ret = []
+    line = '-' * 80
+
+    ret.append('# [Offer Container]')
+    ret.append(line)
+
+    now = get_curr_server_datetime(version=version)
+    for offer in container_offer_find_iter(version=version, available_only=False):
+
+        next_event = offer.last_bought_at + datetime.timedelta(seconds=offer.offer_container.cooldown_duration)
+        ret.append(f'''   offer_container: {offer.offer_container_id}, Cnt:{offer.count}, Last Bought: {offer.last_bought_at}, Next : {next_event}|remain:{get_remain_time(version=version, finish_at=next_event)}''')
+        pass
+    ret.append('')
+    return ret
+
+
 def ts_dump_whistle(version: RunVersion):
     ret = []
     line = '-' * 80
@@ -357,10 +420,7 @@ def ts_dump_whistle(version: RunVersion):
     now = get_curr_server_datetime(version=version)
     queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
     for whistle in queryset:
-        ret.append(f'''   category: {whistle.category} | Position: {whistle.position}''')
-        ret.append(f'''   spawn_time : {whistle.spawn_time} | remain : {get_remain_time(version=version, finish_at=whistle.spawn_time)}''')
-        ret.append(f'''   collectable_from : {whistle.collectable_from} | remain : {get_remain_time(version=version, finish_at=whistle.collectable_from)}''')
-        ret.append(f'''   expires_at : {whistle.expires_at} | remain : {get_remain_time(version=version, finish_at=whistle.expires_at)}''')
+        ret.append(f'''   category: {whistle.category} | Position: {whistle.position} | spawn_time : {whistle.spawn_time} | remain : {get_remain_time(version=version, finish_at=whistle.spawn_time)} | collectable_from : {whistle.collectable_from} | remain : {get_remain_time(version=version, finish_at=whistle.collectable_from)} | expires_at : {whistle.expires_at} | remain : {get_remain_time(version=version, finish_at=whistle.expires_at)}''')
         pass
     ret.append('')
     return ret
@@ -390,6 +450,12 @@ def ts_dump(version: RunVersion):
     # daily reward
     ret += ts_dump_daily_reward(version=version)
 
+    # daily offer
+    ret += ts_dump_daily_offer(version=version)
+
+    # offer container
+    ret += ts_dump_offer_container(version=version)
+
     # whistle
     ret += ts_dump_whistle(version=version)
 
@@ -398,7 +464,7 @@ def ts_dump(version: RunVersion):
 
     str_dt = version.created.strftime('%Y%m%d_%H%M%S')
     filename = base_path / f'{version.id}_{str_dt}.txt'
-    with open(filename, 'wt') as fout:
+    with open(filename, 'at') as fout:
         for row in ret:
             s = f' {row:80s}'
             print(s)

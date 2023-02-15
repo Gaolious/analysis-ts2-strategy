@@ -1,12 +1,11 @@
 import json
 import uuid
-from hashlib import md5
 from typing import Dict, Tuple, Iterator
 
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.servers.models import RunVersion, EndPoint
+from app_root.servers.models import RunVersion
 from app_root.utils import get_curr_server_str_datetime_ms
 from core.requests_helper import CrawlingHelper
 from core.utils import Logger, convert_datetime, hash10
@@ -19,6 +18,8 @@ class ImportHelperMixin:
     """
         Bot Helper
     """
+    NAME = 'helper'
+
     HEADER_REQUEST_ID = 0x01 << 0
     HEADER_RETRY_NO = 0x01 << 1
     HEADER_SENT_AT = 0x01 << 2
@@ -29,9 +30,13 @@ class ImportHelperMixin:
     HEADER_PLAYER_ID = 0x01 << 7
 
     version: RunVersion
+    use_cache: bool
+    idx: int
 
-    def __init__(self, version: RunVersion, **kwargs):
+    def __init__(self, version: RunVersion, use_cache: bool = False, **kwargs):
         self.version = version
+        self.use_cache = use_cache
+        self.idx = -1
 
     def get_headers(self, *, mask) -> Dict[str, str]:
 
@@ -67,14 +72,24 @@ class ImportHelperMixin:
 
         return headers
 
-    @classmethod
-    def get(cls, url, headers, params):
+    def get(self, url, headers, params):
         assert url
         assert headers
-        Logger.info(
-            menu=cls.__name__, action='Before GET',
-            url=url, headers=headers
+        name = f'{self.NAME}_get'
+
+        if self.use_cache:
+            self.idx += 1
+            return self.version.read_cache(name=name, idx=self.idx)
+
+        self.version.add_log(
+            msg=f'[{self.__class__.__name__} ] Before GET',
+            url=url,
+            headers=headers,
+            payload={},
+            cookies={},
+            params=params,
         )
+
         resp = CrawlingHelper.get(
             url=url,
             headers=headers,
@@ -87,8 +102,9 @@ class ImportHelperMixin:
         resp_headers = {k: v for k, v in resp.headers.items()}
         resp_cookies = {k: v for k, v in resp.cookies.items()}
 
-        Logger.info(
-            menu=cls.__name__, action='After GET',
+        self.version.save_cache(name=name, data=resp_body)
+        self.version.add_log(
+            msg=f'[{self.__class__.__name__} ] After GET',
             status_code=str(resp_status_code),
             body=str(resp_body),
             headers=str(resp_headers),
@@ -96,14 +112,22 @@ class ImportHelperMixin:
         )
         return resp_body
 
-    @classmethod
-    def post(cls, url, headers, payload):
+    def post(self, url, headers, payload):
         assert url
         assert headers
+        name = f'{self.NAME}_post'
 
-        Logger.info(
-            menu=cls.__name__, action='Before POST',
-            url=url, headers=headers
+        if self.use_cache:
+            self.idx += 1
+            return self.version.read_cache(name=name, idx=self.idx)
+
+        self.version.add_log(
+            msg=f'[{self.__class__.__name__} ] Before POST',
+            url=url,
+            headers=headers,
+            payload=payload,
+            cookies={},
+            params={},
         )
         resp = CrawlingHelper.post(
             url=url,
@@ -117,8 +141,10 @@ class ImportHelperMixin:
         resp_headers = {k: v for k, v in resp.headers.items()}
         resp_cookies = {k: v for k, v in resp.cookies.items()}
 
-        Logger.info(
-            menu=cls.__name__, action='After POST',
+        self.version.save_cache(name=name, data=resp_body)
+
+        self.version.add_log(
+            msg=f'[{self.__class__.__name__} ] After POST',
             status_code=str(resp_status_code),
             body=str(resp_body),
             headers=str(resp_headers),
@@ -161,38 +187,3 @@ class ImportHelperMixin:
 
             if update_fields:
                 self.version.save(update_fields=update_fields)
-
-
-# class BaseCommand(object):
-#     """
-#         BaseCommand
-#     """
-#     COMMAND = ''
-#     SLEEP_RANGE = (0.5, 1.5)
-#
-#     def get_parameters(self) -> dict:
-#         return {}
-#
-#     def get_command(self):
-#         self._start_datetime = self.helper.server_time.get_curr_datetime()
-#
-#         return {
-#             'Command': self.COMMAND,
-#             'Time': self.helper.server_time.get_curr_time_s(),
-#             'Parameters': self.get_parameters()
-#         }
-#
-#     def sleep(self):
-#         self.helper._do_sleep(min_second=self.SLEEP_RANGE[0], max_second=self.SLEEP_RANGE[1])
-#
-#     def duration(self) -> int:
-#         return 0
-#
-#     def end_datetime(self) -> datetime:
-#         return self._start_datetime + timedelta(seconds=self.duration())
-#
-#     def __str__(self):
-#         return f'''[{self.COMMAND}] / parameters: {self.get_parameters()}'''
-#
-#     def post_processing(self):
-#         pass

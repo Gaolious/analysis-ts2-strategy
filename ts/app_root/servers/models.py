@@ -1,9 +1,13 @@
+import json
+import sys
 from datetime import timedelta
 from decimal import Decimal
 from functools import cached_property
+from pathlib import Path
 from typing import List, Dict, Tuple
 
 from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -71,6 +75,8 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
     init_server_2 = models.DateTimeField(_('Init Data Server Datetime'), null=True, blank=False, default=None)
     init_recv_2 = models.DateTimeField(_('Init Data Recv Datetime'), null=True, blank=False, default=None)
 
+    now = models.DateTimeField(_('now'), null=True, blank=False, default=timezone.now)
+
     class Meta:
         verbose_name = 'Version'
         verbose_name_plural = 'Versions'
@@ -107,6 +113,51 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
             us = int(seconds)
 
         return timedelta(seconds=s, microseconds=us)
+
+    def update_now(self, now):
+        self.now = now
+        self.save(update_fields=['now'])
+
+    def get_account_path(self) -> Path:
+        account_path = settings.SITE_PATH / 'cache' / f'{self.user.username}' / f'{self.id}'
+        account_path.mkdir(0o755, True, exist_ok=True)
+        return account_path
+
+    def save_cache(self, name, data):
+        account_path = self.get_account_path()
+
+        if "pytest" not in sys.modules:
+            log_filepath = account_path / f'{name}.txt'
+            with open(log_filepath, 'at', encoding='UTF-8') as fout:
+                fout.write(data)
+                fout.write("\n")
+
+    def read_cache(self, name, idx):
+        account_path = self.get_account_path()
+
+        log_filepath = account_path / f'{name}.txt'
+        if log_filepath.exists():
+            return log_filepath.read_text(encoding='UTF-8').split('\n')[idx]
+        return ''
+
+    def add_log(self, msg, **kwargs):
+        account_path = settings.SITE_PATH / 'log' / f'{self.user.username}' / f'{self.id}'
+        account_path.mkdir(0o755, True, exist_ok=True)
+        now = timezone.now()
+        elapse = (now - self.login_server) if self.login_server else '-'
+
+        if "pytest" not in sys.modules:
+            log_filepath: Path = account_path / f'{self.__class__.__name__}.log'
+
+            with open(log_filepath, 'at', encoding='UTF-8') as fout:
+                fout.write('\n############################################################\n')
+                fout.write(f'# Time : Now[{now}] | Login[{self.login_server}] | Elapsed[{elapse}] | Command No[{self.command_no}]\n')
+                fout.write(f'# {msg}\n')
+                fout.write('############################################################\n')
+                if kwargs:
+                    fout.write(
+                        json.dumps(kwargs, indent=2, cls=DjangoJSONEncoder)
+                    )
 
 
 class EndPoint(BaseModelMixin, TimeStampedMixin):
@@ -177,6 +228,7 @@ class EndPoint(BaseModelMixin, TimeStampedMixin):
                 )
 
         return ret
+
     @classmethod
     def get_urls(cls, endpoint) -> List[str]:
         ret = []
@@ -257,6 +309,35 @@ class TSArticle(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
     def name(self):
         return self.sprite.split('article')[-1].strip('_')
 
+    @property
+    def is_take_up_space(self) -> bool:
+        """
+            창고 공간을 차지 하는가 ?
+        :return:
+        """
+        if self.type in (2, 3):
+            return True
+        return False
+
+    @property
+    def is_video_reward_article(self):
+        if self.id == 16:
+            return True
+        return False
+
+    @property
+    def is_gem_article(self):
+        if self.id == 2:
+            return True
+        return False
+
+    @property
+    def is_gold_article(self):
+        if self.id == 3:
+            return True
+        return False
+
+
 class TSFactory(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
     """
         CREATE TABLE factory (
@@ -328,6 +409,21 @@ class TSProduct(BaseModelMixin, TimeStampedMixin):
     class Meta:
         verbose_name = 'Product'
         verbose_name_plural = 'Products'
+
+    def __str__(self):
+        return f'''{str(self.factory)}|{self.article_id}|{self.article.name}'''
+
+    @cached_property
+    def conditions_to_article_dict(self) -> Dict:
+
+        article_id_list = list(map(int, self.article_ids.split(';')))
+        article_amount_list = list(map(int, self.article_amounts.split(';')))
+
+        ret = {}
+        for article_id, article_amount in zip(article_id_list, article_amount_list):
+            ret.update({article_id: article_amount})
+
+        return ret
 
 
 class TSTrain(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin, RarityMixin, EraMixin):
@@ -474,14 +570,23 @@ class TSJobLocation(BaseModelMixin, TimeStampedMixin):
     local_key = models.CharField(_('local key'), max_length=255, null=False, blank=False, default='')
     name_local_key = models.CharField(_('local key'), max_length=255, null=True, blank=False, default='')
     contractor_id = models.IntegerField(_('Contractor ID'), null=False, blank=False, default=0)
+    unlocked_by = models.CharField(_('unlocked by'), max_length=255, null=True, blank=False, default='')
+    level_from = models.IntegerField(_('level from'), null=False, blank=False, default=0)
+    available_from = models.DateTimeField(_('available_from'), null=True, blank=False, default=None)
+    available_to = models.DateTimeField(_('available_to'), null=True, blank=False, default=None)
 
     class Meta:
         verbose_name = 'Job Location'
         verbose_name_plural = 'Job Locations'
 
     def __str__(self):
-        return f'[{self.region}:{self.name_local_key}]'
+        return f'#{self.id} {self.condition_job_locations()}'
 
+    def condition_job_locations(self) -> List[int]:
+        ret = []
+        if self.unlocked_by:
+            ret = json.loads(self.unlocked_by, strict=False)
+        return ret
 
 class TSDestination(BaseModelMixin, TimeStampedMixin):
     """
@@ -532,38 +637,54 @@ class TSDestination(BaseModelMixin, TimeStampedMixin):
         verbose_name_plural = 'Destinations'
 
     @cached_property
-    def split_requirements(self) -> Dict[str, int]:
-        ret = {}
+    def requirements_to_dict(self) -> Dict[str, set]:
+        ret = {
+            'available_region': set([]),
+            'available_rarity': set([]),
+            'available_era': set([]),
+            'available_min_power': 0,
+            'available_content_category': set([]),
+        }
 
-        arr = self.requirements.split('|')
-        for a in arr:
-            t = a.split(';')
-            if len(t) == 2:
-                k, v = t
-
-                if k not in ret:
-                    ret.update({k: []})
-
-                ret[k].append(int(v))
+        for cond in self.requirements.split('|'):
+            _type, _value = cond.split(';')
+            _value = int(_value)
+            if _type == 'region':
+                ret['available_region'].add(_value)
+            elif _type == 'rarity':
+                ret['available_rarity'].add(_value)
+            elif _type == 'era':
+                ret['available_era'].add(_value)
+            elif _type == 'power':
+                ret['available_min_power'] = max(_value, ret['available_min_power'])
+            elif _type == 'content_category':
+                ret['available_content_category'].add(_value)
 
         return ret
 
-    def get_rarity_requirements(self) -> List:
-        """
-        rarity;3|rarity;4|region;1
-        rarity;3|rarity;4|region;2
-        rarity;4|region;3
-        rarity;4|region;4
-        :return:
-        """
-        return self.split_requirements.get('rarity', [])
 
-    def get_region_requirements(self) -> List:
-        """
-        rarity;3|rarity;4|region;1
-        rarity;3|rarity;4|region;2
-        rarity;4|region;3
-        rarity;4|region;4
-        :return:
-        """
-        return self.split_requirements.get('region', [])
+class TSOfferContainer(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
+    """
+        CREATE TABLE offer_container (
+                  offer_rarity INTEGER NOT NULL,
+                   min_player_level INTEGER NOT NULL,
+                    level_from INTEGER NOT NULL,
+                    in_app_purchase_id INTEGER NOT NULL
+                    , PRIMARY KEY(id))
+    """
+    offer_presentation_id = models.IntegerField(_('offer_presentation_id'), null=True, blank=False, default=0)
+    priority = models.IntegerField(_('priority'), null=False, blank=False, default=0)
+    price_article_id = models.IntegerField(_('price_article_id'), null=False, blank=False, default=0)
+    price_article_amount = models.IntegerField(_('price_article_amount'), null=False, blank=False, default=0)
+    cool_down_duration = models.IntegerField(_('cool_down_duration'), null=False, blank=False, default=0)
+    cooldown_duration = models.IntegerField(_('cooldown_duration'), null=False, blank=False, default=0)
+    availability_count = models.IntegerField(_('availability_count'), null=False, blank=False, default=0)
+    containers = models.IntegerField(_('containers'), null=False, blank=False, default=0)
+    offer_rarity = models.IntegerField(_('offer_rarity'), null=False, blank=False, default=0)
+    min_player_level = models.IntegerField(_('min_player_level'), null=False, blank=False, default=0)
+    level_from = models.IntegerField(_('level_from'), null=False, blank=False, default=0)
+    in_app_purchase_id = models.IntegerField(_('in_app_purchase_id'), null=False, blank=False, default=0)
+
+    class Meta:
+        verbose_name = 'Offer Container'
+        verbose_name_plural = 'Offer Containers'

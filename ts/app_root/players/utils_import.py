@@ -10,7 +10,8 @@ from app_root.players.models import PlayerBuilding, PlayerDestination, PlayerFac
     PlayerJob, \
     PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
     PlayerAchievement, PlayerDailyReward, PlayerMap, PlayerQuest, PlayerVisitedRegion, PlayerShipOffer, \
-    PlayerLeaderBoard, PlayerLeaderBoardProgress, PlayerCompetition
+    PlayerLeaderBoard, PlayerLeaderBoardProgress, PlayerCompetition, PlayerUnlockedContent, PlayerDailyOfferContainer, \
+    PlayerDailyOffer, PlayerDailyOfferItem
 from app_root.servers.models import EndPoint, RunVersion
 
 LOGGING_MENU = 'plyaers.import'
@@ -18,6 +19,7 @@ LOGGING_MENU = 'plyaers.import'
 
 class InitdataHelper(ImportHelperMixin):
     BASE_PATH = settings.SITE_PATH / 'download' / 'init_data'
+    NAME = 'init_data'
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
 
@@ -95,12 +97,12 @@ class InitdataHelper(ImportHelperMixin):
             'offer_wall': self._parse_init_offer_wall,
             'containers': self._parse_init_containers,
             'maps': self._parse_init_maps,
+            'unlocked_contents': self._parse_init_unlocked_contents,
+            'shop': self._parse_init_shop,
 
             'ab_test': self._parse_init_not_yet_implemented,
             'login_profile': self._parse_init_not_yet_implemented,
             'game_features': self._parse_init_not_yet_implemented,
-            'unlocked_contents': self._parse_init_not_yet_implemented,
-            'shop': self._parse_init_not_yet_implemented,
             'reminders': self._parse_init_not_yet_implemented,
             'markets': self._parse_init_not_yet_implemented,
             'guild': self._parse_init_not_yet_implemented,
@@ -860,6 +862,35 @@ class InitdataHelper(ImportHelperMixin):
     def _parse_init_containers(self, data):
         pass
 
+    def _parse_init_unlocked_contents(self, data):
+        maps = data.get('UnlockedContents')
+        if maps:
+            bulk_list, _ = PlayerUnlockedContent.create_instance(data=maps, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerUnlockedContent.objects.bulk_create(bulk_list, 100)
+
+        self.print_remain('_parse_init_unlocked_contents', data)
+
+    def _parse_init_shop(self, data):
+        containers = data.get('OfferContainers')
+        if containers:
+            bulk_list, _ = PlayerDailyOfferContainer.create_instance(data=containers, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerDailyOfferContainer.objects.bulk_create(bulk_list, 100)
+
+        daily_offer = data.get('DailyOffer')
+        if daily_offer:
+            bulk_list, sub_bulk_list = PlayerDailyOffer.create_instance(data=daily_offer, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerDailyOffer.objects.bulk_create(bulk_list, 100)
+            if sub_bulk_list:
+                PlayerDailyOfferItem.objects.bulk_create(sub_bulk_list, 100)
+
+        self.print_remain('_parse_init_shop', data)
+
     def _parse_init_maps(self, data):
         maps = data.get('Maps')
         if maps:
@@ -896,6 +927,7 @@ class InitdataHelper(ImportHelperMixin):
 class LeaderboardHelper(ImportHelperMixin):
 
     player_job_id: int
+    NAME = 'leaderboard'
 
     def __init__(self, player_job_id: int, **kwargs):
         super(LeaderboardHelper, self).__init__(**kwargs)
@@ -919,6 +951,8 @@ class LeaderboardHelper(ImportHelperMixin):
         headers = self.get_headers(mask=mask)
 
         job = PlayerJob.objects.filter(id=self.player_job_id).first()
+        self.NAME = f'leaderboard_{job.job_id}'
+
         assert job
 
         param = {
@@ -949,6 +983,15 @@ class LeaderboardHelper(ImportHelperMixin):
                 'LeaderboardId' = {str} '015bf3d8-d688-4cd0-b2c3-57b61f4e3373'
                 'LeaderboardGroupId' = {str} '3a3dfa63-2e0f-4a40-b36c-08d252db9c2b'
             """
+            PlayerLeaderBoard.objects.filter(
+                version_id=self.version.id,
+                player_job_id=self.player_job_id,
+            ).delete()
+            PlayerLeaderBoardProgress.objects.filter(
+                version_id=self.version.id,
+                leader_board__player_job_id=self.player_job_id,
+            ).delete()
+
             bulk_leader_board_list, bulk_leader_board_progress_list = PlayerLeaderBoard.create_instance(
                 data=server_data,
                 version_id=self.version.id,
@@ -957,6 +1000,7 @@ class LeaderboardHelper(ImportHelperMixin):
 
             if bulk_leader_board_list:
                 PlayerLeaderBoard.objects.bulk_create(bulk_leader_board_list, 100)
+
             if bulk_leader_board_list:
                 PlayerLeaderBoardProgress.objects.bulk_create(bulk_leader_board_progress_list, 100)
 

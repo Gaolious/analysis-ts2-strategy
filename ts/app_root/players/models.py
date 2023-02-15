@@ -7,7 +7,8 @@ from app_root.players.mixins import PlayerBuildingMixin, PlayerDestinationMixin,
     PlayerFactoryProductOrderMixin, PlayerJobMixin, PlayerContractListMixin, PlayerContractMixin, PlayerGiftMixin, \
     PlayerLeaderBoardMixin, PlayerLeaderBoardProgressMixin, PlayerTrainMixin, PlayerWarehouseMixin, \
     PlayerWhistleItemMixin, PlayerWhistleMixin, PlayerAchievementMixin, PlayerDailyRewardMixin, PlayerMapMixin, \
-    PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin, PlayerCompetitionMixin
+    PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin, PlayerCompetitionMixin, \
+    PlayerUnlockedContentMixin, PlayerOfferContainerMixin, PlayerDailyOfferMixin, PlayerDailyOfferItemMixin
 from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
 
 """
@@ -44,6 +45,8 @@ class PlayerFactoryProductOrder(PlayerFactoryProductOrderMixin, BaseModelMixin, 
         verbose_name = 'Player Factory Product Order'
         verbose_name_plural = 'Player Factory Product Orders'
 
+    def __str__(self):
+        return f'FactoryId={self.player_factory.factory_id}/article=[{self.article_id}|{self.article}]/Index={self.index}'
 
 class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
     class Meta:
@@ -82,6 +85,8 @@ class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
             ret.append(f'Progress: {self.current_guild_amount}/{self.required_amount} ({self.current_guild_amount/self.required_amount*100:.2f} %)')
         else:
             ret.append(f'Progress: {self.current_article_amount}/{self.required_amount} ({self.current_article_amount/self.required_amount*100:.2f} %)')
+
+        ret.append(f'Required: #{self.required_article.id}|{self.required_article.name}')
         return ' / '.join(ret)
 
 
@@ -205,4 +210,36 @@ class PlayerCompetition(PlayerCompetitionMixin, BaseModelMixin, TimeStampedMixin
     class Meta:
         verbose_name = 'Player Competition'
         verbose_name_plural = 'Player Competitions'
+
+
+class PlayerUnlockedContent(PlayerUnlockedContentMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player Unlocked Content'
+        verbose_name_plural = 'Player Unlocked Contents'
+
+
+class PlayerDailyOfferContainer(PlayerOfferContainerMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player DailyOffer Container'
+        verbose_name_plural = 'Player DailyOffer Containers'
+
+
+class PlayerDailyOffer(PlayerDailyOfferMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player DailyOffer'
+        verbose_name_plural = 'Player DailyOffers'
+
+    @classmethod
+    def sub_model(cls) -> Optional[Type['models.Model']]:
+        """
+
+        :return:
+        """
+        return PlayerDailyOfferItem
+
+
+class PlayerDailyOfferItem(PlayerDailyOfferItemMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'Player DailyOffer Item'
+        verbose_name_plural = 'Player DailyOffer Items'
 
