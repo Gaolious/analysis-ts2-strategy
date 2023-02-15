@@ -1066,6 +1066,10 @@ class RunCommand(ImportHelperMixin):
                     old = PlayerContract.objects.filter(version_id=self.version.id, slot=instance.slot).first()
                     if old:
                         instance.id = old.id
+                        instance.save()
+                bulk_list = [o for o in bulk_list if not o.id]
+
+            if bulk_list:
                 PlayerContract.objects.bulk_create(bulk_list, 100)
 
     def _parse_command_whistle_spawn(self, data):
