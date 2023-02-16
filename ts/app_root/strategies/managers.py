@@ -569,8 +569,6 @@ def factory_collect_product(version: RunVersion, order: PlayerFactoryProductOrde
 
     # 기존 데이터 index 변경, 완료시간 변경.
     order.delete()
-    print(f"# DEBUG [factory_collect_product] / article={order.article} / factory_id={player_factory.factory_id}")
-
     now = version.now
     for index, next_order in enumerate(order_list, 1):
         param = {}
@@ -594,7 +592,6 @@ def factory_collect_product(version: RunVersion, order: PlayerFactoryProductOrde
             update_fields.append('finishes_at')
             now = finish_time
 
-        print(f"""    factory_id={player_factory.factory_id} / article={next_order.article} / index={next_order.index} / craft_time={next_order.craft_time} / finish_time={next_order.finish_time} / finishes_at={next_order.finishes_at}""")
         next_order.save(update_fields=update_fields)
 
 
@@ -617,11 +614,7 @@ def factory_order_product(version: RunVersion, product: TSProduct):
     completed, processing, waiting = factory_find_product_orders(version=version, factory_id=product.factory_id)
     order_list = completed + processing + waiting
 
-    print(f"# DEBUG [factory_order_product] / article={product.article} / factory_id={product.factory_id}")
-    print(f"     - completed_count={len(completed)} / waiting={len(waiting)} / processing_count={len(processing)} | slot={player_factory.slot_count}")
-
     if len(processing) + len(waiting) >= slot_count:
-        print(f"     - ERROR : {len(processing)} + {len(waiting)} >= {slot_count}")
         return
 
     player_factory = player_factory
@@ -642,18 +635,6 @@ def factory_order_product(version: RunVersion, product: TSProduct):
         index = len(order_list) + 1
         finish_time = None
         finishes_at = None
-
-        print(f"""
-    PlayerFactoryProductOrder
-        version={version},
-        player_factory={player_factory},
-        article_id={article_id},
-        index={index},
-        amount={amount},
-        craft_time={craft_time},
-        finish_time={finish_time},
-        finishes_at={finishes_at},        
-        """)
 
     PlayerFactoryProductOrder.objects.create(
         version=version,
