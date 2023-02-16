@@ -5,13 +5,15 @@ from app_root.players.models import PlayerContract, PlayerQuest, PlayerVisitedRe
     PlayerFactoryProductOrder
 from app_root.servers.models import RunVersion, TSDestination, TSProduct, TSArticle, TSJobLocation
 from app_root.strategies.commands import ContractActivateCommand, ContractAcceptCommand, send_commands, \
-    TrainSendToDestinationCommand, FactoryCollectProductCommand, FactoryOrderProductCommand
+    TrainSendToDestinationCommand, FactoryCollectProductCommand, FactoryOrderProductCommand, \
+    ContractAcceptWithVideoReward, GameSleep, GameWakeup
 from app_root.strategies.data_types import Material, FactoryStrategy, ArticleSource, MaterialStrategy
 from app_root.strategies.managers import ship_find_iter, factory_find_player_factory, \
     factory_find_destination_and_factory_only_products, factory_find_product_orders, warehouse_countable, \
     article_find_contract, article_find_product, article_find_destination, warehouse_max_capacity, \
     trains_loads_amount_article_id, warehouse_get_amount, get_number_of_working_dispatchers, trains_find, \
-    warehouse_used_capacity, warehouse_avg_count
+    warehouse_used_capacity, warehouse_avg_count, contract_get_ship
+from app_root.utils import get_curr_server_str_datetime_s
 
 
 def get_ship_materials(version: RunVersion) -> Material:
@@ -20,11 +22,12 @@ def get_ship_materials(version: RunVersion) -> Material:
     for ship in ship_find_iter(version=version):
 
         remain = (ship.arrival_at - version.now).total_seconds()
-        if remain > 2 * 60 * 60:
+        if remain > 1 * 60 * 60:
             continue
         material.add_dict(ship.conditions_to_article_dict)
 
     return material
+
 
 
 def build_article_sources(version: RunVersion) -> Dict[int, ArticleSource]:
@@ -335,6 +338,49 @@ def check_all_has_in_warehouse(version: RunVersion, requires: Material) -> bool:
     return True
 
 
+def command_trade_contract(version: RunVersion, contract: PlayerContract):
+    """
+    배 계약서
+    :param version:
+    :param contract:
+    :return:
+    """
+    if not contract:
+        return
+    contract.refresh_from_db()
+
+    if not contract.is_available(version.now):
+        print(f"    - Contract Slot : {contract.slot} Not Available | PASS")
+        return
+
+    if contract.expires_at is None:
+        cmd = ContractActivateCommand(version=version, contract=contract)
+        send_commands([cmd])
+
+    contract.refresh_from_db()
+    if contract.expires_at is None:
+        return
+
+    contract_materials = Material()
+    contract_materials.add_dict(contract.conditions_to_article_dict)
+
+    # 계약서 재료가 없으면 pass
+    if not check_all_has_in_warehouse(version=version, requires=contract_materials):
+        print(f"    - Contract Slot : {contract.slot} Not enough material | PASS")
+        return
+
+    accept_at = get_curr_server_str_datetime_s(version=version)
+    cmd = GameSleep(version=version, sleep_seconds=30)
+    send_commands(commands=cmd)
+
+    cmd_list = [
+        GameWakeup(version=version),
+        ContractAcceptWithVideoReward(version=version, contract=contract, accept_at=accept_at)
+    ]
+
+    send_commands(cmd_list)
+
+
 def command_collect_contract(version: RunVersion, contract: PlayerContract):
     # 계약서 사용 가능하면
     contract.refresh_from_db()
@@ -521,8 +567,7 @@ def material_strategy_add_queue(
     for required_article_id, required_article_amount in requires.items():
         source = article_source.get(required_article_id)
         if source.contracts:
-            check = []
-            if required_article_amount * 2 > warehouse_get_amount(version=version, article_id=required_article_id):
+            if required_article_amount * 2 < warehouse_get_amount(version=version, article_id=required_article_id):
                 ret.append(f'''{'  ' * depth} - Required:[{source.article}] - Contract Slot[{contract.slot}][{amount} 개] | PASS''')
                 continue
 
@@ -755,3 +800,32 @@ def command_material_strategy(
 
     for contract in strategy.contract_collectable:
         command_collect_contract(version=version, contract=contract)
+
+
+def command_ship_trade(
+        version: RunVersion,
+        requires: Material,
+        article_source: Dict[int, ArticleSource],
+        strategy: MaterialStrategy,
+):
+    expand_material_strategy(
+        version=version,
+        requires=requires,
+        article_source=article_source,
+        strategy=strategy,
+    )
+    command_material_strategy(
+        version=version,
+        strategy=strategy
+    )
+    contract = contract_get_ship(version=version)
+    if contract:
+        command_trade_contract(version=version, contract=contract)
+"""
+
+{"Id":37,"Time":"2023-01-12T02:36:17Z","Commands":[
+{"Command":"Game:WakeUp","Time":"2023-01-12T02:35:38Z","Parameters":{}},
+{"Command":"Contract:AcceptWithVideoReward","Time":"2023-01-12T02:36:17Z","Parameters":{
+"ContractListId":3,"Slot":1,"AcceptedAt":"2023-01-12T02:35:38Z"}}
+],"Transactional":false}
+"""

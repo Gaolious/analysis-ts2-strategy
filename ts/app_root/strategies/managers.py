@@ -364,7 +364,6 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
 
     return ret
 
-
 def article_find_contract(version: RunVersion, article_id=None, available_only=True) -> Dict[int, List[PlayerContract]]:
     delta = timedelta(minutes=1)
 
@@ -487,6 +486,32 @@ def contract_set_active(version: RunVersion, contract: PlayerContract):
         contract.save(update_fields=[
             'expires_at',
         ])
+
+
+def contract_get_ship(version: RunVersion) -> PlayerContract:
+    delta = timedelta(minutes=1)
+
+    for contract_list in PlayerContractList.objects.filter(version_id=version.id, contract_list_id=3).all():
+
+        for contract in PlayerContract.objects.filter(contract_list_id=contract_list.id).all():
+            # fixme: expired check
+            # fixme: article exist in reward?
+            # yield contract
+
+            """
+              from                         to
+                +----------+---------------+
+                          now
+            """
+                # if contract.usable_from and contract.usable_from > version.now:
+                #     continue
+                # if contract.available_from and contract.available_from > version.now:
+                #     continue
+            if not contract.is_available(now=version.now):
+                continue
+
+            return contract
+
 
 ###########################################################################
 # Factory

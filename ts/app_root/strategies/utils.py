@@ -19,12 +19,12 @@ from app_root.strategies.managers import jobs_find, trains_find, \
     update_next_event_time, warehouse_max_capacity, jobs_find_priority, \
     jobs_check_warehouse, get_number_of_working_dispatchers, warehouse_countable, \
     warehouse_get_amount, article_find_product, article_find_contract, article_find_destination, \
-    factory_find_product_orders, factory_find_player_factory
+    factory_find_product_orders, factory_find_player_factory, contract_get_ship
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
     get_destination_materials, get_factory_materials, command_collect_materials_if_possible, \
     command_collect_factory_product_redundancy, command_factory_strategy, expand_material_strategy, \
-    command_material_strategy
+    command_material_strategy, command_ship_trade
 from app_root.strategies.strategy_union_quest import strategy_dispatching_gold_destinations, dispatching_job
 from app_root.utils import get_curr_server_datetime
 
@@ -290,6 +290,13 @@ class Strategy(object):
         """
         self.ship_material = get_ship_materials(version=self.version)
         self.dump_material(title='Step 0. Ship 재료 (Pass)', material=self.ship_material)
+        strategy = MaterialStrategy()
+        command_ship_trade(
+            version=self.version,
+            requires=self.ship_material,
+            article_source=self.article_source,
+            strategy=strategy,
+        )
 
         # Step 1. contract. / union quest materials.
         self.job_material.clear()
