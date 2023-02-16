@@ -1807,6 +1807,12 @@ class PlayerOfferContainerMixin(BaseVersionMixin):
             return True
         return False
 
+    def is_available(self, now) -> bool:
+        if self.last_bought_at and self.last_bought_at + datetime.timedelta(seconds=self.offer_container.cooldown_duration) < now:
+            return True
+        return False
+
+
 
 class PlayerDailyOfferMixin(BaseVersionMixin):
     expire_at = models.DateTimeField(_('ExpireAt'), null=True, blank=False)

@@ -1338,7 +1338,7 @@ def container_offer_find_iter(version: RunVersion, available_only: bool) -> List
             continue
 
         if available_only:
-            if offer.last_bought_at and offer.last_bought_at + timedelta(seconds=container.cooldown_duration + 10) >= now:
+            if offer.last_bought_at and offer.last_bought_at + timedelta(seconds=container.cooldown_duration) >= now:
                 continue
 
         ret.append(offer)
