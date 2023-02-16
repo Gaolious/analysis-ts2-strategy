@@ -780,11 +780,13 @@ class ContractAcceptCommand(BaseCommand):
 class ContractAcceptWithVideoReward(BaseCommand):
     COMMAND = 'Contract:AcceptWithVideoReward'
     contract: PlayerContract
+    accept_at: str
     SLEEP_RANGE = (0.5, 1)
 
-    def __init__(self, *, contract: PlayerContract, **kwargs):
+    def __init__(self, *, contract: PlayerContract, accept_at, **kwargs):
         super(ContractAcceptWithVideoReward, self).__init__(**kwargs)
         self.contract = contract
+        self.accept_at = accept_at
 
     def get_parameters(self) -> dict:
         """
@@ -793,6 +795,7 @@ class ContractAcceptWithVideoReward(BaseCommand):
         return {
             "ContractListId": self.contract.contract_list.contract_list_id,
             "Slot": self.contract.slot,
+            "AcceptedAt": self.accept_at,
         }
 
     def post_processing(self, server_data: Dict):
