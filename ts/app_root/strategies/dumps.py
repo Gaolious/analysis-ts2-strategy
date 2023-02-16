@@ -6,7 +6,7 @@ from django.conf import settings
 
 from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerWarehouse, \
     PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle, PlayerDailyOfferContainer, \
-    PlayerDailyOffer, PlayerDailyOfferItem
+    PlayerDailyOffer, PlayerDailyOfferItem, PlayerTrain
 from app_root.servers.models import RunVersion, TSArticle
 from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, trains_find, jobs_find, \
     destination_find, warehouse_used_capacity, warehouse_max_capacity, container_offer_find_iter, \
@@ -114,8 +114,7 @@ def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
                 rarity = f'{train.train.get_rarity_display():2s}'
                 name = f'{train.train.asset_name:27s}'
                 remain_time = f'{get_remain_time(version=version, finish_at=train.route_arrival_time)}'
-                ret.append(
-                    f'    Id:{instance_id} / Capacity:{capacity} / era:{era} / rarity:{rarity} / name:{name} / remain:{remain_time} / finish at: {train.route_arrival_time.astimezone(settings.KST)}')
+                ret.append(f'    Id:{instance_id} / Capacity:{capacity} / era:{era} / rarity:{rarity} / name:{name} / remain:{remain_time} / finish at: {train.route_arrival_time.astimezone(settings.KST)}')
     ret.append('')
 
     ret.append(f'# [Dispatcher - Union Working {working_union_dispatcher_count} / {version.guild_dispatchers + 2}]')
@@ -133,6 +132,52 @@ def ts_dump_working_dispatcher(version: RunVersion) -> List[str]:
                 ret.append(f'    Id:{instance_id} / Capacity:{capacity} / era:{era} / rarity:{rarity} / name:{name}')
     ret.append('')
 
+    return ret
+
+
+def ts_dump_train(version: RunVersion) -> List[str]:
+    line = '-' * 80
+    ret = []
+    region_dict: Dict[int, List[PlayerTrain]] = {}
+    duplications: Dict[int, int] = {}
+
+    for train in list(trains_find(version=version)):
+        region = train.get_region()
+        duplications.setdefault(train.train_id, 0)
+        duplications[train.train_id] += 1
+        if region not in region_dict:
+            region_dict.update({
+                region: []
+            })
+
+        region_dict[region].append(train)
+
+    for region in region_dict:
+        region_dict[region].sort(key=lambda x: (x.capacity(), x.train.rarity), reverse=True)
+
+    for region in region_dict:
+        ret.append(f'# [Train region - {region}]')
+        ret.append(line)
+        for train in region_dict[region]:
+            instance_id = f'{train.instance_id:3d}'
+            capacity = f'{train.capacity():4d}'
+            era = f'{train.train.get_era_display():2s}'
+            rarity = f'{train.train.get_rarity_display():2s}'
+            name = f'{train.train.asset_name:27s}'
+            remain_time = 'IDLE'
+            duplicates = ''
+            if duplications[train.train_id] >= 2:
+                duplicates = f'/ DUP {duplications[train.train_id]}'
+            if train.is_working(version.now):
+                if train.is_job_route:
+                    remain_time = f'JOB {get_remain_time(version=version, finish_at=train.route_arrival_time)}'
+                elif train.is_destination_route:
+                    remain_time = f'DEST {get_remain_time(version=version, finish_at=train.route_arrival_time)}'
+                else:
+                    remain_time = f'??? {get_remain_time(version=version, finish_at=train.route_arrival_time)}'
+
+            ret.append(f'    #{instance_id}|[{capacity}/{era}/{rarity}] / name:{name} / {remain_time}{duplicates}')
+    ret.append('')
     return ret
 
 
@@ -431,6 +476,8 @@ def ts_dump(version: RunVersion):
     ret += ts_dump_default(version=version)
 
     ret += ts_dump_working_dispatcher(version=version)
+
+    ret += ts_dump_train(version=version)
 
     ret += ts_dump_jobs(version=version)
 
