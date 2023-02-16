@@ -361,8 +361,16 @@ def command_collect_contract(version: RunVersion, contract: PlayerContract):
         print(f"    - Contract Slot : {contract.slot} Not enough material | PASS")
         return
 
-    cmd = ContractAcceptCommand(version=version, contract=contract)
-    send_commands([cmd])
+    check = []
+    for article_id, article_amount in contract.reward_to_article_dict.items():
+        if article_amount * 3 > warehouse_get_amount(version=version, article_id=article_id):
+            check.append(True)
+        else:
+            check.append(False)
+
+    if any(check):
+        cmd = ContractAcceptCommand(version=version, contract=contract)
+        send_commands([cmd])
 
 
 def command_collect_contract_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
