@@ -193,8 +193,6 @@ def command_order_product_in_factory(version: RunVersion, product: TSProduct, co
         waiting_count = len(waiting)
         processing_count = len(processing)
         available_slot = player_factory.slot_count - processing_count - waiting_count
-        print(f"# DEBUG [command_order_product_in_factory] / article={product.article} / factory_id={product.factory_id} / count={count}")
-        print(f"     - completed_count={completed_count} / waiting={waiting_count} / processing_count={processing_count} | slot={player_factory.slot_count} / available_slot={available_slot}")
         if available_slot < 1:
             break
 
@@ -361,16 +359,8 @@ def command_collect_contract(version: RunVersion, contract: PlayerContract):
         print(f"    - Contract Slot : {contract.slot} Not enough material | PASS")
         return
 
-    check = []
-    for article_id, article_amount in contract.reward_to_article_dict.items():
-        if article_amount * 3 > warehouse_get_amount(version=version, article_id=article_id):
-            check.append(True)
-        else:
-            check.append(False)
-
-    if any(check):
-        cmd = ContractAcceptCommand(version=version, contract=contract)
-        send_commands([cmd])
+    cmd = ContractAcceptCommand(version=version, contract=contract)
+    send_commands([cmd])
 
 
 def command_collect_contract_if_possible(version: RunVersion, required_article_id: int, required_amount: int, article_source: Dict[int, ArticleSource]):
@@ -531,6 +521,11 @@ def material_strategy_add_queue(
     for required_article_id, required_article_amount in requires.items():
         source = article_source.get(required_article_id)
         if source.contracts:
+            check = []
+            if required_article_amount * 2 > warehouse_get_amount(version=version, article_id=required_article_id):
+                ret.append(f'''{'  ' * depth} - Required:[{source.article}] - Contract Slot[{contract.slot}][{amount} 개] | PASS''')
+                continue
+
             s = 0
             for contract in source.contracts:
                 if s >= required_article_amount: break
