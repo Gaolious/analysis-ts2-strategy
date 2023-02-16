@@ -101,7 +101,9 @@ def collect_offer_container(version: RunVersion) -> datetime:
         offer.refresh_from_db()
         cmd_no = None
         cmd_list = []
-
+        if not offer.is_available(now=version.now):
+            continue
+            
         if offer.is_video_reward:
             cmd_no = version.command_no
             cmd = GameSleep(version=version, sleep_seconds=30)
@@ -116,7 +118,10 @@ def collect_offer_container(version: RunVersion) -> datetime:
             sleep_command_no=cmd_no,
         )
         cmd_list.append(cmd)
+        print(f"""    - Container Offer Before : OfferId={offer.offer_container_id} | last_bought_at={offer.last_bought_at} | count={offer.count}""")
         send_commands(commands=cmd_list)
+        offer.refresh_from_db()
+        print(f"""    - Container Offer After : OfferId={offer.offer_container_id} | last_bought_at={offer.last_bought_at} | count={offer.count}""")
 
     for offer in container_offer_find_iter(version=version, available_only=False):
         container = offer.offer_container
