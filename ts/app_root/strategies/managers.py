@@ -1347,6 +1347,7 @@ def container_offer_find_iter(version: RunVersion, available_only: bool) -> List
 
 
 def container_offer_set_used(version: RunVersion, offer: PlayerDailyOfferContainer):
+
     now = version.now
     offer.last_bought_at = now
     offer.count += 1
