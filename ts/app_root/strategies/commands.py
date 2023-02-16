@@ -1126,11 +1126,9 @@ class RunCommand(ImportHelperMixin):
             self.version.update_now(now=st)
 
         if server_data:
-            if not isinstance(server_data, list):
-                server_data = [server_data]
-            for cmd, data in zip(self.commands, server_data):
-                cmd.post_processing(server_data=data)
-                self.processing_server_response(data)
+            for cmd in self.commands:
+                cmd.post_processing(server_data=server_data)
+                self.processing_server_response(server_data)
 
         return server_time
 

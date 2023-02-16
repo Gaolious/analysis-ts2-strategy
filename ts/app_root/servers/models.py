@@ -143,21 +143,30 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
     def add_log(self, msg, **kwargs):
         account_path = settings.SITE_PATH / 'log' / f'{self.user.username}' / f'{self.id}'
         account_path.mkdir(0o755, True, exist_ok=True)
-        now = timezone.now()
-        elapse = (now - self.login_server) if self.login_server else '-'
+        elapse = (self.now - self.login_server) if self.now and self.login_server else '-'
 
         if "pytest" not in sys.modules:
             log_filepath: Path = account_path / f'{self.__class__.__name__}.log'
 
             with open(log_filepath, 'at', encoding='UTF-8') as fout:
                 fout.write('\n############################################################\n')
-                fout.write(f'# Time : Now[{now}] | Login[{self.login_server}] | Elapsed[{elapse}] | Command No[{self.command_no}]\n')
+                fout.write(f'# Time : Now[{self.now}] | Login[{self.login_server}] | Elapsed[{elapse}] | Command No[{self.command_no}]\n')
                 fout.write(f'# {msg}\n')
                 fout.write('############################################################\n')
                 if kwargs:
                     fout.write(
                         json.dumps(kwargs, indent=2, cls=DjangoJSONEncoder)
                     )
+
+    def add_debug(self, msg: str):
+        account_path = settings.SITE_PATH / 'log' / f'{self.user.username}' / f'{self.id}'
+        account_path.mkdir(0o755, True, exist_ok=True)
+
+        if "pytest" not in sys.modules:
+            log_filepath: Path = account_path / f'{self.__class__.__name__}.log'
+
+            with open(log_filepath, 'at', encoding='UTF-8') as fout:
+                fout.write(f'[{self.now}] {msg}\n')
 
 
 class EndPoint(BaseModelMixin, TimeStampedMixin):
