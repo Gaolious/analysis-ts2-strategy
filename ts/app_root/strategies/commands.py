@@ -10,11 +10,11 @@ from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
     PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard, PlayerContract, \
-    PlayerFactoryProductOrder, PlayerContractList
+    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement
 from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
-    contract_set_used, factory_order_product, factory_collect_product, contract_set_active
+    contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -545,7 +545,45 @@ class DailyRewardClaimWithVideoCommand(BaseCommand):
                     'expire_at',
                 ]
             )
+# Achievement
+class CollectAchievementCommand(BaseCommand):
+    COMMAND = 'Achievement:CollectWithVideoReward'
+    achievement: PlayerAchievement
 
+    reward_article_id: int
+    reward_article_amount: int
+    """
+{"AchievementId": "complete_job","Level": 0,"Progress": 41},
+
+{"Id":6,"Time":"2023-02-17T01:32:14Z","Commands":[
+{"Command":"Game:Sleep","Time":"2023-02-17T01:32:14Z","Parameters":{},"Debug":{"CollectionsInQueue":0,"CollectionsInQueueIds":""}}],"Transactional":false}
+{"Success":true,"RequestId":"37e4192d-840a-4a45-927b-cb08b2b59288","Time":"2023-02-17T01:32:14Z","Data":{"CollectionId":6,"Commands":[]}}
+
+{"Id":7,"Time":"2023-02-17T01:32:53Z","Commands":[
+{"Command":"Game:WakeUp","Time":"2023-02-17T01:32:14Z","Parameters":{}},
+{"Command":"Achievement:CollectWithVideoReward","Time":"2023-02-17T01:32:50Z","Parameters":{"AchievementId":"complete_job"}}],"Transactional":false}
+{"Success":true,"RequestId":"04725979-5448-44f7-a9fa-d617bb31b998","Time":"2023-02-17T01:32:54Z","Data":{"CollectionId":7,"Commands":[]}}
+
+    """
+
+    def __init__(self, achievement, reward_article_id: int, reward_article_amount: int, **kwargs):
+        super(CollectAchievementCommand, self).__init__(**kwargs)
+        self.achievement = achievement
+        self.reward_article_id = reward_article_id
+        self.reward_article_amount = reward_article_amount
+
+    def get_parameters(self) -> dict:
+        return {
+            "AchievementId": self.achievement.achievement,  # "complete_job"
+        }
+
+    def post_processing(self, server_data: Dict):
+        achievement_set_used(version=self.version, achievement=self.achievement)
+        warehouse_add_article(
+            version=self.version,
+            article_id=self.reward_article_id,
+            amount=self.reward_article_amount * 2
+        )
 
 ###################################################################
 # Whistle

@@ -14,7 +14,7 @@ from django.utils.translation import gettext_lazy as _
 
 from app_root.servers.mixins import ContentCategoryMixin, RarityMixin, EraMixin
 from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
-from core.utils import hash10
+from core.utils import hash10, convert_number_as_int
 
 
 class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
@@ -697,3 +697,64 @@ class TSOfferContainer(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
     class Meta:
         verbose_name = 'Offer Container'
         verbose_name_plural = 'Offer Containers'
+
+
+class TSAchievement(BaseModelMixin, TimeStampedMixin):
+    """
+CREATE TABLE achievement (
+    id VARCHAR(255) NOT NULL,
+    show_level INTEGER NOT NULL,
+    levels VARCHAR(255) NOT NULL,
+    reward_article_id VARCHAR(255) NOT NULL,
+    reward_amount VARCHAR(255) NOT NULL,
+    PRIMARY KEY(id
+)
+
+    """
+    name = models.CharField(_('achievement name'), max_length=255, null=True, blank=False)
+    show_level = models.IntegerField(_('level_from'), null=False, blank=False, default=0)
+    levels = models.CharField(_('achievement name'), max_length=255, null=True, blank=False)
+    reward_article_ids = models.CharField(_('article_ids'), max_length=255, null=True, blank=False)
+    reward_amounts = models.CharField(_('article_amounts'), max_length=255, null=True, blank=False)
+
+    class Meta:
+        verbose_name = 'Achievement'
+        verbose_name_plural = 'Achievements'
+
+    @cached_property
+    def get_level_progresses(self) -> List[int]:
+        return [convert_number_as_int(lv) for lv in self.levels.split(';')]
+
+    @cached_property
+    def get_reward_article_ids(self) -> List[int]:
+        return [convert_number_as_int(lv) for lv in self.reward_article_ids.split(';')]
+
+    @cached_property
+    def get_reward_amounts(self) -> List[int]:
+        return [convert_number_as_int(lv) for lv in self.reward_amounts.split(';')]
+
+    def is_collectable(self, level: int, progress: int):
+        levels = self.get_level_progresses
+
+        if level < len(levels):
+            if levels[level] <= progress:
+                return True
+
+        return False
+
+    def get_reward(self, level: int) -> Tuple[int, int]:
+        """
+
+        :param level:
+        :return:
+            article_id, article_amount
+        """
+        article_id = 0
+        article_amount = 0
+        if len(self.get_reward_article_ids) > level:
+            article_id = self.get_reward_article_ids[level]
+
+        if len(self.get_reward_amounts) > level:
+            article_amount = self.get_reward_amounts[level]
+
+        return article_id, article_amount

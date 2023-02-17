@@ -7,8 +7,9 @@ from django.conf import settings
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
-    PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest
-from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory
+    PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement
+from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory, \
+    TSAchievement
 from app_root.strategies.data_types import JobPriority
 
 
@@ -1403,3 +1404,17 @@ def ship_get_conditions(version: RunVersion) -> Dict[int, int]:
             ret[k] += v
 
     return ret
+
+###########################################################################
+# achievement
+###########################################################################
+def achievement_set_used(version: RunVersion, achievement: PlayerAchievement):
+    version.add_log(
+        msg='[Train Unload]',
+        achievement=achievement.achievement,
+        level=[achievement.level, achievement.level+1],
+    )
+    achievement.level += 1
+    achievement.save(update_fields=[
+        'level'
+    ])

@@ -9,7 +9,8 @@ from django.utils import timezone
 from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.servers.models import EndPoint, SQLDefinition, TSJobLocation, TSDestination, TSLocation, TSRegion, \
-    TSTrainLevel, TSTrain, TSProduct, TSFactory, TSWarehouseLevel, TSUserLevel, TSArticle, TSOfferContainer
+    TSTrainLevel, TSTrain, TSProduct, TSFactory, TSWarehouseLevel, TSUserLevel, TSArticle, TSOfferContainer, \
+    TSAchievement
 from app_root.utils import get_curr_server_str_datetime_ms
 from core.utils import download_file
 
@@ -440,6 +441,18 @@ class SQLDefinitionHelper(ImportHelperMixin):
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
+    def _read_achievement(self, cur):
+        model = TSAchievement
+        remote_table_name = 'achievement'
+        mapping = {  # local DB field : remote db field
+            'name': 'id',
+            'show_level': 'show_level',
+            'levels': 'levels',
+            'reward_article_ids': 'reward_article_id',
+            'reward_amounts': 'reward_amount',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
     def read_sqlite(self, instance: SQLDefinition):
         if instance:
             con = sqlite3.connect(instance.download_path)
@@ -456,4 +469,5 @@ class SQLDefinitionHelper(ImportHelperMixin):
             self._read_destination(cur=cur)
             self._read_job_location(cur=cur)
             self._read_offer_container(cur=cur)
+            self._read_achievement(cur=cur)
             con.close()

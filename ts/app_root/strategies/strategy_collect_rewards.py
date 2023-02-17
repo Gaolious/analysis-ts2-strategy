@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Optional, Dict
 
-from app_root.servers.models import RunVersion
+from app_root.players.models import PlayerAchievement
+from app_root.servers.models import RunVersion, TSAchievement
 from datetime import datetime, timedelta
 
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
-    DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer
+    DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
     warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time
@@ -160,8 +161,39 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
 
     # ship
 
+    strategy_collect_achievement_commands(version=version)
+
     # offer container
     next_dt = collect_offer_container(version=version)
     ret = update_next_event_time(previous=ret, event_time=next_dt)
 
     return ret
+
+
+def strategy_collect_achievement_commands(version: RunVersion):
+    achievements_dict: Dict[str, TSAchievement] = {
+        o.name: o for o in TSAchievement.objects.all()
+    }
+    for achievement in PlayerAchievement.objects.filter(version_id=version.id).all():
+        achievement_name = achievement.achievement
+        level = achievement.level
+        progress = achievement.progress
+
+        instance = achievements_dict[achievement_name]
+        if instance and instance.is_collectable(level=level, progress=progress):
+            reward_article_id, reward_article_amount = instance.get_reward(level=level)
+
+            cmd = GameSleep(version=version, sleep_seconds=30)
+            send_commands(commands=cmd)
+
+            cmd_list = [
+                GameWakeup(version=version),
+                CollectAchievementCommand(
+                    version=version,
+                    achievement=achievement,
+                    reward_article_id=reward_article_id,
+                    reward_article_amount=reward_article_amount,
+                )
+            ]
+
+            send_commands(cmd_list)
