@@ -6,7 +6,7 @@ from django.conf import settings
 
 from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerWarehouse, \
     PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle, PlayerDailyOfferContainer, \
-    PlayerDailyOffer, PlayerDailyOfferItem, PlayerTrain
+    PlayerDailyOffer, PlayerDailyOfferItem, PlayerTrain, PlayerCompetition
 from app_root.servers.models import RunVersion, TSArticle
 from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, trains_find, jobs_find, \
     destination_find, warehouse_used_capacity, warehouse_max_capacity, container_offer_find_iter, \
@@ -471,6 +471,28 @@ def ts_dump_whistle(version: RunVersion):
     return ret
 
 
+def ts_dump_competition(version: RunVersion):
+    ret = []
+    line = '-' * 80
+
+    ret.append('# [Competition]')
+    ret.append(line)
+
+    queryset = PlayerCompetition.objects.filter(version=version).all()
+    for competition in queryset:
+        starts_at = f'{get_remain_time(version=version, finish_at=competition.starts_at)}'
+        finishes_at = f'{get_remain_time(version=version, finish_at=competition.finishes_at)}'
+        expires_at = f'{get_remain_time(version=version, finish_at=competition.expires_at)}'
+        activated_at = f'{get_remain_time(version=version, finish_at=competition.activated_at)}'
+
+        # version_id = 2 and type = 'union' and scope = 'group'
+        ret.append(f'''   - Competition|{competition.type:8s}|{competition.scope:6s}[{competition.competition_id}] Start:{starts_at} | Finish:{finishes_at} | Activate:{activated_at} | Expire:{expires_at}''')
+        ret.append(f'''     Progress:{competition.progress}''')
+        pass
+    ret.append('')
+    return ret
+
+
 def ts_dump(version: RunVersion):
     ret = []
     ret += ts_dump_default(version=version)
@@ -505,6 +527,9 @@ def ts_dump(version: RunVersion):
 
     # whistle
     ret += ts_dump_whistle(version=version)
+
+    # competition
+    ret += ts_dump_competition(version=version)
 
     base_path = settings.SITE_PATH / 'dump' / f'{version.user.username}'
     base_path.mkdir(0o755, True, exist_ok=True)
