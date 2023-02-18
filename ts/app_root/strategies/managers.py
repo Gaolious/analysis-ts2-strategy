@@ -353,7 +353,6 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
     )
     location_id_set = set(PlayerQuest.objects.filter(
         version=version,
-        milestone=F('progress'),
     ).values_list('job_location__location_id', flat=True)) | {150, 151}
 
     if version.level_id < 25:
