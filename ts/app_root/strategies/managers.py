@@ -183,7 +183,7 @@ def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> List[Play
     """
     requirements = job.requirements_to_dict
 
-    return trains_find(version=version, **requirements)
+    return trains_find(version=version, **requirements, has_load=False, is_idle=True)
 
 
 def trains_unload(version: RunVersion, train: PlayerTrain):
@@ -975,7 +975,7 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
     if not version.has_union and version.level_id < 25:
         finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
         all_jobs = {job.id: job for job in jobs_find(version, story_jobs=True,  expired_jobs=False, completed_jobs=False)}
-        all_trains = {train.id: train for train in trains_find(version=version, has_load=False)}
+        all_trains = {train.id: train for train in trains_find(version=version)}
 
         if all_jobs:
             for job_id, job in all_jobs.items():
