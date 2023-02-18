@@ -317,8 +317,7 @@ def ts_dump_ship(version: RunVersion) -> List[str]:
             for article_id, article_amount in condition_dict.items()
         ]
 
-        ret.append(f'''   arrival_at : {ship.arrival_at} | remain : {get_remain_time(version=version, finish_at=ship.arrival_at)}''')
-        ret.append(f'''   expire_at : {ship.expire_at} | remain : {get_remain_time(version=version, finish_at=ship.expire_at)}''')
+        ret.append(f'''   ArriveAt:{get_remain_time(version=version, finish_at=ship.arrival_at)} | ExpireAt:{get_remain_time(version=version, finish_at=ship.expire_at)}''')
         ret.append(f'''   conditions : {' '.join(str_condition)}''')
         ret.append(f'''   reward : {' '.join(str_reward)}''')
     ret.append('')
@@ -369,10 +368,6 @@ def ts_dump_contract(version: RunVersion) -> List[str]:
             available_from = get_remain_time(version=version, finish_at=contract.available_from)
             available_to = get_remain_time(version=version, finish_at=contract.available_to)
             ret.append(f'''   Slot : {contract.slot:2d} | {msg} / 필요: {' '.join(str_condition):24s} / 보상: {' '.join(str_reward):24s} | usable_from : {usable_from} | expires_at : {expires_at} | available:[{available_from} ~ {available_to}]''')
-            # ret.append(f'''   usable_from : {contract.usable_from} | remain : {get_remain_time(version=version, finish_at=contract.usable_from)}''')
-            # ret.append(f'''   available_from : {contract.available_from} | remain : {get_remain_time(version=version, finish_at=contract.available_from)}''')
-            # ret.append(f'''   available_to : {contract.available_to} | remain : {get_remain_time(version=version, finish_at=contract.available_to)}''')
-            # ret.append(f'''   expires_at : {contract.expires_at} | remain : {get_remain_time(version=version, finish_at=contract.expires_at)}''')
     ret.append('')
     return ret
 
@@ -386,11 +381,9 @@ def ts_dump_daily_reward(version: RunVersion):
     now = get_curr_server_datetime(version=version)
     queryset = PlayerDailyReward.objects.filter(version_id=version.id).all()
     for daily in queryset:
-        ret.append(f'''   available_from : {daily.available_from} | remain : {get_remain_time(version=version, finish_at=daily.available_from)}''')
-        ret.append(f'''   expire_at : {daily.expire_at} | remain : {get_remain_time(version=version, finish_at=daily.expire_at)}''')
+        ret.append(f'''   AvailableFrom : {get_remain_time(version=version, finish_at=daily.available_from)} | ExpireAt : {get_remain_time(version=version, finish_at=daily.expire_at)}''')
         ret.append(f'''   rewards : {daily.rewards}''')
-        ret.append(f'''   pool_id : {daily.pool_id}''')
-        ret.append(f'''   day : {daily.day}''')
+        ret.append(f'''   pool_id : {daily.pool_id} | day : {daily.day}''')
         pass
     ret.append('')
     return ret
@@ -405,8 +398,7 @@ def ts_dump_daily_offer(version: RunVersion):
     now = get_curr_server_datetime(version=version)
     queryset = PlayerDailyOffer.objects.filter(version_id=version.id).all()
     for daily in queryset:
-        ret.append(f'''   expire_at : {daily.expire_at} | remain : {get_remain_time(version=version, finish_at=daily.expire_at)}''')
-        ret.append(f'''   expires_at : {daily.expires_at} | remain : {get_remain_time(version=version, finish_at=daily.expires_at)}''')
+        ret.append(f'''   expire_at : {get_remain_time(version=version, finish_at=daily.expire_at)} | expires_at : {get_remain_time(version=version, finish_at=daily.expires_at)}''')
 
         for item in PlayerDailyOfferItem.objects.filter(daily_offer_id=daily.id).all():
             purchased = '가능' if item.purchased == False else '완료'
@@ -465,8 +457,7 @@ def ts_dump_whistle(version: RunVersion):
     now = get_curr_server_datetime(version=version)
     queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
     for whistle in queryset:
-        ret.append(f'''   category: {whistle.category} | Position: {whistle.position} | spawn_time : {whistle.spawn_time} | remain : {get_remain_time(version=version, finish_at=whistle.spawn_time)} | collectable_from : {whistle.collectable_from} | remain : {get_remain_time(version=version, finish_at=whistle.collectable_from)} | expires_at : {whistle.expires_at} | remain : {get_remain_time(version=version, finish_at=whistle.expires_at)}''')
-        pass
+        ret.append(f'''   category: {whistle.category} | Position: {whistle.position} | spawn_time : {get_remain_time(version=version, finish_at=whistle.spawn_time)} | collectable_from : {get_remain_time(version=version, finish_at=whistle.collectable_from)} | expires_at : {get_remain_time(version=version, finish_at=whistle.expires_at)}''')
     ret.append('')
     return ret
 
