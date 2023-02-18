@@ -4,6 +4,7 @@ from datetime import timedelta, datetime
 from typing import List, Set, Dict, Type, Optional, Tuple, Union
 
 from django.conf import settings
+from django.db.models import F
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
@@ -84,6 +85,13 @@ def jobs_find(
 
     return ret
 
+
+def jobs_set_collect(version: RunVersion, job: PlayerJob):
+    if job:
+        job.collectable_from = version.now + timedelta(days=365)
+        job.save(update_fields=[
+            'collectable_from'
+        ])
 
 ###########################################################################
 # 기차 검색
@@ -343,7 +351,17 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
     visited_region_list = list(
         PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
     )
-    location_id_set = set(PlayerQuest.objects.filter(version=version).values_list('job_location__location_id', flat=True)) | {150, 151}
+    location_id_set = set(PlayerQuest.objects.filter(
+        version=version,
+        milestone=F('progress'),
+    ).values_list('job_location__location_id', flat=True)) | {150, 151}
+
+    not_yet_location_id_set = set(PlayerQuest.objects.filter(
+        version=version,
+        milestone__lt=F('progress'),
+    ).values_list('job_location_id__location_id', flat=True))
+
+    location_id_set -= not_yet_location_id_set
 
     queryset = TSDestination.objects.filter(
         region_id__in=visited_region_list,

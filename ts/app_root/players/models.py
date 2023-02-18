@@ -9,6 +9,7 @@ from app_root.players.mixins import PlayerBuildingMixin, PlayerDestinationMixin,
     PlayerWhistleItemMixin, PlayerWhistleMixin, PlayerAchievementMixin, PlayerDailyRewardMixin, PlayerMapMixin, \
     PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin, PlayerCompetitionMixin, \
     PlayerUnlockedContentMixin, PlayerOfferContainerMixin, PlayerDailyOfferMixin, PlayerDailyOfferItemMixin
+from app_root.utils import get_remain_time
 from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
 
 """
@@ -78,6 +79,11 @@ class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
             ret.append('UnionJob')
         if self.is_event_job:
             ret.append('EventJob')
+
+        if self.completed_at:
+            ret.append(f'완료:{self.completed_at}')
+        if self.completed_at:
+            ret.append(f'수령:{self.collectable_from}')
 
         ret.append(self.str_requirements)
 

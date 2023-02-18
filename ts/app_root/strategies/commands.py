@@ -10,11 +10,12 @@ from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
     PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard, PlayerContract, \
-    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement
+    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest
 from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
-    contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used
+    contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used, \
+    jobs_set_collect
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -909,6 +910,7 @@ class ContractAcceptWithVideoReward(BaseCommand):
 
         contract_set_used(version=self.version, contract=self.contract)
 
+
 ###################################################################
 # Product Order in Factory
 ###################################################################
@@ -976,47 +978,56 @@ class FactoryCollectProductCommand(BaseCommand):
 
 
 ###################################################################
-# Ship Offer
+# Product Order in Factory
 ###################################################################
-"""
-Step 1. 제품 수집
+class JobCollectCommand(BaseCommand):
+    """
+    {"Command":"Job:Collect","Time":"2023-02-18T04:01:40Z","Parameters":{"JobLocationId":153}}],"Transactional":false}
+    """
 
-################################################
-Step 2. ship 보내기 - sleep 
-################################################
-{'buffer': 'POST /api/v2/command-processing/run-collection HTTP/1.1\r\nPXFD-Request-Id: a8438911-4593-4144-98ce-540a288a90ec\r\nPXFD-Retry-No: 0\r\nPXFD-Sent-At: 2023-01-12T02:35:38.982Z\r\nPXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}\r\nPXFD-Client-Version: 2.6.3.4068\r\nPXFD-Device-Token: 662461905988ab8a7fade82221cce64b\r\nPXFD-Game-Access-Token: 80e1e3c6-28f8-5d50-8047-a9284469d1ef\r\nPXFD-Player-Id: 61561146\r\nContent-Type: application/json\r\nContent-Length: 205\r\nHost: game.trainstation2.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n'}
-{'buffer': '{"Id":36,"Time":"2023-01-12T02:35:38Z","Commands":[{"Command":"Game:Sleep","Time":"2023-01-12T02:35:38Z","Parameters":{},"Debug":{"CollectionsInQueue":0,"CollectionsInQueueIds":""}}],"Transactional":false}'}
-{"Success":true,"RequestId":"a8438911-4593-4144-98ce-540a288a90ec","Time":"2023-01-12T02:35:39Z","Data":{"CollectionId":36,"Commands":[]}}
+    COMMAND = 'Job:Collect'
+    job: PlayerJob
+    SLEEP_RANGE = (0.5, 1)
 
-################################################
-Step 2. ship 보내기 - ????
-################################################
-{'instance': '0x89a3a840', 'monitor': '0x0', 'url': 'https://game.trainstation2.com/api/v2/command-processing/run-collection', 'method': 'POST', 'req_id': 'c51ca065-ceac-4845-8a1f-92db0526df3e', 'is_binary': 0, 'retry_no': 0}
- 
-{"Id":37,"Time":"2023-01-12T02:36:17Z","Commands":[
-    {"Command":"Game:WakeUp","Time":"2023-01-12T02:35:38Z","Parameters":{}},
-    {"Command":"Contract:AcceptWithVideoReward","Time":"2023-01-12T02:36:17Z","Parameters":{"ContractListId":3,"Slot":1,"AcceptedAt":"2023-01-12T02:35:38Z"}}
-],"Transactional":false}
+    def __init__(self, *, job: PlayerJob, **kwargs):
+        super(JobCollectCommand, self).__init__(**kwargs)
+        self.job = job
 
-{"Success":true,"RequestId":"c51ca065-ceac-4845-8a1f-92db0526df3e","Time":"2023-01-12T02:36:18Z","Data":{"CollectionId":37,"Commands":[
-    {"Command":"ShipLoop:Change","Data":{"DefinitionId":5},"Id":"a7d6cd14-ddca-4b5c-9ec3-d8f751d65c82"},
-    {"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"ship_loop_trade","Level":5,"Progress":216}}},
-    {"Command":"PlayerCompany:Stats:Change","Data":{"Stats":{"Type":"ship_loop_trade","Progress":4320}}},
-    {"Command":"Contract:New",
-        "Data":{
-            "Contract":{
-                "Slot":2,
-                "ContractListId":3,
-                "Conditions":[{"Id":104,"Amount":406},{"Id":111,"Amount":140},{"Id":108,"Amount":107}],
-                "Reward":{"Items":[{"Id":8,"Value":2,"Amount":6},{"Id":8,"Value":11,"Amount":10},{"Id":8,"Value":12,"Amount":7},{"Id":8,"Value":10,"Amount":13}]},
-                "UsableFrom":"2023-01-12T18:35:38Z","AvailableFrom":"1970-01-01T00:00:00Z","AvailableTo":"2999-12-31T00:00:00Z"
-            }
-        },"Id":"cb4aa3d3-0f74-4b2a-806b-60b6d39753c1"
-    },
-    {"Command":"Ship:Offer","Data":{"Ship":{"DefinitionId":5,"Conditions":[{"Id":104,"Amount":406},{"Id":111,"Amount":140},{"Id":108,"Amount":107}],"Reward":{"Items":[{"Id":8,"Value":2,"Amount":6},{"Id":8,"Value":11,"Amount":10},{"Id":8,"Value":12,"Amount":7},{"Id":8,"Value":10,"Amount":13}]},"ArrivalAt":"2023-01-12T18:35:38Z"}},"Id":"8de362f8-ab13-4fa1-b29a-fe41b68cd32d"},
-    {"Command":"PlayerCompany:ChangeValue","Data":{"Value":175384}}]}}
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "JobLocationId": self.job.job_location_id,
+        }
 
-"""
+    def post_processing(self, server_data: Dict):
+        jobs_set_collect(version=self.version, job=self.job)
+
+
+class RegionQuestCommand(BaseCommand):
+    """
+    {"Command":"Region:Quest:Collect","Time":"2023-02-18T04:01:38Z","Parameters":{"JobLocationId":231}},
+    """
+
+    COMMAND = 'Region:Quest:Collect'
+    job: PlayerJob
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, job: PlayerJob, **kwargs):
+        super(RegionQuestCommand, self).__init__(**kwargs)
+        self.job = job
+
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "JobLocationId": self.job.job_location_id,
+        }
+
+
+
 class StartGame(ImportHelperMixin):
     NAME = 'startgame'
 
@@ -1126,6 +1137,8 @@ class RunCommand(ImportHelperMixin):
         mapping: Dict[str, Callable] = {
             'Whistle:Spawn': self._parse_command_whistle_spawn,
             'Contract:New': self._parse_command_contract_new,
+            'Map:NewJob': self._parse_command_new_job,
+            'Region:Quest:Change': self._parse_command_quest_change,
         }
         commands = server_data.pop('Commands', [])
         if commands:
@@ -1190,6 +1203,27 @@ class RunCommand(ImportHelperMixin):
         #         PlayerWhistleItem.objects.bulk_create(bulk_item_list, 100)
         #
         # self.print_remain('_parse_init_whistles', data)
+
+    def _parse_command_quest_change(self, data):
+        quests = data.get('Quest')
+        if quests:
+            bulk_list, _ = PlayerQuest.create_instance(data=quests, version_id=self.version.id)
+
+            for instance in bulk_list:
+                instance: PlayerQuest
+                old = PlayerQuest.objects.filter(version_id=self.version.id, job_location_id=instance.job_location_id).first()
+                if old:
+                    instance.id = old.id
+                instance.save()
+
+    def _parse_command_new_job(self, data):
+        jobs = data.get('Job')
+        if jobs:
+            bulk_list, _ = PlayerJob.create_instance(data=jobs, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerJob.objects.bulk_create(bulk_list, 100)
+
 
     def reduce(self, data):
         if isinstance(data, list):

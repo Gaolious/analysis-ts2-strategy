@@ -1,14 +1,15 @@
 from typing import Optional, Dict
 
-from app_root.players.models import PlayerAchievement
+from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest
 from app_root.servers.models import RunVersion, TSAchievement
 from datetime import datetime, timedelta
 
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
-    DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand
+    DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand, \
+    JobCollectCommand, RegionQuestCommand
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
-    warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time
+    warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find
 from app_root.utils import get_curr_server_str_datetime_s
 
 
@@ -197,3 +198,22 @@ def strategy_collect_achievement_commands(version: RunVersion):
             ]
 
             send_commands(cmd_list)
+
+
+def collect_job_complete(version: RunVersion):
+    for job in jobs_find(version=version, story_jobs=True, completed_jobs=True, collectable_jobs=True):
+        job: PlayerJob
+
+        if not job.is_completed(version.now):
+            continue
+        if not job.is_collectable(version.now):
+            continue
+
+        cmd = JobCollectCommand(version=version, job=job)
+        send_commands(cmd)
+
+        quest = PlayerQuest.objects.filter(version_id=version.id, job_location_id=job.job_location_id).first()
+
+        if quest and quest.milestone == quest.progress:
+            cmd = RegionQuestCommand(version=version, job=job)
+            send_commands(cmd)

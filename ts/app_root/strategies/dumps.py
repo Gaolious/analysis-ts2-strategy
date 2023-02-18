@@ -475,7 +475,6 @@ def ts_dump_competition(version: RunVersion):
         finishes_at = f'{get_remain_time(version=version, finish_at=competition.finishes_at)}'
         expires_at = f'{get_remain_time(version=version, finish_at=competition.expires_at)}'
         activated_at = f'{get_remain_time(version=version, finish_at=competition.activated_at)}'
-
         # version_id = 2 and type = 'union' and scope = 'group'
         ret.append(f'''   - Competition|{competition.type:8s}|{competition.scope:6s}[{competition.competition_id}] Start:{starts_at} | Finish:{finishes_at} | Activate:{activated_at} | Expire:{expires_at}''')
         ret.append(f'''     Progress:{competition.progress}''')
