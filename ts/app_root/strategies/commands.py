@@ -15,7 +15,7 @@ from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProdu
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
     contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used, \
-    jobs_set_collect, jobs_set_dispatched
+    jobs_set_collect, jobs_set_dispatched, user_level_up
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -1033,6 +1033,17 @@ class RegionQuestCommand(BaseCommand):
             "JobLocationId": self.job.job_location_id,
         }
 
+
+class LevelUpCommand(BaseCommand):
+    """
+    {"Command":"Region:Quest:Collect","Time":"2023-02-18T04:01:38Z","Parameters":{"JobLocationId":231}},
+    """
+
+    COMMAND = 'Player:LevelUp'
+    SLEEP_RANGE = (0.5, 1)
+
+    def post_processing(self, server_data: Dict):
+        user_level_up(version=self.version)
 
 
 class StartGame(ImportHelperMixin):
