@@ -370,10 +370,8 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
 
     location_id_set = set(PlayerQuest.objects.filter(
         version=version,
+        milestone__gt=0,
     ).values_list('job_location__location_id', flat=True)) | {150, 151}
-
-    if version.level_id < 25:
-        visited_region_list = visited_region_list[:1]
 
     queryset = TSDestination.objects.filter(
         region_id__in=visited_region_list,

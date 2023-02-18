@@ -5,18 +5,20 @@ from app_root.strategies.dumps import ts_dump
 from app_root.users.models import User
 
 
-def dump():
+def dump(version_id: int = None):
     for user in User.objects.all():
         print(f"[dump for user : {user.username} - {user.android_id}]")
-
-        version = RunVersion.objects.filter(user_id=user.id).order_by('-pk').first()
+        queryset = RunVersion.objects.filter(user_id=user.id).order_by('-pk')
+        if version_id:
+            queryset = queryset.filter(id=version_id)
+        version = queryset.first()
         if not version:
             continue
 
         with mock.patch('django.utils.timezone.now') as p:
-            p.return_value = version.init_server_1
+            p.return_value = version.now
             ts_dump(version=version)
 
 
 def run():
-    dump()
+    dump(17)
