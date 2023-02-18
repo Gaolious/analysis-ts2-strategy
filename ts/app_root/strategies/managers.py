@@ -255,6 +255,22 @@ def trains_set_destination(version: RunVersion, train: PlayerTrain, definition_i
     ])
 
 
+def jobs_set_dispatched(version: RunVersion, job: PlayerJob, amount: int, departure_at: datetime, arrival_at: datetime):
+    if job:
+        update_fields = []
+
+        job.current_article_amount += amount
+        update_fields.append('current_article_amount')
+
+        if job.required_amount <= job.current_article_amount:
+            job.completed_at = departure_at
+            update_fields.append('completed_at')
+            job.collectable_from = arrival_at
+            update_fields.append('collectable_from')
+
+        job.save(update_fields=update_fields)
+
+
 def trains_set_job(version: RunVersion, train: PlayerTrain, definition_id: Type[int], departure_at: datetime,
                    arrival_at: datetime):
     """

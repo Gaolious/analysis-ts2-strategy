@@ -15,7 +15,7 @@ from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProdu
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
     contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used, \
-    jobs_set_collect
+    jobs_set_collect, jobs_set_dispatched
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -439,6 +439,12 @@ class TrainDispatchToJobCommand(BaseCommand):
             version=self.version,
             article_id=self.job.required_article_id,
             amount=-self.amount
+        )
+        jobs_set_dispatched(
+            version=self.version,
+            job=self.job,
+            departure_at=departure_at,
+            arrival_at=arrival_at
         )
 
 
