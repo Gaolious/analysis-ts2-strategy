@@ -356,12 +356,13 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
         milestone=F('progress'),
     ).values_list('job_location__location_id', flat=True)) | {150, 151}
 
-    not_yet_location_id_set = set(PlayerQuest.objects.filter(
-        version=version,
-        milestone__lt=F('progress'),
-    ).values_list('job_location_id__location_id', flat=True))
+    if version.level_id < 25:
+        not_yet_location_id_set = set(PlayerQuest.objects.filter(
+            version=version,
+            milestone__lt=F('progress'),
+        ).values_list('job_location_id__location_id', flat=True))
 
-    location_id_set -= not_yet_location_id_set
+        location_id_set -= not_yet_location_id_set
 
     queryset = TSDestination.objects.filter(
         region_id__in=visited_region_list,
