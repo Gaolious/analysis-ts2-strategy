@@ -1479,6 +1479,13 @@ class PlayerMapMixin(BaseVersionMixin):
 
         return ret, _
 
+    @cached_property
+    def next_spot_ids(self):
+        ret = []
+        if self.connections:
+            ret = json.loads(self.connections, strict=False)
+        return ret
+
 
 class PlayerQuestMixin(BaseVersionMixin):
     job_location = models.ForeignKey(

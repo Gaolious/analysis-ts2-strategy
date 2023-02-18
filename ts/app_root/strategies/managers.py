@@ -8,7 +8,8 @@ from django.db.models import F
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
-    PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement
+    PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
+    PlayerMap
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory, \
     TSAchievement
 from app_root.strategies.data_types import JobPriority
@@ -351,7 +352,13 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
     visited_region_list = sorted(list(
         PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
     ))
-    
+
+    # quest_maps = {}
+    #
+    # player_maps = list(PlayerMap.objects.filter(version_id=version.id, is_resolved=True).all())
+    # for m in player_maps:
+    #     next_spot_ids = m.next_spot_ids
+
     location_id_set = set(PlayerQuest.objects.filter(
         version=version,
     ).values_list('job_location__location_id', flat=True)) | {150, 151}
@@ -951,7 +958,7 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
     ret = []
     if not version.has_union and version.level_id < 25:
         finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
-        all_jobs = {job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False)}
+        all_jobs = {job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False, completed_jobs=False)}
         all_trains = {train.id: train for train in trains_find(version=version)}
 
         if all_jobs:
