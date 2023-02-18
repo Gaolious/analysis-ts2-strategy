@@ -444,7 +444,8 @@ class TrainDispatchToJobCommand(BaseCommand):
             version=self.version,
             job=self.job,
             departure_at=departure_at,
-            arrival_at=arrival_at
+            arrival_at=arrival_at,
+            amount=self.amount
         )
 
 
