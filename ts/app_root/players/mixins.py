@@ -550,17 +550,17 @@ class PlayerJobMixin(BaseVersionMixin):
         return False
 
     def is_completed(self, init_data_server_datetime: datetime) -> bool:
-        if self.completed_at and self.completed_at + BUFFER_TIME <= init_data_server_datetime:
+        if self.completed_at and self.completed_at <= init_data_server_datetime:
             return True
         return False
 
     def is_collectable(self, init_data_server_datetime: datetime) -> bool:
-        if self.collectable_from and self.collectable_from + BUFFER_TIME <= init_data_server_datetime:
+        if self.collectable_from and self.collectable_from <= init_data_server_datetime:
             return True
         return False
 
     def is_expired(self, init_data_server_datetime: datetime) -> bool:
-        if self.expires_at and self.expires_at - BUFFER_TIME <= init_data_server_datetime:
+        if self.expires_at and self.expires_at <= init_data_server_datetime:
             return True
         return False
 

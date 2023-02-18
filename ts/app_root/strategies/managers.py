@@ -11,7 +11,7 @@ from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion,
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
     PlayerMap
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory, \
-    TSAchievement
+    TSAchievement, TSJobLocation
 from app_root.strategies.data_types import JobPriority
 
 
@@ -183,7 +183,7 @@ def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> List[Play
     """
     requirements = job.requirements_to_dict
 
-    return trains_find(version=version, **requirements, has_load=False, is_idle=True)
+    return trains_find(version=version, **requirements, has_load=False)
 
 
 def trains_unload(version: RunVersion, train: PlayerTrain):
@@ -363,17 +363,10 @@ def article_find_product(version: RunVersion, article_id=None) -> Dict[int, List
 
     return ret
 
-
 def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, List[TSDestination]]:
     visited_region_list = sorted(list(
         PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
     ))
-
-    # quest_maps = {}
-    #
-    # player_maps = list(PlayerMap.objects.filter(version_id=version.id, is_resolved=True).all())
-    # for m in player_maps:
-    #     next_spot_ids = m.next_spot_ids
 
     location_id_set = set(PlayerQuest.objects.filter(
         version=version,
