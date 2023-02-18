@@ -1483,3 +1483,17 @@ def achievement_set_used(version: RunVersion, achievement: PlayerAchievement):
     achievement.save(update_fields=[
         'level'
     ])
+
+###########################################################################
+# achievement
+###########################################################################
+def user_level_up(version: RunVersion):
+    warehouse_add_article(
+        version=version,
+        article_id=PlayerWarehouse.ARTICLE_XP,
+        amount=-version.level.xp,
+    )
+    version.level_id += 1
+    version.save(update_fields=[
+        'level_id'
+    ])

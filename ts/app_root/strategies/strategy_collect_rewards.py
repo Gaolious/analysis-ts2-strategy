@@ -6,10 +6,11 @@ from datetime import datetime, timedelta
 
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
     DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand, \
-    JobCollectCommand, RegionQuestCommand
+    JobCollectCommand, RegionQuestCommand, LevelUpCommand
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
-    warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find
+    warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
+    find_xp
 from app_root.utils import get_curr_server_str_datetime_s
 
 
@@ -217,3 +218,10 @@ def collect_job_complete(version: RunVersion):
         if quest and quest.milestone == quest.progress:
             cmd = RegionQuestCommand(version=version, job=job)
             send_commands(cmd)
+
+
+def check_levelup(version: RunVersion):
+
+    if find_xp(version) <= version.level.xp:
+        cmd = LevelUpCommand(version=version)
+        send_commands(cmd)
