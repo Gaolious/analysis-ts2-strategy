@@ -49,6 +49,7 @@ class PlayerFactoryProductOrder(PlayerFactoryProductOrderMixin, BaseModelMixin, 
     def __str__(self):
         return f'FactoryId={self.player_factory.factory_id}/article=[{self.article_id}|{self.article}]/Index={self.index}'
 
+
 class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
     class Meta:
         verbose_name = 'Player Job'
