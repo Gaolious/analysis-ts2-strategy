@@ -733,7 +733,7 @@ class WAREHOUSE:
         self.article_amount = amount
 
 
-class UnionJobFinder:
+class JobDisptchingHelper:
     number_of_dispatchers: int
     trains: Dict[int, TRAIN]
     jobs: Dict[int, JOB]
@@ -883,7 +883,7 @@ class UnionJobFinder:
         return self.best_assign
 
 
-def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
+def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
     """
 
     :param version:
@@ -898,7 +898,7 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
     #
     ret = []
     if version.has_union:
-        finder = UnionJobFinder(dispatcher=version.guild_dispatchers + 2)
+        finder = JobDisptchingHelper(dispatcher=version.guild_dispatchers + 2)
         all_jobs = {job.id: job for job in jobs_find(version, union_jobs=True, expired_jobs=False)}
         all_trains = {train.id: train for train in trains_find(version=version)}
 
@@ -920,6 +920,43 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
 
     return ret
 
+
+def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
+    """
+
+    :param version:
+    :return:
+    """
+    # 재료 수집이 가능한가 ? & expired 체크 & event expired 체크 & union expired 체크
+    # job의 travel time (1hour) 고려해서
+
+    # job 우선순위를 정하고.
+
+    # 재료 수집에 걸리는 시간
+    #
+    ret = []
+    if not version.has_union and version.level_id < 25:
+        finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
+        all_jobs = {job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False)}
+        all_trains = {train.id: train for train in trains_find(version=version)}
+
+        if all_jobs:
+            for job_id, job in all_jobs.items():
+                trains = trains_find_match_with_job(version=version, job=job)
+                finder.add_job_train(job, trains)
+                warehouse_cnt = warehouse_get_amount(version=version, article_id=job.required_article_id)
+
+                finder.add_warehouse(
+                    article_id=job.required_article_id,
+                    amount=warehouse_cnt
+                )
+
+            for train_id, job_id, amount in finder.dispatching(with_warehouse_limit):
+                instance = JobPriority(train=all_trains[train_id], job=all_jobs[job_id], amount=amount)
+                ret.append(instance)
+                # print(f"{train.str_dump()} / {job} / Amount={amount}")
+
+    return ret
 
 def jobs_check_warehouse(version: RunVersion, job_priority: List[JobPriority]) -> bool:
     """
