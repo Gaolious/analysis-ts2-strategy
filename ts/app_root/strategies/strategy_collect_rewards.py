@@ -222,6 +222,6 @@ def collect_job_complete(version: RunVersion):
 
 def check_levelup(version: RunVersion):
 
-    if find_xp(version) <= version.level.xp:
+    if find_xp(version) >= version.level.xp:
         cmd = LevelUpCommand(version=version)
         send_commands(cmd)
