@@ -20,7 +20,7 @@ from app_root.strategies.managers import jobs_find, trains_find, \
     jobs_check_warehouse, get_number_of_working_dispatchers, warehouse_countable, \
     warehouse_get_amount, article_find_product, article_find_contract, article_find_destination, \
     factory_find_product_orders, factory_find_player_factory, contract_get_ship, jobs_find_priority
-from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands
+from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands, collect_job_complete
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
     get_destination_materials, get_factory_materials, command_collect_materials_if_possible, \
     command_collect_factory_product_redundancy, command_factory_strategy, expand_material_strategy, \
@@ -289,6 +289,9 @@ class Strategy(object):
         next_dt = strategy_collect_reward_commands(version=self.version)
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
+        next_dt = collect_job_complete(version=self.version)
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+
         next_dt = strategy_dispatching_gold_destinations(version=self.version)
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
@@ -353,14 +356,10 @@ class Strategy(object):
                 strategy=strategy,
             )
 
-        # 다음 재료 수집.
-        # factory 별 생산해야 하는 것 리스트.
-        # destination order별 보내기.
-
-        command_material_strategy(
-            version=self.version,
-            strategy=strategy
-        )
+            command_material_strategy(
+                version=self.version,
+                strategy=strategy
+            )
 
         # command_collect_materials_if_possible(
         #     version=self.version,
