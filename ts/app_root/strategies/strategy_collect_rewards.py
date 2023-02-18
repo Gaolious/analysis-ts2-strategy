@@ -201,7 +201,7 @@ def strategy_collect_achievement_commands(version: RunVersion):
 
 
 def collect_job_complete(version: RunVersion):
-    for job in jobs_find(version=version, story_jobs=True, completed_jobs=True, collectable_jobs=True):
+    for job in jobs_find(version=version, story_jobs=True, completed_jobs=True):
         job: PlayerJob
 
         if not job.is_completed(version.now):

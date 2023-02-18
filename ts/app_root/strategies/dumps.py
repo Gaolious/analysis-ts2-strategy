@@ -3,14 +3,15 @@ import json
 from typing import List, Dict
 
 from django.conf import settings
+from django.db.models import F
 
 from app_root.players.models import PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, PlayerWarehouse, \
     PlayerContract, PlayerContractList, PlayerShipOffer, PlayerDailyReward, PlayerWhistle, PlayerDailyOfferContainer, \
-    PlayerDailyOffer, PlayerDailyOfferItem, PlayerTrain, PlayerCompetition
-from app_root.servers.models import RunVersion, TSArticle
+    PlayerDailyOffer, PlayerDailyOfferItem, PlayerTrain, PlayerCompetition, PlayerVisitedRegion, PlayerMap, PlayerQuest
+from app_root.servers.models import RunVersion, TSArticle, TSDestination, TSJobLocation
 from app_root.strategies.managers import find_xp, find_key, find_gem, find_gold, trains_find, jobs_find, \
     destination_find, warehouse_used_capacity, warehouse_max_capacity, container_offer_find_iter, \
-    factory_find_product_orders
+    factory_find_product_orders, article_find_destination
 from app_root.utils import get_curr_server_datetime, get_remain_time
 from core.models.utils import chunk_list
 
@@ -215,11 +216,11 @@ def ts_dump_jobs(version: RunVersion) -> List[str]:
     return ret
 
 
-def ts_dump_destination(version: RunVersion) -> List[str]:
+def ts_dump_gold_destination(version: RunVersion) -> List[str]:
     ret = []
     line = '-' * 80
 
-    ret.append(f'# [Destination]')
+    ret.append(f'# [Gold Destination]')
     ret.append(line)
     for destination in PlayerDestination.objects.filter(version_id=version.id).order_by('pk').all():
         if destination.is_available(now=version.now):
@@ -228,6 +229,59 @@ def ts_dump_destination(version: RunVersion) -> List[str]:
             remain_time = f'{get_remain_time(version=version, finish_at=destination.train_limit_refresh_at)}'
         ret.append(f' - Location : {destination.location_id} / remain: {remain_time}')
     ret.append('')
+    return ret
+
+
+def ts_dump_destination(version: RunVersion) -> List[str]:
+    ret = []
+    line = '-' * 80
+
+    ret.append(f'# [Destination]')
+    ret.append(line)
+
+    visited_region_list = sorted(list(
+        PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
+    ))
+
+    queryset = TSDestination.objects.filter(region__in=visited_region_list).order_by('pk')
+    for destination in queryset.all():
+        ret.append(f'''  - {destination.location_id} {destination.region_id} ''')
+    ret.append('')
+
+    quest_list = {
+        o.job_location_id: o for o in PlayerQuest.objects.filter(version_id=version.id, milestone__gt=0).all()
+    }
+
+    for region in visited_region_list:
+        ret.append(f' # Region : {region}')
+        ret.append(line)
+        draw = [[None for _ in range(10)] for _ in range(3)]
+        queryset = PlayerMap.objects.filter(version_id=version.id, region_name=f'region_{region}').all()
+        for row in queryset.all():
+            if row.is_resolved:
+                draw[row.position_y][row.position_x] = row.spot_id
+
+        for y in range(len(draw)):
+            t = []
+            for x in range(len(draw[y])):
+                instance = None
+                s = ' ' * 12
+
+                if draw[y][x]:
+                    instance = TSJobLocation.objects.filter(id=draw[y][x]).first()
+                    if instance:
+                        if draw[y][x] in quest_list:
+                            s = f' *[{instance.id:3d}:{instance.location_id:3d}] '
+                        else:
+                            s = f'  [{instance.id:3d}:{instance.location_id:3d}] '
+                t.append(s)
+            ret.append(''.join(t))
+    fd = article_find_destination(version=version)
+    for article_id in fd:
+        s = []
+        for dest in fd[article_id]:
+            s.append(f'JobLocationId={dest.id} / LocationId={dest.location_id}')
+        ret.append(f'article_id: {article_id} | {", ".join(s)}')
     return ret
 
 
@@ -493,7 +547,9 @@ def ts_dump(version: RunVersion):
 
     ret += ts_dump_jobs(version=version)
 
-    ret += ts_dump_destination(version=version)
+    ret += ts_dump_gold_destination(version=version)
+
+    # ret += ts_dump_destination(version=version)
 
     ret += ts_dump_factory(version=version)
 
