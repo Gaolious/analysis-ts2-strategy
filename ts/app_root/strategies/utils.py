@@ -16,10 +16,10 @@ from app_root.strategies.data_types import JobPriority, ArticleSource, Material,
     FactoryStrategy, MaterialStrategy
 from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, \
-    update_next_event_time, warehouse_max_capacity, jobs_find_priority, \
+    update_next_event_time, warehouse_max_capacity, jobs_find_union_priority, \
     jobs_check_warehouse, get_number_of_working_dispatchers, warehouse_countable, \
     warehouse_get_amount, article_find_product, article_find_contract, article_find_destination, \
-    factory_find_product_orders, factory_find_player_factory, contract_get_ship
+    factory_find_product_orders, factory_find_player_factory, contract_get_ship, jobs_find_priority
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
     get_destination_materials, get_factory_materials, command_collect_materials_if_possible, \
@@ -35,11 +35,13 @@ class Strategy(object):
     version: RunVersion
     user_id: int
     union_job_dispatching_priority: List[JobPriority]
+    job_dispatching_priority: List[JobPriority]
 
     # contract_material_manager: ContractMaterialStrategy
     article_source: Dict[int, ArticleSource]
 
     ship_material: Material
+    union_job_material: Material
     job_material: Material
     destination_material: Material
     factory_material: Material
@@ -50,8 +52,10 @@ class Strategy(object):
         self.user_id = user_id
         self.version = None
         self.union_job_dispatching_priority = []
+        self.job_dispatching_priority = []
         self.article_source = {}
         self.ship_material = Material()
+        self.union_job_material = Material()
         self.job_material = Material()
         self.factory_strategy = {}
         self.destination_strategy = {}
@@ -224,11 +228,26 @@ class Strategy(object):
     def _command_union_job(self) -> Optional[datetime]:
         if self.version.has_union:
             # union quest item
-            self.union_job_dispatching_priority = jobs_find_priority(version=self.version, with_warehouse_limit=False)
+            self.union_job_dispatching_priority = jobs_find_union_priority(version=self.version, with_warehouse_limit=False)
             self.dump_job_priority('Without resource', self.union_job_dispatching_priority)
 
             if jobs_check_warehouse(version=self.version, job_priority=self.union_job_dispatching_priority):
                 dispatching_job(version=self.version, job_priority=self.union_job_dispatching_priority)
+            else:
+                temporary_train_job_amount_list = jobs_find_union_priority(version=self.version, with_warehouse_limit=True)
+                self.dump_job_priority('out of resource.', temporary_train_job_amount_list)
+                dispatching_job(version=self.version, job_priority=temporary_train_job_amount_list)
+
+        return None
+
+    def _command_basic_job(self) -> Optional[datetime]:
+        if not self.version.has_union and self.version.level_id < 25:
+            # union quest item
+            self.job_dispatching_priority = jobs_find_priority(version=self.version, with_warehouse_limit=False)
+            self.dump_job_priority('Without resource', self.job_dispatching_priority)
+
+            if jobs_check_warehouse(version=self.version, job_priority=self.job_dispatching_priority):
+                dispatching_job(version=self.version, job_priority=self.job_dispatching_priority)
             else:
                 temporary_train_job_amount_list = jobs_find_priority(version=self.version, with_warehouse_limit=True)
                 self.dump_job_priority('out of resource.', temporary_train_job_amount_list)
@@ -275,6 +294,9 @@ class Strategy(object):
 
         next_dt = self._command_union_job()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        next_dt = self._command_basic_job()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
         """
             Queue 형태
             
@@ -299,20 +321,38 @@ class Strategy(object):
         )
 
         # Step 1. contract. / union quest materials.
-        self.job_material.clear()
-        for instance in self.union_job_dispatching_priority:
-            article_id = int(instance.job.required_article_id)
-            article_amount = int(instance.amount)
-            self.job_material.add(article_id=article_id, amount=int(article_amount))
+        if self.union_job_dispatching_priority:
+            self.union_job_material.clear()
+            for instance in self.union_job_dispatching_priority:
+                article_id = int(instance.job.required_article_id)
+                article_amount = int(instance.amount)
+                self.union_job_material.add(article_id=article_id, amount=int(article_amount))
 
-        self.dump_material(title="Step 1. Union Quest 재료", material=self.job_material)
-        strategy = MaterialStrategy()
-        expand_material_strategy(
-            version=self.version,
-            requires=self.job_material,
-            article_source=self.article_source,
-            strategy=strategy,
-        )
+            self.dump_material(title="Step 1-1. Union Quest 재료", material=self.union_job_material)
+            strategy = MaterialStrategy()
+            expand_material_strategy(
+                version=self.version,
+                requires=self.union_job_material,
+                article_source=self.article_source,
+                strategy=strategy,
+            )
+
+        if self.job_dispatching_priority:
+            self.job_material.clear()
+            for instance in self.job_dispatching_priority:
+                article_id = int(instance.job.required_article_id)
+                article_amount = int(instance.amount)
+                self.job_material.add(article_id=article_id, amount=int(article_amount))
+
+            self.dump_material(title="Step 1-2. Basic Quest 재료", material=self.job_material)
+            strategy = MaterialStrategy()
+            expand_material_strategy(
+                version=self.version,
+                requires=self.job_material,
+                article_source=self.article_source,
+                strategy=strategy,
+            )
+
         # 다음 재료 수집.
         # factory 별 생산해야 하는 것 리스트.
         # destination order별 보내기.

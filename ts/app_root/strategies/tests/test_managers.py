@@ -15,7 +15,7 @@ from app_root.servers.utils_import import SQLDefinitionHelper
 from app_root.strategies.commands import ShopPurchaseItem
 from app_root.strategies.dumps import ts_dump, ts_dump_factory
 from app_root.strategies.managers import jobs_find, trains_find_match_with_job, trains_max_capacity, \
-    jobs_find_priority, daily_offer_get_slots, factory_order_product, factory_collect_product
+    jobs_find_union_priority, daily_offer_get_slots, factory_order_product, factory_collect_product
 from app_root.strategies.utils import Strategy
 from app_root.users.models import User
 from app_root.utils import get_curr_server_str_datetime_s
@@ -325,7 +325,7 @@ def test_job_prioirty(multidb, init_filename):
 
     with mock.patch('django.utils.timezone.now') as p:
         p.return_value = now
-        jobs_find_priority(version=version)
+        jobs_find_union_priority(version=version)
 
 
 def convert_text(txt: str):
