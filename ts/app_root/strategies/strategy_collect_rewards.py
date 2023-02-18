@@ -169,6 +169,7 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
     next_dt = collect_offer_container(version=version)
     ret = update_next_event_time(previous=ret, event_time=next_dt)
 
+    check_levelup(version=version)
     return ret
 
 
