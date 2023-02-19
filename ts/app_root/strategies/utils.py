@@ -9,9 +9,7 @@ from app_root.players.models import PlayerContract
 from app_root.players.utils_import import InitdataHelper, LeaderboardHelper
 from app_root.servers.models import RunVersion, TSDestination
 from app_root.servers.utils_import import EndpointHelper, LoginHelper, SQLDefinitionHelper
-from app_root.strategies.commands import HeartBeat, StartGame, \
-    TrainSendToDestinationCommand, ContractAcceptCommand, \
-    FactoryCollectProductCommand, ContractActivateCommand, send_commands
+from app_root.strategies.commands import HeartBeat, StartGame, send_commands
 from app_root.strategies.data_types import JobPriority, ArticleSource, Material, \
     FactoryStrategy, MaterialStrategy
 from app_root.strategies.dumps import ts_dump
