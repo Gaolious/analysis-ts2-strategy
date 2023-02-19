@@ -4,15 +4,12 @@ from datetime import timedelta, datetime
 from typing import List, Set, Dict, Type, Optional, Tuple, Union
 
 from django.conf import settings
-from django.db.models import F
 
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
     PlayerMap
-from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory, \
-    TSAchievement, TSJobLocation
-from app_root.strategies.commands import ContractListRefreshCommand
+from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle
 from app_root.strategies.data_types import JobPriority
 
 

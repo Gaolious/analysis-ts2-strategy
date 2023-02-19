@@ -170,7 +170,7 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
     ret = update_next_event_time(previous=ret, event_time=next_dt)
 
     check_levelup(version=version)
-    
+
     check_expired_contracts(version=version)
     return ret
 
