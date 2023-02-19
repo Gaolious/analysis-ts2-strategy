@@ -702,7 +702,7 @@ class PlayerContractListMixin(BaseVersionMixin):
         return True
 
     def is_expired(self, now) -> bool:
-        if self.expires_at and not (now >= self.expires_at):
+        if self.expires_at and (now >= self.expires_at):
             return True
         return False
 
