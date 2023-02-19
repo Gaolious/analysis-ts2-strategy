@@ -821,11 +821,3 @@ def command_ship_trade(
     contract = contract_get_ship(version=version)
     if contract:
         command_trade_contract(version=version, contract=contract)
-"""
-
-{"Id":37,"Time":"2023-01-12T02:36:17Z","Commands":[
-{"Command":"Game:WakeUp","Time":"2023-01-12T02:35:38Z","Parameters":{}},
-{"Command":"Contract:AcceptWithVideoReward","Time":"2023-01-12T02:36:17Z","Parameters":{
-"ContractListId":3,"Slot":1,"AcceptedAt":"2023-01-12T02:35:38Z"}}
-],"Transactional":false}
-"""
