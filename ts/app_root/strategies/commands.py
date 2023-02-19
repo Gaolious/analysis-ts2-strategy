@@ -827,6 +827,30 @@ Accept-Encoding: gzip, deflate
 ###################################################################
 # Union Quest - Contract Accept
 ###################################################################
+class ContractListRefreshCommand(BaseCommand):
+    """
+    {"Command":"ContractList:Refresh","Time":"2023-02-18T10:45:38Z","Parameters":{"ContractListId":100001}}
+    """
+    COMMAND = 'ContractList:Refresh'
+    contract_list: PlayerContractList
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, contract_list: PlayerContractList, **kwargs):
+        super(ContractListRefreshCommand, self).__init__(**kwargs)
+        self.contract_list = contract_list
+
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "ContractListId": self.contract_list.contract_list_id,
+        }
+
+    def post_processing(self, server_data: Dict):
+        self.contract_list.refresh_from_db()
+
+
 class ContractActivateCommand(BaseCommand):
     """
     {"Id":4,"Time":"2023-02-06T04:58:24Z","Commands":[{"Command":"Contract:Activate","Time":"2023-02-06T04:58:22Z","Parameters":{
@@ -1157,6 +1181,7 @@ class RunCommand(ImportHelperMixin):
             'Contract:New': self._parse_command_contract_new,
             'Map:NewJob': self._parse_command_new_job,
             'Region:Quest:Change': self._parse_command_quest_change,
+            'ContractList:Update': self._parse_command_contract_list_update,
         }
         commands = server_data.pop('Commands', [])
         if commands:
@@ -1173,6 +1198,57 @@ class RunCommand(ImportHelperMixin):
         :return:
         """
         pass
+
+    def _parse_command_contract_list_update(self, data):
+        """
+                "Command":"ContractList:Update",
+                "Data":{
+                    "ContractList":{"ContractListId":100001,"AvailableTo":"2023-02-27T12:00:00Z","NextReplaceAt":"2023-02-18T10:45:43Z","NextVideoReplaceAt":"2023-02-18T10:45:43Z","NextVideoRentAt":"2023-02-18T10:45:43Z","NextVideoSpeedUpAt":"2023-02-16T09:28:33Z","ExpiresAt":"2023-02-18T18:45:38Z"}},"Id":"540bf688-8e02-45d0-bf8d-9e33de3c06c4"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":1,"ContractListId":100001,"Conditions":[{"Id":107,"Amount":85}],
+                "Reward":{"Items":[{"Id":8,"Value":100004,"Amount":40}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"61919a22-6204-4254-a572-515119c021cd"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":2,"ContractListId":100001,"Conditions":[{"Id":224,"Amount":123}],"Reward":{"Items":[{"Id":8,"Value":100004,"Amount":80}]},
+                "UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"58d9a5ed-441d-4428-b9ff-ae7309dbfe6d"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":3,"ContractListId":100001,"Conditions":[{"Id":105,"Amount":183}],
+                "Reward":{"Items":[{"Id":8,"Value":100004,"Amount":160}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"e47066b6-ffbb-4f3e-b820-8ee28ce97c91"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":4,"ContractListId":100001,"Conditions":[{"Id":112,"Amount":60}],"Reward":{"Items":[{"Id":8,"Value":100005,"Amount":37}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"79c048b6-b3cc-4d48-8c67-c377ae8b7809"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":5,"ContractListId":100001,"Conditions":[{"Id":118,"Amount":106}],"Reward":{"Items":[{"Id":8,"Value":100005,"Amount":75}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"4cc7713b-a501-4407-91e4-1f476208b5da"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":6,"ContractListId":100001,"Conditions":[{"Id":120,"Amount":110}],"Reward":{"Items":[{"Id":8,"Value":100005,"Amount":150}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"aa356193-9dcc-4c84-bcb0-7c1d5051ca88"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":7,"ContractListId":100001,"Conditions":[{"Id":120,"Amount":55}],"Reward":{"Items":[{"Id":8,"Value":100006,"Amount":35}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"82094f0f-ab0c-423f-a139-884754a28963"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":8,"ContractListId":100001,"Conditions":[{"Id":108,"Amount":98}],"Reward":{"Items":[{"Id":8,"Value":100006,"Amount":70}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"b7dadae7-879f-46a0-8588-4d07b3e19dfb"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":9,"ContractListId":100001,"Conditions":[{"Id":108,"Amount":130}],"Reward":{"Items":[{"Id":8,"Value":100006,"Amount":140}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"10dfaff9-43a9-4155-bc2a-adce492fedfe"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":10,"ContractListId":100001,"Conditions":[{"Id":115,"Amount":154}],"Reward":{"Items":[{"Id":8,"Value":100007,"Amount":32}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"ef82ada3-db37-4d89-9d67-4953faa035ba"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":11,"ContractListId":100001,"Conditions":[{"Id":105,"Amount":137}],"Reward":{"Items":[{"Id":8,"Value":100007,"Amount":65}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"920a8afa-dc5a-4b5b-bf60-3fbfa167ba26"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":12,"ContractListId":100001,"Conditions":[{"Id":106,"Amount":183}],"Reward":{"Items":[{"Id":8,"Value":100007,"Amount":130}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"25f27fb2-5778-4f94-a936-4ed9e0d8402e"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":13,"ContractListId":100001,"Conditions":[{"Id":111,"Amount":85}],"Reward":{"Items":[{"Id":8,"Value":100008,"Amount":30}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"67a8c2bb-bb78-4e4f-be8e-528d3a9d3d2b"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":14,"ContractListId":100001,"Conditions":[{"Id":224,"Amount":123}],"Reward":{"Items":[{"Id":8,"Value":100008,"Amount":60}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"2aecaa85-ad44-4441-a3e7-8c45d58e131b"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":15,"ContractListId":100001,"Conditions":[{"Id":224,"Amount":164}],"Reward":{"Items":[{"Id":8,"Value":100008,"Amount":120}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"2b89e9bd-5915-4ecf-8e9b-27e54e219e7b"}
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":16,"ContractListId":100001,"Conditions":[{"Id":107,"Amount":85}],"Reward":{"Items":[{"Id":8,"Value":100009,"Amount":27}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"ec8af687-d675-4f9d-abea-e7fb8b5d9eb6"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":17,"ContractListId":100001,"Conditions":[{"Id":118,"Amount":106}],"Reward":{"Items":[{"Id":8,"Value":100009,"Amount":55}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"9d0d89f9-5dcf-4e9e-bf9c-c0c113ad5296"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":18,"ContractListId":100001,"Conditions":[{"Id":117,"Amount":235}],"Reward":{"Items":[{"Id":8,"Value":100009,"Amount":110}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"70279acc-ab32-4caf-b6b9-0c87721006f7"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":19,"ContractListId":100001,"Conditions":[{"Id":123,"Amount":92}],"Reward":{"Items":[{"Id":8,"Value":100010,"Amount":25}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"87211a0d-542d-4046-89c6-027d653869ba"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":20,"ContractListId":100001,"Conditions":[{"Id":119,"Amount":90}],"Reward":{"Items":[{"Id":8,"Value":100010,"Amount":50}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"5d7ec184-a143-4bbd-96d6-a723f5df2a36"},
+                {"Command":"Contract:New","Data":{"Contract":{"Slot":21,"ContractListId":100001,"Conditions":[{"Id":105,"Amount":183}],"Reward":{"Items":[{"Id":8,"Value":100010,"Amount":100}]},"UsableFrom":"2023-02-18T10:45:38Z","AvailableFrom":"2022-12-05T12:00:00Z","AvailableTo":"2023-02-27T12:00:00Z"}},"Id":"246c6655-8af1-4fa0-89aa-f483d430e9ce"}
+            ]}
+        :param data:
+        :return:
+        """
+        contract_list = data.get('ContractList', [])
+        if contract_list:
+            bulk_list, _ = PlayerContractList.create_instance(data=contract_list, version_id=self.version.id)
+
+            if bulk_list:
+
+                for instance in bulk_list:
+                    instance: PlayerContractList
+                    old = PlayerContractList.objects.filter(version_id=self.version.id, contract_list_id=instance.contract_list_id).first()
+                    if old:
+                        instance.id = old.id
+                        instance.save()
+                bulk_list = [o for o in bulk_list if not o.id]
+
+            if bulk_list:
+                PlayerContract.objects.bulk_create(bulk_list, 100)
+
 
     def _parse_command_contract_new(self, data):
         """
@@ -1494,5 +1570,10 @@ Accept-Encoding: gzip, deflate
             "ExpiresAt": "2023-03-03T12:00:00Z"
           }
         ],
+
+"""
+
+"""
+
 
 """

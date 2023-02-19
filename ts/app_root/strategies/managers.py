@@ -12,6 +12,7 @@ from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion,
     PlayerMap
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSFactory, \
     TSAchievement, TSJobLocation
+from app_root.strategies.commands import ContractListRefreshCommand
 from app_root.strategies.data_types import JobPriority
 
 
@@ -397,6 +398,7 @@ def article_find_contract(version: RunVersion, article_id=None, available_only=T
     delta = timedelta(minutes=1)
 
     ret = {}
+
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
 
         # contract_list.contract_list_id == 1 => ship.
@@ -407,8 +409,7 @@ def article_find_contract(version: RunVersion, article_id=None, available_only=T
         if available_only:
             if contract_list.available_to and version.now + delta >= contract_list.available_to:
                 continue
-        # if contract_list.expires_at and version.now + delta >= contract_list.expires_at:
-        #     continue
+
 
         for contract in PlayerContract.objects.filter(contract_list_id=contract_list.id).all():
             # fixme: expired check
