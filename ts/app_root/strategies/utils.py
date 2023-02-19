@@ -339,6 +339,10 @@ class Strategy(object):
                 article_source=self.article_source,
                 strategy=strategy,
             )
+            command_material_strategy(
+                version=self.version,
+                strategy=strategy
+            )
 
         if self.job_dispatching_priority:
             self.job_material.clear()
