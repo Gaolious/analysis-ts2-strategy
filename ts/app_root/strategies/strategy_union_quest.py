@@ -16,8 +16,17 @@ def strategy_dispatching_gold_destinations(version: RunVersion) -> datetime:
     :param version:
     :return:
     """
+
+    normal_workers, union_workers = get_number_of_working_dispatchers(version=version)
+    max_normal_workers = version.dispatchers + 2
+    max_union_workers = version.guild_dispatchers + 2
+
     ret = None
     for destination in destination_gold_find_iter(version=version):
+        if normal_workers >= max_normal_workers:
+            print(f"    - Dest Location ID #{destination.location_id} / Dispatcher Working:{normal_workers} >= {version.dispatchers + 2} | PASS")
+            break
+
         if destination.is_available(now=version.now):
             requirerments = destination.definition.requirements_to_dict
             possibles = []
@@ -33,6 +42,7 @@ def strategy_dispatching_gold_destinations(version: RunVersion) -> datetime:
                     dest=destination,
                 )
                 send_commands(commands=cmd)
+                normal_workers += 1
 
         elif destination.train_limit_refresh_at and destination.train_limit_refresh_at > version.now:
             ret = update_next_event_time(previous=ret, event_time=destination.train_limit_refresh_at)
