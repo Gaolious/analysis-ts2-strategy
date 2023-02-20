@@ -63,34 +63,24 @@ def jobs_find(
 
     ret = []
     for job in queryset.all():
-        check = []
-        if event_jobs is False and job.is_event_job:
+        if event_jobs is not None and event_jobs != job.is_event_job:
             continue
-        if union_jobs is False and job.is_union_job:
+        if union_jobs is not None and union_jobs != job.is_union_job:
             continue
-        if story_jobs is False and job.is_story_job:
+        if story_jobs is not None and story_jobs != job.is_story_job:
             continue
-        if side_jobs is False and job.is_side_job:
+        if side_jobs is not None and side_jobs != job.is_side_job:
             continue
-        if collectable_jobs is False and job.is_collectable(version.now):
+        if collectable_jobs is not None and collectable_jobs != job.is_collectable(version.now):
             continue
-        if completed_jobs is False and job.is_completed(version.now):
+        if completed_jobs is not None and completed_jobs != job.is_completed(version.now):
             continue
-        if expired_jobs is False and job.is_expired(version.now):
+        if expired_jobs is not None and expired_jobs != job.is_expired(version.now):
             continue
         if job_location_id is not None and job_location_id != job.job_location_id:
             continue
 
-        if event_jobs is True and job.is_event_job: check.append(job.is_event_job)
-        if union_jobs is True and job.is_union_job: check.append(job.is_union_job)
-        if story_jobs is True and job.is_story_job: check.append(job.is_story_job)
-        if side_jobs is True and job.is_side_job: check.append(job.is_side_job)
-        if collectable_jobs is True and job.is_collectable(version.now): check.append(job.is_collectable(version.now))
-        if completed_jobs is True and job.is_completed(version.now): check.append(job.is_completed(version.now))
-        if expired_jobs is True and job.is_expired(version.now): check.append(job.is_expired(version.now))
-
-        if any(check):
-            ret.append(job)
+        ret.append(job)
 
     return ret
 

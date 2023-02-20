@@ -214,11 +214,11 @@ def ts_dump_jobs(version: RunVersion) -> List[str]:
 
     story_jobs = list(jobs_find(version=version, side_jobs=True))
     if len(story_jobs) > 0:
-        ret.append('Story Jobs')
+        ret.append('Side Jobs')
         for job in story_jobs:
             ret.append(f'    {job}')
     else:
-        ret.append('Story Jobs 없음')
+        ret.append('Side Jobs 없음')
 
     ret.append('')
     return ret
