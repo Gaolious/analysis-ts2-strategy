@@ -21,7 +21,7 @@ def collect_daily_reward(version: RunVersion) -> datetime:
     :param version:
     :return:
     """
-    print(f"# [Collect Daily Reward]")
+    print(f"# [Strategy Process] - Collect Daily Reward")
 
     daily_reward = daily_reward_get_reward(version=version)
     if daily_reward:
@@ -63,7 +63,7 @@ def collect_daily_offer(version: RunVersion) -> datetime:
     :param version:
     :return:
     """
-    print(f"# [Collect Daily Offer]")
+    print(f"# [Strategy Process] - Collect Daily Offer")
 
     daily_offer_items = daily_offer_get_slots(
         version=version,
@@ -80,7 +80,8 @@ def collect_daily_offer(version: RunVersion) -> datetime:
 
 
 def collect_train_unload(version: RunVersion) -> datetime:
-    print(f"# [Collect Train Load]")
+    print(f"# [Strategy Process] - Collect Train Load")
+
     for train in trains_find(version=version, has_load=True):
         if not warehouse_can_add(version=version, article_id=train.load_id, amount=train.load_amount):
             continue
@@ -104,7 +105,7 @@ def collect_whistle(version: RunVersion) -> datetime:
 
 def collect_offer_container(version: RunVersion) -> datetime:
     ret = None
-    print(f"# [Collect Offer Container]")
+    print(f"# [Strategy Process] - Collect Offer Container")
 
     for offer in container_offer_find_iter(version=version, available_only=True):
         offer.refresh_from_db()
@@ -182,7 +183,7 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
 
 
 def strategy_collect_achievement_commands(version: RunVersion):
-    print(f"# [Collect Achievement]")
+    print(f"# [Strategy Process] - Collect Achievement")
 
     achievements_dict: Dict[str, TSAchievement] = {
         o.name: o for o in TSAchievement.objects.all()
@@ -213,7 +214,8 @@ def strategy_collect_achievement_commands(version: RunVersion):
 
 
 def collect_job_complete(version: RunVersion):
-    print("# [Collect Job Complete]")
+    print(f"# [Strategy Process] - Collect Job Complete")
+
     for job in jobs_find(version=version, story_jobs=True, side_jobs=True, completed_jobs=True):
         job: PlayerJob
 
@@ -239,7 +241,7 @@ def collect_job_complete(version: RunVersion):
 
 
 def check_levelup(version: RunVersion):
-    print(f"# [Collect Level Up]")
+    print(f"# [Strategy Process] - Collect Level Up")
 
     if find_xp(version) >= version.level.xp:
         cmd = LevelUpCommand(version=version)
@@ -247,7 +249,7 @@ def check_levelup(version: RunVersion):
 
 
 def check_expired_contracts(version: RunVersion):
-    print(f"# [Refresh Expired Contracts]")
+    print(f"# [Strategy Process] - Refresh Expired Contracts")
 
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
         if contract_list.expires_at and contract_list.is_expired(version.now):
