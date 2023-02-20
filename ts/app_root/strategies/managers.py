@@ -962,22 +962,31 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
     #
     ret = []
     if not version.has_union and version.level_id < 25:
-        finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
         all_jobs = {}
         all_jobs.update({job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False, completed_jobs=False)})
         # all_jobs.update({job.id: job for job in jobs_find(version, side_jobs=True, expired_jobs=False, completed_jobs=False)})
         all_trains = {train.id: train for train in trains_find(version=version)}
 
         if all_jobs:
-            for job_id, job in all_jobs.items():
-                trains = trains_find_match_with_job(version=version, job=job)
-                finder.add_job_train(job, trains)
-                warehouse_cnt = warehouse_get_amount(version=version, article_id=job.required_article_id)
+            possible = False
+            finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
+            for _ in range(2):
+                for job_id, job in all_jobs.items():
+                    trains = trains_find_match_with_job(version=version, job=job)
+                    if trains:
+                        possible = True
+                    finder.add_job_train(job, trains)
+                    warehouse_cnt = warehouse_get_amount(version=version, article_id=job.required_article_id)
 
-                finder.add_warehouse(
-                    article_id=job.required_article_id,
-                    amount=warehouse_cnt
-                )
+                    finder.add_warehouse(
+                        article_id=job.required_article_id,
+                        amount=warehouse_cnt
+                    )
+
+                if possible:
+                    break
+
+                all_jobs.update({job.id: job for job in jobs_find(version, side_jobs=True, expired_jobs=False, completed_jobs=False)})
 
             for train_id, job_id, amount in finder.dispatching(with_warehouse_limit):
                 instance = JobPriority(train=all_trains[train_id], job=all_jobs[job_id], amount=amount)
