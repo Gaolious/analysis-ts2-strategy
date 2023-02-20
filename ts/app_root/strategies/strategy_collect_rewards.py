@@ -205,18 +205,25 @@ def strategy_collect_achievement_commands(version: RunVersion):
 
 
 def collect_job_complete(version: RunVersion):
+    print("# [Collect Job Complete]")
     for job in jobs_find(version=version, story_jobs=True, side_jobs=True, completed_jobs=True):
         job: PlayerJob
 
         if not job.is_completed(version.now):
+            print(f"""    - {job} | is not completed: Now[{version.now}]""")
             continue
         if not job.is_collectable(version.now):
+            print(f"""    - {job} | is not collectable: Now[{version.now}]""")
             continue
+
+        quest = PlayerQuest.objects.filter(version_id=version.id, job_location_id=job.job_location_id).first()
+
+        if quest:
+            print(f"""    - {job} | Try Collect[milestone:{quest.milestone} / progress:{quest.progress}""")
 
         cmd = JobCollectCommand(version=version, job=job)
         send_commands(cmd)
 
-        quest = PlayerQuest.objects.filter(version_id=version.id, job_location_id=job.job_location_id).first()
 
         if quest and quest.milestone == quest.progress:
             cmd = RegionQuestCommand(version=version, job=job)
