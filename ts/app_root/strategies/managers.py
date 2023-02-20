@@ -961,20 +961,24 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
     # 재료 수집에 걸리는 시간
     #
     ret = []
+
     if not version.has_union and version.level_id < 25:
         all_jobs = {}
         all_jobs.update({job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False, completed_jobs=False)})
-        # all_jobs.update({job.id: job for job in jobs_find(version, side_jobs=True, expired_jobs=False, completed_jobs=False)})
         all_trains = {train.id: train for train in trains_find(version=version)}
 
         if all_jobs:
             possible = False
             finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
+
             for _ in range(2):
+
                 for job_id, job in all_jobs.items():
+
                     trains = trains_find_match_with_job(version=version, job=job)
                     if trains:
                         possible = True
+
                     finder.add_job_train(job, trains)
                     warehouse_cnt = warehouse_get_amount(version=version, article_id=job.required_article_id)
 
@@ -994,6 +998,7 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
                 # print(f"{train.str_dump()} / {job} / Amount={amount}")
 
     return ret
+
 
 def jobs_check_warehouse(version: RunVersion, job_priority: List[JobPriority]) -> bool:
     """
