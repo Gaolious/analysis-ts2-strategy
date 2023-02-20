@@ -237,6 +237,7 @@ def command_send_destination(version: RunVersion, destination: TSDestination, am
         if send_amount >= amount:
             break
 
+        print(f"    - Send Destination Dest Location ID #{destination.location_id} / Train[{train.capacity()}] / Worker = Normal[{normal_workers}], Union[{union_workers}]")
         cmd = TrainSendToDestinationCommand(
             version=version,
             train=train,
