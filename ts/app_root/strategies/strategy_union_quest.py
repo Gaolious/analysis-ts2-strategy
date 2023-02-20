@@ -16,7 +16,7 @@ def strategy_dispatching_gold_destinations(version: RunVersion) -> datetime:
     :param version:
     :return:
     """
-    print(f"# [Send Gold Destination]")
+    print(f"# [Strategy Process] - Send Gold Destination")
 
     normal_workers, union_workers = get_number_of_working_dispatchers(version=version)
     max_normal_workers = version.dispatchers + 2

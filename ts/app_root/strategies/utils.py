@@ -223,7 +223,7 @@ class Strategy(object):
 
     def _command_union_job(self) -> Optional[datetime]:
         if self.version.has_union:
-            print(f"# [Union Job]")
+            print(f"# [Strategy Process] - Union Job")
 
             # union quest item
             self.union_job_dispatching_priority = jobs_find_union_priority(version=self.version, with_warehouse_limit=False)
@@ -240,7 +240,8 @@ class Strategy(object):
 
     def _command_basic_job(self) -> Optional[datetime]:
         if not self.version.has_union and self.version.level_id < 25:
-            print(f"# [Story/Side Job]")
+            print(f"# [Strategy Process] - Story/Side Job")
+
             # union quest item
             self.job_dispatching_priority = jobs_find_priority(version=self.version, with_warehouse_limit=False)
             self.dump_job_priority('Without resource', self.job_dispatching_priority)
