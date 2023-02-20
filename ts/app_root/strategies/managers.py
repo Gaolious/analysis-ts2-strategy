@@ -965,7 +965,7 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
         finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
         all_jobs = {}
         all_jobs.update({job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False, completed_jobs=False)})
-        all_jobs.update({job.id: job for job in jobs_find(version, side_jobs=True, expired_jobs=False, completed_jobs=False)})
+        # all_jobs.update({job.id: job for job in jobs_find(version, side_jobs=True, expired_jobs=False, completed_jobs=False)})
         all_trains = {train.id: train for train in trains_find(version=version)}
 
         if all_jobs:
