@@ -21,6 +21,8 @@ def collect_daily_reward(version: RunVersion) -> datetime:
     :param version:
     :return:
     """
+    print(f"# [Collect Daily Reward]")
+
     daily_reward = daily_reward_get_reward(version=version)
     if daily_reward:
         if daily_reward.can_claim_with_video:
@@ -61,6 +63,8 @@ def collect_daily_offer(version: RunVersion) -> datetime:
     :param version:
     :return:
     """
+    print(f"# [Collect Daily Offer]")
+
     daily_offer_items = daily_offer_get_slots(
         version=version,
         available_video=True,
@@ -76,6 +80,7 @@ def collect_daily_offer(version: RunVersion) -> datetime:
 
 
 def collect_train_unload(version: RunVersion) -> datetime:
+    print(f"# [Collect Train Load]")
     for train in trains_find(version=version, has_load=True):
         if not warehouse_can_add(version=version, article_id=train.load_id, amount=train.load_amount):
             continue
@@ -99,6 +104,7 @@ def collect_whistle(version: RunVersion) -> datetime:
 
 def collect_offer_container(version: RunVersion) -> datetime:
     ret = None
+    print(f"# [Collect Offer Container]")
 
     for offer in container_offer_find_iter(version=version, available_only=True):
         offer.refresh_from_db()
@@ -176,6 +182,8 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
 
 
 def strategy_collect_achievement_commands(version: RunVersion):
+    print(f"# [Collect Achievement]")
+
     achievements_dict: Dict[str, TSAchievement] = {
         o.name: o for o in TSAchievement.objects.all()
     }
@@ -231,6 +239,7 @@ def collect_job_complete(version: RunVersion):
 
 
 def check_levelup(version: RunVersion):
+    print(f"# [Collect Level Up]")
 
     if find_xp(version) >= version.level.xp:
         cmd = LevelUpCommand(version=version)
@@ -238,6 +247,8 @@ def check_levelup(version: RunVersion):
 
 
 def check_expired_contracts(version: RunVersion):
+    print(f"# [Refresh Expired Contracts]")
+
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
         if contract_list.expires_at and contract_list.is_expired(version.now):
             cmd = ContractListRefreshCommand(version=version, contract_list=contract_list)
