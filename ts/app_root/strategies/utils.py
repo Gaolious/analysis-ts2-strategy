@@ -245,6 +245,26 @@ class Strategy(object):
             if jobs_check_warehouse(version=self.version, job_priority=self.job_dispatching_priority):
                 dispatching_job(version=self.version, job_priority=self.job_dispatching_priority)
             else:
+                if self.job_dispatching_priority:
+                    self.job_material.clear()
+                    for instance in self.job_dispatching_priority:
+                        article_id = int(instance.job.required_article_id)
+                        article_amount = int(instance.amount)
+                        self.job_material.add(article_id=article_id, amount=int(article_amount))
+
+                    self.dump_material(title="Step 1-2. Basic Quest 재료", material=self.job_material)
+                    strategy = MaterialStrategy()
+                    expand_material_strategy(
+                        version=self.version,
+                        requires=self.job_material,
+                        article_source=self.article_source,
+                        strategy=strategy,
+                    )
+
+                    command_material_strategy(
+                        version=self.version,
+                        strategy=strategy
+                    )
                 temporary_train_job_amount_list = jobs_find_priority(version=self.version, with_warehouse_limit=True)
                 self.dump_job_priority('out of resource.', temporary_train_job_amount_list)
                 dispatching_job(version=self.version, job_priority=temporary_train_job_amount_list)
@@ -340,26 +360,6 @@ class Strategy(object):
                 strategy=strategy
             )
 
-        if self.job_dispatching_priority:
-            self.job_material.clear()
-            for instance in self.job_dispatching_priority:
-                article_id = int(instance.job.required_article_id)
-                article_amount = int(instance.amount)
-                self.job_material.add(article_id=article_id, amount=int(article_amount))
-
-            self.dump_material(title="Step 1-2. Basic Quest 재료", material=self.job_material)
-            strategy = MaterialStrategy()
-            expand_material_strategy(
-                version=self.version,
-                requires=self.job_material,
-                article_source=self.article_source,
-                strategy=strategy,
-            )
-
-            command_material_strategy(
-                version=self.version,
-                strategy=strategy
-            )
 
         # command_collect_materials_if_possible(
         #     version=self.version,
