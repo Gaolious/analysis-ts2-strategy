@@ -60,6 +60,7 @@ def jobs_find(
     :return:
     """
     queryset = PlayerJob.objects.filter(version_id=version.id).all()
+    article_dict = {}
 
     ret = []
     for job in queryset.all():
@@ -79,6 +80,18 @@ def jobs_find(
             continue
         if job_location_id is not None and job_location_id != job.job_location_id:
             continue
+
+        if job.required_article.level_req > version.level_id: continue
+        if job.required_article.level_from > version.level_id: continue
+        # for article_id, amount in job.required_article.items():
+        #     if article_id not in article_dict:
+        #         article_dict.update({
+        #             article_id: TSArticle.objects.filter(id=article_id).first()
+        #         })
+        #
+        #     article = article_dict[article_id]
+        #     if article and article.level_req > version.level_id: possible = False
+        #     if article and article.level_from > version.level_id: possible = False
 
         ret.append(job)
 
@@ -974,6 +987,10 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
             for _ in range(2):
 
                 for job_id, job in all_jobs.items():
+                    job: PlayerJob
+
+                    flag = True
+
                     trains = trains_find_match_with_job(version=version, job=job)
                     if trains:
                         possible = True
