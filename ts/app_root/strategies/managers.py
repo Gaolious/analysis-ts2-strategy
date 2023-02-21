@@ -793,7 +793,7 @@ class JobDisptchingHelper:
             job.id: JOB(
                 article_id=job.required_article_id,
                 total_count=job.required_amount,
-                curr_count=job.current_guild_amount,
+                curr_count=job.current_progress,
             )
         })
         for train in trains:
