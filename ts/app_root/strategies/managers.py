@@ -970,11 +970,15 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
         if all_jobs:
             possible = False
             finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
+            player_map = {
+                o.spot_id: o for o in PlayerMap.objects.filter(version=version, is_resolved=True).all()
+            }
 
             for _ in range(2):
 
                 for job_id, job in all_jobs.items():
-
+                    if job.job_location_id not in player_map:
+                        continue
                     trains = trains_find_match_with_job(version=version, job=job)
                     if trains:
                         possible = True

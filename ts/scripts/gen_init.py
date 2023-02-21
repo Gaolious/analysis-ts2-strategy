@@ -4,7 +4,8 @@ from core.utils import Logger
 
 def run():
     init_data = [
-        {'username': 'gaolious1', 'android_id': '57316822b8f2aa50'},
+        {'username': 'gaolious1', 'android_id': 'fdc47e06bac1ab54'},
+        {'username': 'gaolious2', 'android_id': 'c01764740b8f2f49'},
         {'username': 'gaolious', 'android_id': '346c03d6d4042d74'},
     ]
 
