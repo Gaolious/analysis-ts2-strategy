@@ -237,10 +237,15 @@ def collect_job_complete(version: RunVersion):
 
             cmd = JobCollectCommand(version=version, job=job)
             send_commands(cmd)
+            #
+            #2261 / StoryJob / 완료:2023-02-20 21:47:40+00:00 / 수령:2023-02-20 22:47:40+00:00 / 2 지역 & 전설 / Progress: 20/20 (100.00 %) / Required: #104|steel | Try Collect[milestone:1 / progress:1
+            # {'Id': 2, 'Time': '2023-02-21T00:01:05Z', 'Commands': [{'Command': 'Job:Collect', 'Time': '2023-02-21T00:01:05Z', 'Parameters': {'JobLocationId': 234}}], 'Transactional': False}
+            # {'Id': 3, 'Time': '2023-02-21T00:01:06Z', 'Commands': [{'Command': 'Region:Quest:Collect', 'Time': '2023-02-21T00:01:06Z', 'Parameters': {'JobLocationId': 234}}], 'Transactional': False}
 
-            if quest and quest.milestone == quest.progress:
-                cmd = RegionQuestCommand(version=version, job=job)
-                send_commands(cmd)
+            # Unable to collect quest. Progress of quest is not sufficient for JobLocation. (JobLocation: 234; CurrentProgress: 2, RequiredProgress: 3; Milestone: 2
+            # if quest and quest.milestone == quest.progress:
+            #     cmd = RegionQuestCommand(version=version, job=job)
+            #     send_commands(cmd)
 
 
 def check_levelup(version: RunVersion):
