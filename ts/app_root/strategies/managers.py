@@ -83,16 +83,7 @@ def jobs_find(
 
         if job.required_article.level_req > version.level_id: continue
         if job.required_article.level_from > version.level_id: continue
-        if not job.unlock_at or job.unlock_at > version.now: continue
-        # for article_id, amount in job.required_article.items():
-        #     if article_id not in article_dict:
-        #         article_dict.update({
-        #             article_id: TSArticle.objects.filter(id=article_id).first()
-        #         })
-        #
-        #     article = article_dict[article_id]
-        #     if article and article.level_req > version.level_id: possible = False
-        #     if article and article.level_from > version.level_id: possible = False
+        # if not job.unlock_at: continue
 
         ret.append(job)
 
@@ -976,7 +967,7 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
     #
     ret = []
 
-    if not version.has_union and version.level_id < 25:
+    if not version.has_union and version.level_id < 9:
         all_jobs = {}
         all_jobs.update({job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False, completed_jobs=False)})
         all_trains = {train.id: train for train in trains_find(version=version)}
@@ -989,8 +980,6 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
 
                 for job_id, job in all_jobs.items():
                     job: PlayerJob
-
-                    flag = True
 
                     trains = trains_find_match_with_job(version=version, job=job)
                     if trains:
