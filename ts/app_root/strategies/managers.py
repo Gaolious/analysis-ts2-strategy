@@ -1068,9 +1068,6 @@ def get_number_of_working_dispatchers(version: RunVersion) -> Tuple[int, int]:
             data = destination_find(version=version, destination_id=train.route_definition_id)
             is_union = data.region.is_union
 
-        if not data:
-            continue
-
         if is_union:
             working_union_dispatcher_count += 1
         else:

@@ -467,7 +467,7 @@ def test_materials_find_redundancy(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('user_name, run_version_id', [
-    ('gaolious1', 8),  # 약 1분정도 남은 상태.
+    ('gaolious1', 10),  # 약 1분정도 남은 상태.
     # ('gaolious', 34),  # 가능 상태
 ])
 def test_prepare_contract(
@@ -543,3 +543,84 @@ def test_factory_order_product(
             print("\n".join(after2))
 
 
+
+
+"""
+        "Quests": [
+          {
+            "JobLocationId": 150,
+            "Milestone": 1,
+            "Progress": 1
+          },
+          {
+            "JobLocationId": 152,
+            "Milestone": 2,
+            "Progress": 2
+          },
+          {
+            "JobLocationId": 159,
+            "Milestone": 3,
+            "Progress": 3
+          },
+          {
+            "JobLocationId": 160,
+            "Milestone": 4,
+            "Progress": 4
+          },
+          {
+            "JobLocationId": 161,
+            "Milestone": 1,
+            "Progress": 1
+          },
+          {
+            "JobLocationId": 162,
+            "Milestone": 1,
+            "Progress": 1
+          }
+
+        "Jobs": [
+          {
+            "Id": "0a2fedfb-2e98-4370-9c84-56d1d2f0e6ec",
+            "JobLocationId": 158,
+            "JobLevel": 1,
+            "Sequence": 0,
+            "Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 25},{"Id": 8,"Value": 1,"Amount": 10},{"Id": 8,"Value": 3,"Amount": 30}]
+          },
+          {
+            "Id": "e16445d3-92e1-4ab0-b595-0d20b3cab242",
+            "JobLocationId": 161,
+            "JobLevel": 2,
+            "Sequence": 0,
+            "Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 25},{"Id": 8,"Value": 1,"Amount": 15}]
+            "UnlocksAt": "2023-02-21T07:48:05Z"
+          },
+          {
+            "Id": "f2ce8345-c891-4144-a9ca-e9cb7a2d331f",
+            "JobLocationId": 162,
+            "JobLevel": 2,
+            "Sequence": 0,
+            "JobType": 8,
+            "Duration": 30,
+            "ConditionMultiplier": 1,
+            "RewardMultiplier": 1,
+            "RequiredArticle": {"Id": 101,"Amount": 60},
+            "CurrentArticleAmount": 52,
+            "Reward": {
+              "Items": [{"Id": 8,"Value": 4,"Amount": 25},{"Id": 8,"Value": 1,"Amount": 15}]
+            },
+            "Bonus": {
+              "Reward": {
+                "Items": []
+              }
+            },
+            "Requirements": [
+              {
+                "Type": "region",
+                "Value": 1
+              }
+            ],
+            "UnlocksAt": "2023-02-21T08:15:51Z"
+          }
+        ],          
+
+"""
