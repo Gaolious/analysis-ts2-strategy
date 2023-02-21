@@ -56,18 +56,21 @@ class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
         verbose_name_plural = 'Player Jobs'
 
     @cached_property
-    def current_guild_amount(self):
+    def current_progress(self):
         """
             길드 이벤트의 총 진행율.
         :return:
         """
-        return sum(
-            PlayerLeaderBoardProgress.objects.filter(
-                leader_board__player_job_id=self.id
-            ).values_list(
-                'progress', flat=True
+        if self.is_union_job:
+            return sum(
+                PlayerLeaderBoardProgress.objects.filter(
+                    leader_board__player_job_id=self.id
+                ).values_list(
+                    'progress', flat=True
+                )
             )
-        )
+        else:
+            return self.current_article_amount
 
     def __str__(self):
         ret = []
@@ -89,7 +92,7 @@ class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
         ret.append(self.str_requirements)
 
         if self.is_union_job:
-            ret.append(f'Progress: {self.current_guild_amount}/{self.required_amount} ({self.current_guild_amount/self.required_amount*100:.2f} %)')
+            ret.append(f'Progress: {self.current_progress}/{self.required_amount} ({self.current_progress / self.required_amount * 100:.2f} %)')
         else:
             ret.append(f'Progress: {self.current_article_amount}/{self.required_amount} ({self.current_article_amount/self.required_amount*100:.2f} %)')
 
