@@ -239,7 +239,7 @@ class Strategy(object):
         return None
 
     def _command_basic_job(self) -> Optional[datetime]:
-        if not self.version.has_union and self.version.level_id < 25:
+        if not self.version.has_union and self.version.level_id < 9:
             print(f"# [Strategy Process] - Story/Side Job")
 
             # union quest item
