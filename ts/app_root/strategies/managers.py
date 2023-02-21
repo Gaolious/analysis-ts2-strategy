@@ -83,6 +83,7 @@ def jobs_find(
 
         if job.required_article.level_req > version.level_id: continue
         if job.required_article.level_from > version.level_id: continue
+        if not job.unlock_at or job.unlock_at > version.now: continue
         # for article_id, amount in job.required_article.items():
         #     if article_id not in article_dict:
         #         article_dict.update({
