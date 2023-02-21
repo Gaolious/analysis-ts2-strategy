@@ -83,7 +83,7 @@ def jobs_find(
 
         if job.required_article.level_req > version.level_id: continue
         if job.required_article.level_from > version.level_id: continue
-        # if not job.unlock_at: continue
+        if not job.unlock_at: continue
 
         ret.append(job)
 
