@@ -215,29 +215,32 @@ def strategy_collect_achievement_commands(version: RunVersion):
 
 def collect_job_complete(version: RunVersion):
     print(f"# [Strategy Process] - Collect Job Complete")
+    job_collections = [
+        jobs_find(version=version, story_jobs=True, expired_jobs=False),
+        jobs_find(version=version, side_jobs=True, expired_jobs=False),
+    ]
+    for job_list in job_collections:
+        for job in job_list:
+            job: PlayerJob
 
-    for job in jobs_find(version=version, story_jobs=True, side_jobs=True, completed_jobs=True):
-        job: PlayerJob
+            if not job.is_completed(version.now):
+                print(f"""    - {job} | is not completed: Now[{version.now}]""")
+                continue
+            if not job.is_collectable(version.now):
+                print(f"""    - {job} | is not collectable: Now[{version.now}]""")
+                continue
 
-        if not job.is_completed(version.now):
-            print(f"""    - {job} | is not completed: Now[{version.now}]""")
-            continue
-        if not job.is_collectable(version.now):
-            print(f"""    - {job} | is not collectable: Now[{version.now}]""")
-            continue
+            quest = PlayerQuest.objects.filter(version_id=version.id, job_location_id=job.job_location_id).first()
 
-        quest = PlayerQuest.objects.filter(version_id=version.id, job_location_id=job.job_location_id).first()
+            if quest:
+                print(f"""    - {job} | Try Collect[milestone:{quest.milestone} / progress:{quest.progress}""")
 
-        if quest:
-            print(f"""    - {job} | Try Collect[milestone:{quest.milestone} / progress:{quest.progress}""")
-
-        cmd = JobCollectCommand(version=version, job=job)
-        send_commands(cmd)
-
-
-        if quest and quest.milestone == quest.progress:
-            cmd = RegionQuestCommand(version=version, job=job)
+            cmd = JobCollectCommand(version=version, job=job)
             send_commands(cmd)
+
+            if quest and quest.milestone == quest.progress:
+                cmd = RegionQuestCommand(version=version, job=job)
+                send_commands(cmd)
 
 
 def check_levelup(version: RunVersion):
