@@ -245,7 +245,7 @@ def collect_job_complete(version: RunVersion):
             if milestone:
                 required_progress = milestone.milestone_progress
 
-            print(f"""    - {job} | Try Collect[milestone:{curr_milestone} / progress:{curr_milestone} / required:{required_progress}""")
+            print(f"""    - {job} | Try Collect[milestone:{curr_milestone} / progress:{curr_progress} / required:{required_progress}""")
 
             cmd = JobCollectCommand(version=version, job=job)
             send_commands(cmd)
