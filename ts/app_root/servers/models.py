@@ -758,3 +758,31 @@ CREATE TABLE achievement (
             article_amount = self.get_reward_amounts[level]
 
         return article_id, article_amount
+
+
+class TSMilestone(BaseModelMixin, TimeStampedMixin):
+    """
+    CREATE TABLE region_quest_milestone (
+    job_location_id INTEGER NOT NULL,
+    milestone INTEGER NOT NULL,
+    milestone_count INTEGER NOT NULL,
+    milestone_progress INTEGER NOT NULL,
+    force_region_collect BOOLEAN NOT NULL,
+    rewards CLOB NOT NULL,
+    PRIMARY KEY(job_location_id, milestone),
+    CONSTRAINT FK_A33EDC0565213AC7 FOREIGN KEY (job_location_id) REFERENCES region_quest (job_location_id) NOT DEFERRABLE INITIALLY IMMEDIATE)
+
+    """
+    job_location = models.ForeignKey(
+        to='servers.TSJobLocation',
+        on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
+    )
+    milestone = models.IntegerField(_('milestone'), null=False, blank=False, default=0)
+    milestone_count = models.IntegerField(_('milestone_count'), null=False, blank=False, default=0)
+    milestone_progress = models.IntegerField(_('milestone_progress'), null=False, blank=False, default=0)
+    force_region_collect = models.BooleanField(_('force_region_collect'), null=False, blank=False, default=False)
+    rewards = models.CharField(_('rewards'), max_length=255, null=False, blank=False, default='')
+
+    class Meta:
+        verbose_name = 'Milestone'
+        verbose_name_plural = 'Milestone'
