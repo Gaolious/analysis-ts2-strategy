@@ -483,4 +483,5 @@ class SQLDefinitionHelper(ImportHelperMixin):
             self._read_job_location(cur=cur)
             self._read_offer_container(cur=cur)
             self._read_achievement(cur=cur)
+            self._read_milestone(cur=cur)
             con.close()

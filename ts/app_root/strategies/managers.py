@@ -9,7 +9,7 @@ from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion,
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
     PlayerMap
-from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle
+from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone
 from app_root.strategies.data_types import JobPriority
 
 
@@ -88,6 +88,70 @@ def jobs_find(
         ret.append(job)
 
     return ret
+
+
+def jobs_find_locked(version: RunVersion) -> Set[int]:
+    milestone_data = {}
+    last_milestone_data = {}
+
+    for ms in TSMilestone.objects.all():
+        if ms.job_location_id not in milestone_data:
+            milestone_data.update({
+                ms.job_location_id: {}
+            })
+        milestone_data[ms.job_location_id].update({
+            ms.milestone: ms.milestone_progress
+        })
+
+    for job_location_id in milestone_data:
+        max_key = max(milestone_data[job_location_id].keys())
+        last_milestone_data.update({
+            job_location_id: (max_key, milestone_data[job_location_id][max_key])
+        })
+
+    precondition_jobs: Dict[int, set[int]] = {}
+
+    locked_jobs = set([])
+    unlocked_jobs = set([])
+    progress_jobs = set([])
+
+    completed_jobs = {151, }
+    quests = {
+        q.job_location_id: (q.milestone, q.progress)
+        for q in PlayerQuest.objects.filter(version_id=version.id).all()
+    }
+
+    for pm in PlayerMap.objects.filter(version_id=version.id).all():
+        next_spot_ids = pm.next_spot_ids
+        for spot_id in next_spot_ids:
+            if spot_id not in precondition_jobs:
+                precondition_jobs.update({spot_id: set([])})
+            precondition_jobs[spot_id].add(pm.spot_id)
+
+        job_location_id = pm.spot_id
+        # if pm.is_resolved is False:
+        #     locked_jobs.add(job_location_id)
+        # else:
+        is_completed = False
+        if job_location_id in quests and job_location_id in last_milestone_data:
+            if quests[job_location_id] >= last_milestone_data[job_location_id]:
+                is_completed = True
+
+        if is_completed:
+            completed_jobs.add(job_location_id)
+        else:
+            progress_jobs.add(job_location_id)
+
+    empty_set = set([])
+    for job_location_id in progress_jobs:
+        remain = precondition_jobs.get(job_location_id, empty_set) - completed_jobs
+        if remain:
+            locked_jobs.add(job_location_id)
+
+        # check precondition
+        pass
+
+    return locked_jobs
 
 
 def jobs_set_collect(version: RunVersion, job: PlayerJob):
@@ -952,7 +1016,7 @@ def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) ->
     return ret
 
 
-def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
+def jobs_find_priority(version: RunVersion, locked_job_location_id: Set[int], with_warehouse_limit: bool) -> List[JobPriority]:
     """
 
     :param version:
@@ -980,6 +1044,8 @@ def jobs_find_priority(version: RunVersion, with_warehouse_limit: bool) -> List[
 
                 for job_id, job in all_jobs.items():
                     job: PlayerJob
+                    if job.job_location_id in locked_job_location_id:
+                        continue
 
                     trains = trains_find_match_with_job(version=version, job=job)
                     if trains:
