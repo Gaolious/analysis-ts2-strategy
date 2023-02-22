@@ -483,6 +483,8 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
     for quest in PlayerQuest.objects.filter(version=version).all():
         if quest.job_location_id in locked_job_location_id:
             continue
+        if quest.job_location_id in processing_job_location_id:
+            continue
         if quest.job_location_id in completed_job_location_id:
             location_id_set.add(quest.job_location.location_id)
 
