@@ -15,7 +15,7 @@ from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, \
     update_next_event_time, jobs_find_union_priority, \
     jobs_check_warehouse, warehouse_get_amount, article_find_contract, factory_find_product_orders, \
-    factory_find_player_factory, jobs_find_priority, jobs_find_locked
+    factory_find_player_factory, jobs_find_priority, jobs_find_locked_job_location_ids
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands, collect_job_complete
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
     get_destination_materials, get_factory_materials, command_collect_materials_if_possible, \
@@ -239,11 +239,11 @@ class Strategy(object):
         return None
 
     def _command_basic_job(self) -> Optional[datetime]:
-        if not self.version.has_union and self.version.level_id < 9:
+        if not self.version.has_union and self.version.level_id < 26:
             print(f"# [Strategy Process] - Story/Side Job")
 
             # union quest item
-            locked_job_location_id = jobs_find_locked(version=self.version)
+            completed_job_location_id, locked_job_location_id = jobs_find_locked_job_location_ids(version=self.version)
 
             self.job_dispatching_priority = jobs_find_priority(
                 version=self.version,

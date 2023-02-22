@@ -12,6 +12,33 @@ from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion,
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone
 from app_root.strategies.data_types import JobPriority
 
+def cache_run_version(field: str):
+
+    def decorator(func):
+        def caller(*args, **kwargs):
+            version = None
+            for obj in args:
+                if isinstance(obj, RunVersion):
+                    version = obj
+                    break
+
+            for k, v in kwargs.items():
+                if isinstance(v, RunVersion):
+                    version = v
+                    break
+
+            if not version:
+                raise Exception('Invalid Used cache_run_version')
+
+            if not hasattr(version, field):
+                ret = func(*args, **kwargs)
+                setattr(version, field, ret)
+
+            return getattr(version, field)
+
+        return caller
+
+    return decorator
 
 def update_next_event_time(previous: Optional[datetime], event_time: Optional[datetime]) -> datetime:
     """
@@ -90,7 +117,8 @@ def jobs_find(
     return ret
 
 
-def jobs_find_locked(version: RunVersion) -> Set[int]:
+@cache_run_version(field='__milestone_get_final_progress')
+def milestone_get_final_progress(version: RunVersion) -> Set[int]:
     milestone_data = {}
     last_milestone_data = {}
 
@@ -108,6 +136,17 @@ def jobs_find_locked(version: RunVersion) -> Set[int]:
         last_milestone_data.update({
             job_location_id: (max_key, milestone_data[job_location_id][max_key])
         })
+    return last_milestone_data
+
+@cache_run_version(field='__locked_job_location_ids')
+def jobs_find_locked_job_location_ids(version: RunVersion) -> Tuple[ Set[int], Set[int]]:
+    """
+
+    :param version:
+    :return:
+        Set[completed job id], Set[unlocked job id]
+    """
+    last_milestone_data = milestone_get_final_progress(version=version)
 
     precondition_jobs: Dict[int, set[int]] = {}
 
@@ -151,7 +190,7 @@ def jobs_find_locked(version: RunVersion) -> Set[int]:
         # check precondition
         pass
 
-    return locked_jobs
+    return completed_jobs, locked_jobs
 
 
 def jobs_set_collect(version: RunVersion, job: PlayerJob):
@@ -430,15 +469,20 @@ def article_find_product(version: RunVersion, article_id=None) -> Dict[int, List
 
     return ret
 
+
 def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, List[TSDestination]]:
     visited_region_list = sorted(list(
         PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
     ))
 
-    location_id_set = set(PlayerQuest.objects.filter(
-        version=version,
-        milestone__gt=0,
-    ).values_list('job_location__location_id', flat=True)) | {150, 151}
+    location_id_set = {150, 151}
+    completed_job_location_id, locked_job_location_id = jobs_find_locked_job_location_ids(version=version)
+
+    for quest in PlayerQuest.objects.filter(version=version).all():
+        if quest.job_location_id in locked_job_location_id:
+            continue
+        if quest.job_location_id in completed_job_location_id:
+            location_id_set.add(quest.job_location.location_id)
 
     queryset = TSDestination.objects.filter(
         region_id__in=visited_region_list,
@@ -1031,7 +1075,7 @@ def jobs_find_priority(version: RunVersion, locked_job_location_id: Set[int], wi
     #
     ret = []
 
-    if not version.has_union and version.level_id < 9:
+    if not version.has_union and version.level_id < 26:
         all_jobs = {}
         all_jobs.update({job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False, completed_jobs=False)})
         all_trains = {train.id: train for train in trains_find(version=version)}
