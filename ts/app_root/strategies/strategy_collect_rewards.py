@@ -215,7 +215,6 @@ def strategy_collect_achievement_commands(version: RunVersion):
 
 def collect_job_complete(version: RunVersion):
     print(f"# [Strategy Process] - Collect Job Complete")
-
     job_collections = [
         jobs_find(version=version, story_jobs=True, expired_jobs=False),
         jobs_find(version=version, side_jobs=True, expired_jobs=False),
@@ -250,7 +249,7 @@ def collect_job_complete(version: RunVersion):
             cmd = JobCollectCommand(version=version, job=job)
             send_commands(cmd)
 
-            if quest and milestone and quest.progress == milestone.milestone_progress and not milestone.force_region_collect:
+            if quest and milestone and quest.progress >= milestone.milestone_progress and not milestone.force_region_collect:
                 cmd = RegionQuestCommand(version=version, job=job)
                 send_commands(cmd)
 
