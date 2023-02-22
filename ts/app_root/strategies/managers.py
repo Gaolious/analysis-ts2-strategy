@@ -480,13 +480,13 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
     location_id_set = {150, 151}
     completed_job_location_id, processing_job_location_id, locked_job_location_id = jobs_find_locked_job_location_ids(version=version)
 
-    for quest in PlayerQuest.objects.filter(version=version).all():
-        if quest.job_location_id in locked_job_location_id:
-            continue
-        if quest.job_location_id in processing_job_location_id:
-            continue
-        if quest.job_location_id in completed_job_location_id:
-            location_id_set.add(quest.job_location.location_id)
+    # for quest in PlayerQuest.objects.filter(version=version).all():
+    #     if quest.job_location_id in locked_job_location_id:
+    #         continue
+    #     if quest.job_location_id in processing_job_location_id:
+    #         continue
+    #     if quest.job_location_id in completed_job_location_id:
+    #         location_id_set.add(quest.job_location_id)
 
     queryset = TSDestination.objects.filter(
         region_id__in=visited_region_list,
@@ -499,7 +499,7 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
 
     ret: Dict[int, List[TSDestination]] = {}
     for row in queryset.all():
-        if row.location_id not in location_id_set:
+        if row.location_id not in completed_job_location_id:
             continue
         if row.article_id not in ret:
             ret.update({row.article_id: []})
