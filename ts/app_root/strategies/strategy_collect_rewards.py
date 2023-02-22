@@ -1,7 +1,7 @@
 from typing import Optional, Dict
 
 from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList
-from app_root.servers.models import RunVersion, TSAchievement
+from app_root.servers.models import RunVersion, TSAchievement, TSMilestone
 from datetime import datetime, timedelta
 
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
@@ -215,6 +215,7 @@ def strategy_collect_achievement_commands(version: RunVersion):
 
 def collect_job_complete(version: RunVersion):
     print(f"# [Strategy Process] - Collect Job Complete")
+
     job_collections = [
         jobs_find(version=version, story_jobs=True, expired_jobs=False),
         jobs_find(version=version, side_jobs=True, expired_jobs=False),
@@ -231,21 +232,27 @@ def collect_job_complete(version: RunVersion):
                 continue
 
             quest = PlayerQuest.objects.filter(version_id=version.id, job_location_id=job.job_location_id).first()
+            milestone = None
+            curr_milestone = '-'
+            curr_progress = '-'
+            required_progress = '-'
 
             if quest:
-                print(f"""    - {job} | Try Collect[milestone:{quest.milestone} / progress:{quest.progress}""")
+                milestone = TSMilestone.objects.filter(job_location_id=job.job_location_id, milestone=quest.milestone).first()
+                curr_milestone = quest.milestone
+                curr_progress = quest.progress
+
+            if milestone:
+                required_progress = milestone.milestone_progress
+
+            print(f"""    - {job} | Try Collect[milestone:{curr_milestone} / progress:{curr_milestone} / required:{required_progress}""")
 
             cmd = JobCollectCommand(version=version, job=job)
             send_commands(cmd)
-            #
-            #2261 / StoryJob / 완료:2023-02-20 21:47:40+00:00 / 수령:2023-02-20 22:47:40+00:00 / 2 지역 & 전설 / Progress: 20/20 (100.00 %) / Required: #104|steel | Try Collect[milestone:1 / progress:1
-            # {'Id': 2, 'Time': '2023-02-21T00:01:05Z', 'Commands': [{'Command': 'Job:Collect', 'Time': '2023-02-21T00:01:05Z', 'Parameters': {'JobLocationId': 234}}], 'Transactional': False}
-            # {'Id': 3, 'Time': '2023-02-21T00:01:06Z', 'Commands': [{'Command': 'Region:Quest:Collect', 'Time': '2023-02-21T00:01:06Z', 'Parameters': {'JobLocationId': 234}}], 'Transactional': False}
 
-            # Unable to collect quest. Progress of quest is not sufficient for JobLocation. (JobLocation: 234; CurrentProgress: 2, RequiredProgress: 3; Milestone: 2
-            # if quest and quest.milestone == quest.progress:
-            #     cmd = RegionQuestCommand(version=version, job=job)
-            #     send_commands(cmd)
+            if quest and milestone and quest.progress == milestone.milestone_progress and not milestone.force_region_collect:
+                cmd = RegionQuestCommand(version=version, job=job)
+                send_commands(cmd)
 
 
 def check_levelup(version: RunVersion):

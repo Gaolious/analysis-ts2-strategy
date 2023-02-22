@@ -10,7 +10,7 @@ from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.servers.models import EndPoint, SQLDefinition, TSJobLocation, TSDestination, TSLocation, TSRegion, \
     TSTrainLevel, TSTrain, TSProduct, TSFactory, TSWarehouseLevel, TSUserLevel, TSArticle, TSOfferContainer, \
-    TSAchievement
+    TSAchievement, TSMilestone
 from app_root.utils import get_curr_server_str_datetime_ms
 from core.utils import download_file
 
@@ -450,6 +450,19 @@ class SQLDefinitionHelper(ImportHelperMixin):
             'levels': 'levels',
             'reward_article_ids': 'reward_article_id',
             'reward_amounts': 'reward_amount',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
+    def _read_milestone(self, cur):
+        model = TSMilestone
+        remote_table_name = 'region_quest_milestone'
+        mapping = {  # local DB field : remote db field
+            'job_location_id': 'job_location_id',
+            'milestone': 'milestone',
+            'milestone_count': 'milestone_count',
+            'milestone_progress': 'milestone_progress',
+            'force_region_collect': 'force_region_collect',
+            'rewards': 'rewards',
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
