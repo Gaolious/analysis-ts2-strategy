@@ -138,8 +138,9 @@ def milestone_get_final_progress(version: RunVersion) -> Set[int]:
         })
     return last_milestone_data
 
+
 @cache_run_version(field='__locked_job_location_ids')
-def jobs_find_locked_job_location_ids(version: RunVersion) -> Tuple[ Set[int], Set[int]]:
+def jobs_find_locked_job_location_ids(version: RunVersion) -> Tuple[Set[int], Set[int], Set[int]]:
     """
 
     :param version:
@@ -189,8 +190,9 @@ def jobs_find_locked_job_location_ids(version: RunVersion) -> Tuple[ Set[int], S
 
         # check precondition
         pass
+    progress_jobs = progress_jobs - locked_jobs
 
-    return completed_jobs, locked_jobs
+    return completed_jobs, progress_jobs, locked_jobs
 
 
 def jobs_set_collect(version: RunVersion, job: PlayerJob):
@@ -476,7 +478,7 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
     ))
 
     location_id_set = {150, 151}
-    completed_job_location_id, locked_job_location_id = jobs_find_locked_job_location_ids(version=version)
+    completed_job_location_id, processing_job_location_id, locked_job_location_id = jobs_find_locked_job_location_ids(version=version)
 
     for quest in PlayerQuest.objects.filter(version=version).all():
         if quest.job_location_id in locked_job_location_id:
