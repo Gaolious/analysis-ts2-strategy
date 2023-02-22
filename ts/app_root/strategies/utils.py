@@ -15,7 +15,7 @@ from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, \
     update_next_event_time, jobs_find_union_priority, \
     jobs_check_warehouse, warehouse_get_amount, article_find_contract, factory_find_product_orders, \
-    factory_find_player_factory, jobs_find_priority
+    factory_find_player_factory, jobs_find_priority, jobs_find_locked
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands, collect_job_complete
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
     get_destination_materials, get_factory_materials, command_collect_materials_if_possible, \
@@ -243,7 +243,13 @@ class Strategy(object):
             print(f"# [Strategy Process] - Story/Side Job")
 
             # union quest item
-            self.job_dispatching_priority = jobs_find_priority(version=self.version, with_warehouse_limit=False)
+            locked_job_location_id = jobs_find_locked(version=self.version)
+
+            self.job_dispatching_priority = jobs_find_priority(
+                version=self.version,
+                locked_job_location_id=locked_job_location_id,
+                with_warehouse_limit=False
+            )
             self.dump_job_priority('Without resource', self.job_dispatching_priority)
 
             if jobs_check_warehouse(version=self.version, job_priority=self.job_dispatching_priority):
@@ -269,7 +275,11 @@ class Strategy(object):
                         version=self.version,
                         strategy=strategy
                     )
-                temporary_train_job_amount_list = jobs_find_priority(version=self.version, with_warehouse_limit=True)
+                temporary_train_job_amount_list = jobs_find_priority(
+                    version=self.version,
+                    locked_job_location_id=locked_job_location_id,
+                    with_warehouse_limit=True
+                )
                 self.dump_job_priority('out of resource.', temporary_train_job_amount_list)
                 dispatching_job(version=self.version, job_priority=temporary_train_job_amount_list)
 
