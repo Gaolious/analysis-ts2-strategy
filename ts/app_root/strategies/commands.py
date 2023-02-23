@@ -11,11 +11,11 @@ from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
     PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard, PlayerContract, \
     PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest
-from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct, TSTrainUpgrade
+from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct, TSTrainUpgrade, TSFactory
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
     contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used, \
-    jobs_set_collect, jobs_set_dispatched, user_level_up, trains_set_upgrade
+    jobs_set_collect, jobs_set_dispatched, user_level_up, trains_set_upgrade, factory_acquire
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -981,6 +981,29 @@ class ContractAcceptWithVideoReward(BaseCommand):
 ###################################################################
 # Product Order in Factory
 ###################################################################
+class FactoryAcquireCommand(BaseCommand):
+    """
+    Factory:AcquireFactory
+    """
+    COMMAND = 'Factory:AcquireFactory'
+    factory: TSFactory
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, factory: TSFactory, **kwargs):
+        super(FactoryAcquireCommand, self).__init__(**kwargs)
+        self.factory = factory
+
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "FactoryId": self.factory.id,
+        }
+
+    def post_processing(self, server_data: Dict):
+        factory_acquire(version=self.version, factory=self.factory)
+
 class FactoryOrderProductCommand(BaseCommand):
     """
     {"Command":"Factory:OrderProduct","Time":"2023-01-14T10:29:41Z","Parameters":{"FactoryId":6000,"ArticleId":6004}},

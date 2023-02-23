@@ -10,7 +10,7 @@ from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion,
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
     PlayerMap
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone, \
-    TSTrainUpgrade
+    TSTrainUpgrade, TSFactory
 from app_root.strategies.data_types import JobPriority
 
 def cache_run_version(field: str):
@@ -684,6 +684,13 @@ def contract_get_ship(version: RunVersion) -> PlayerContract:
 ###########################################################################
 # Factory
 ###########################################################################
+def factory_acquire(version: RunVersion, factory: TSFactory):
+    PlayerFactory.objects.create(
+        version=version,
+        factory=factory,
+        slot_count=factory.starting_slot_count
+    )
+
 def factory_find_possible_products(version: RunVersion, player_factory: PlayerFactory) -> List[TSProduct]:
     queryset = TSProduct.objects.filter(
         level_req__lte=version.level_id,

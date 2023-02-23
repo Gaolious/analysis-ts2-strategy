@@ -1,13 +1,15 @@
 from typing import Optional, Dict, List
 
-from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList, PlayerTrain
+from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList, PlayerTrain, \
+    PlayerFactory
 from app_root.servers.mixins import RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON
-from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade
+from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade, TSFactory
 from datetime import datetime, timedelta
 
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
     DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand, \
-    JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand, TrainUpgradeCommand
+    JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand, TrainUpgradeCommand, \
+    FactoryAcquireCommand
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
     warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
@@ -350,7 +352,22 @@ def check_upgrade_train(version: RunVersion):
                 continue
 
 
+def check_factory(version: RunVersion):
+    """
+    Factory:AcquireFactory
 
+    :param version:
+    :return:
+    """
+    print(f"# [Strategy Process] - Check Factory")
+
+    for factory in TSFactory.objects.filter(type=1, level_from__lte=version.level_id).all():
+        player_factory = PlayerFactory.objects.filter(version_id=version.id, factory_id=factory.id).first()
+        if player_factory:
+            continue
+
+        cmd = FactoryAcquireCommand(version=version, factory=factory)
+        send_commands(cmd)
 
 
 
