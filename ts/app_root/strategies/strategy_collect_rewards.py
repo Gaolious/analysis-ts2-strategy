@@ -1,16 +1,17 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
-from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList
-from app_root.servers.models import RunVersion, TSAchievement, TSMilestone
+from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList, PlayerTrain
+from app_root.servers.mixins import RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON
+from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade
 from datetime import datetime, timedelta
 
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
     DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand, \
-    JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand
+    JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand, TrainUpgradeCommand
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
     warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
-    find_xp
+    find_xp, trains_get_upgrade_material, warehouse_get_amount
 from app_root.utils import get_curr_server_str_datetime_s
 
 
@@ -269,3 +270,88 @@ def check_expired_contracts(version: RunVersion):
         if contract_list.expires_at and contract_list.is_expired(version.now):
             cmd = ContractListRefreshCommand(version=version, contract_list=contract_list)
             send_commands(cmd)
+
+
+def check_upgrade_train(version: RunVersion):
+    print(f"# [Strategy Process] - Upgrade Train")
+    gold_article_id = 3
+    legend_parts_id = 9
+    epic_parts_id = 8
+    rare_parts_id = 7
+    common_parts_id = 6
+    guild_parts_id = 5
+
+    target_train: Dict[int, Dict[int, List[PlayerTrain]]] = {}
+    for train in trains_find(version=version):
+        if train.level_id >= train.train.max_level:
+            continue
+
+        rarity = train.train.rarity  # 일반 / 레어 / 에픽 / 전설
+        region = train.train.region
+
+        if region not in target_train:
+            target_train.update({region: {}})
+
+        if rarity not in target_train[region]:
+            target_train[region].update({rarity: []})
+        target_train[region][rarity].append(train)
+
+    for region in target_train:
+        for rarity in target_train[region]:
+            target_train[region][rarity].sort(key=lambda o: o.capacity(), reverse=True)
+
+    region_list = sorted(target_train.keys(), reverse=True)
+
+    region = region_list[0]
+    rarity_list = [RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON]
+    rarity_article_ids = [legend_parts_id, epic_parts_id, rare_parts_id, common_parts_id]
+
+    for rarity, rarity_article_id in zip(rarity_list, rarity_article_ids):
+
+        train_list = target_train[region].get(rarity, [])
+        if not train_list:
+            continue
+
+        train: PlayerTrain = train_list.pop(0)
+        is_satisfied_rarity_article = False
+        while train_list:
+            train.refresh_from_db()
+            if train.level_id >= train.train.max_level:
+                del train_list[0]
+                continue
+
+            train_upgrade = trains_get_upgrade_material(version=version, train=train)
+            if not train_upgrade:
+                break
+
+            condition = {
+                article_id: (warehouse_get_amount(version=version, article_id=article_id), amount)
+                for article_id, amount in train_upgrade.price_to_dict.items()
+            }
+
+            satisfied = {article_id: a >= b for article_id, (a, b) in condition.items()}
+            is_satisfied_rarity_article = satisfied[rarity_article_id]
+
+            if all(satisfied.values()):
+                cmd = TrainUpgradeCommand(
+                    version=version,
+                    train=train,
+                    upgrade=train_upgrade,
+                )
+                send_commands(commands=cmd)
+                # do upgrade
+                continue
+            else:
+                break
+
+        if train_list and is_satisfied_rarity_article:
+            return
+        else:
+            continue
+
+
+
+
+
+
+
