@@ -287,7 +287,7 @@ def check_upgrade_train(version: RunVersion):
             continue
 
         rarity = train.train.rarity  # 일반 / 레어 / 에픽 / 전설
-        region = train.train.region
+        region = train.get_region()
 
         if region not in target_train:
             target_train.update({region: {}})
@@ -302,52 +302,52 @@ def check_upgrade_train(version: RunVersion):
 
     region_list = sorted(target_train.keys(), reverse=True)
 
-    region = region_list[0]
-    rarity_list = [RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON]
-    rarity_article_ids = [legend_parts_id, epic_parts_id, rare_parts_id, common_parts_id]
+    for region in region_list:
+        rarity_list = [RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON]
+        rarity_article_ids = [legend_parts_id, epic_parts_id, rare_parts_id, common_parts_id]
 
-    for rarity, rarity_article_id in zip(rarity_list, rarity_article_ids):
+        for rarity, rarity_article_id in zip(rarity_list, rarity_article_ids):
 
-        train_list = target_train[region].get(rarity, [])
-        if not train_list:
-            continue
-
-        train: PlayerTrain = train_list.pop(0)
-        is_satisfied_rarity_article = False
-        while train_list:
-            train.refresh_from_db()
-            if train.level_id >= train.train.max_level:
-                del train_list[0]
+            train_list = target_train[region].get(rarity, [])
+            if not train_list:
                 continue
 
-            train_upgrade = trains_get_upgrade_material(version=version, train=train)
-            if not train_upgrade:
-                break
+            train: PlayerTrain = train_list.pop(0)
+            is_satisfied_rarity_article = False
+            while train_list:
+                train.refresh_from_db()
+                if train.level_id >= train.train.max_level:
+                    del train_list[0]
+                    continue
 
-            condition = {
-                article_id: (warehouse_get_amount(version=version, article_id=article_id), amount)
-                for article_id, amount in train_upgrade.price_to_dict.items()
-            }
+                train_upgrade = trains_get_upgrade_material(version=version, train=train)
+                if not train_upgrade:
+                    break
 
-            satisfied = {article_id: a >= b for article_id, (a, b) in condition.items()}
-            is_satisfied_rarity_article = satisfied[rarity_article_id]
+                condition = {
+                    article_id: (warehouse_get_amount(version=version, article_id=article_id), amount)
+                    for article_id, amount in train_upgrade.price_to_dict.items()
+                }
 
-            if all(satisfied.values()):
-                cmd = TrainUpgradeCommand(
-                    version=version,
-                    train=train,
-                    upgrade=train_upgrade,
-                )
-                send_commands(commands=cmd)
-                # do upgrade
-                continue
+                satisfied = {article_id: a >= b for article_id, (a, b) in condition.items()}
+                is_satisfied_rarity_article = satisfied[rarity_article_id]
+
+                if all(satisfied.values()):
+                    cmd = TrainUpgradeCommand(
+                        version=version,
+                        train=train,
+                        upgrade=train_upgrade,
+                    )
+                    send_commands(commands=cmd)
+                    # do upgrade
+                    continue
+                else:
+                    break
+
+            if train_list and is_satisfied_rarity_article:
+                return
             else:
-                break
-
-        if train_list and is_satisfied_rarity_article:
-            return
-        else:
-            continue
+                continue
 
 
 
