@@ -9,7 +9,8 @@ from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion,
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
     PlayerMap
-from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone
+from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone, \
+    TSTrainUpgrade
 from app_root.strategies.data_types import JobPriority
 
 def cache_run_version(field: str):
@@ -363,6 +364,18 @@ def trains_set_destination(version: RunVersion, train: PlayerTrain, definition_i
     ])
 
 
+def trains_get_upgrade_material(version: RunVersion, train: PlayerTrain) -> TSTrainUpgrade:
+    tu = None
+    if train:
+        tu = TSTrainUpgrade.objects.filter(
+            train_level=train.level_id+1,
+            train_region=train.get_region(),
+            train_rarity=train.train.rarity,
+            content_category=train.train.content_category
+        ).first()
+
+    return tu
+
 def jobs_set_dispatched(version: RunVersion, job: PlayerJob, amount: int, departure_at: datetime, arrival_at: datetime):
     if job:
         update_fields = []
@@ -423,6 +436,17 @@ def trains_set_job(version: RunVersion, train: PlayerTrain, definition_id: Type[
     ])
 
 
+def trains_set_upgrade(version: RunVersion, train: PlayerTrain, upgrade: TSTrainUpgrade):
+    if train:
+        train.level_id = upgrade.train_level
+        train.save(update_fields=[
+            'level_id'
+        ])
+
+        for article_id, article_amount in upgrade.price_to_dict.items():
+            warehouse_add_article(version=version, article_id=article_id, amount=-article_amount)
+
+
 def trains_get_next_unload_event_time(version: RunVersion):
     ret = None
     for train in trains_find(version=version, is_idle=False):
@@ -477,7 +501,7 @@ def article_find_destination(version: RunVersion, article_id=None) -> Dict[int, 
         PlayerVisitedRegion.objects.filter(version_id=version.id).values_list('region_id', flat=True)
     ))
 
-    location_id_set = {150, 151}
+    # location_id_set = {150, 151}
     completed_job_location_id, processing_job_location_id, locked_job_location_id = jobs_find_locked_job_location_ids(version=version)
 
     # for quest in PlayerQuest.objects.filter(version=version).all():

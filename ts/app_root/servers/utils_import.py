@@ -10,7 +10,7 @@ from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.servers.models import EndPoint, SQLDefinition, TSJobLocation, TSDestination, TSLocation, TSRegion, \
     TSTrainLevel, TSTrain, TSProduct, TSFactory, TSWarehouseLevel, TSUserLevel, TSArticle, TSOfferContainer, \
-    TSAchievement, TSMilestone
+    TSAchievement, TSMilestone, TSTrainUpgrade
 from app_root.utils import get_curr_server_str_datetime_ms
 from core.utils import download_file
 
@@ -466,6 +466,20 @@ class SQLDefinitionHelper(ImportHelperMixin):
         }
         self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
 
+    def _read_train_upgrade(self, cur):
+        model = TSTrainUpgrade
+        remote_table_name = 'train_upgrade'
+        mapping = {  # local DB field : remote db field
+            'train_level': 'train_level',
+            'train_region': 'train_region',
+            'train_rarity': 'train_rarity',
+            'content_category': 'content_category',
+            'train_parts': 'train_parts',
+            'gold': 'gold',
+            'price': 'price',
+        }
+        self._read_sqlite(model=model, remote_table_name=remote_table_name, mapping=mapping, cur=cur)
+
     def read_sqlite(self, instance: SQLDefinition):
         if instance:
             con = sqlite3.connect(instance.download_path)
@@ -484,4 +498,5 @@ class SQLDefinitionHelper(ImportHelperMixin):
             self._read_offer_container(cur=cur)
             self._read_achievement(cur=cur)
             self._read_milestone(cur=cur)
+            self._read_train_upgrade(cur=cur)
             con.close()

@@ -11,11 +11,11 @@ from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
     PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard, PlayerContract, \
     PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest
-from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct
+from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct, TSTrainUpgrade
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
     contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used, \
-    jobs_set_collect, jobs_set_dispatched, user_level_up
+    jobs_set_collect, jobs_set_dispatched, user_level_up, trains_set_upgrade
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -238,6 +238,7 @@ class TrainSendToDestinationCommand(BaseCommand):
             amount=self.amount,
         )
 
+
 class TrainSendToGoldDestinationCommand(BaseCommand):
     """
         기차 보내기
@@ -298,6 +299,7 @@ class TrainSendToGoldDestinationCommand(BaseCommand):
             version=self.version,
             dest=self.dest
         )
+
 
 class TrainDispatchToJobCommand(BaseCommand):
     """
@@ -448,6 +450,40 @@ class TrainDispatchToJobCommand(BaseCommand):
             amount=self.amount
         )
 
+
+class TrainUpgradeCommand(BaseCommand):
+    """
+    {"Command":"Train:Upgrade","Time":"2023-02-18T04:02:02Z","Parameters":{"TrainId":16}}
+
+    """
+    COMMAND = 'Train:Upgrade'
+    train: PlayerTrain
+    train_upgrade: TSTrainUpgrade
+    job: PlayerJob
+    leaderboard: PlayerLeaderBoard
+    amount: int
+    SLEEP_RANGE = (0.3, 0.5)
+
+    def __init__(self, *, train: PlayerTrain, upgrade: TSTrainUpgrade, **kwargs):
+        super(TrainUpgradeCommand, self).__init__(**kwargs)
+        self.train = train
+        self.train_upgrade = upgrade
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {
+            "TrainId": self.train.instance_id,
+        }
+
+    def post_processing(self, server_data: Dict):
+        trains_set_upgrade(
+            version=self.version,
+            train=self.train,
+            upgrade=self.train_upgrade,
+        )
 
 ###################################################################
 # Daily Reward

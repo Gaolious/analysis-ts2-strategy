@@ -786,3 +786,44 @@ class TSMilestone(BaseModelMixin, TimeStampedMixin):
     class Meta:
         verbose_name = 'Milestone'
         verbose_name_plural = 'Milestone'
+
+
+class TSTrainUpgrade(BaseModelMixin, TimeStampedMixin, ContentCategoryMixin):
+    """
+    CREATE TABLE train_upgrade (
+        train_level INTEGER NOT NULL,
+        train_region INTEGER NOT NULL,
+        train_rarity INTEGER NOT NULL,
+        content_category INTEGER NOT NULL,
+        train_parts VARCHAR(255) NOT NULL,
+        gold INTEGER NOT NULL,
+        price CLOB NOT NULL --(DC2Type:json)
+    , PRIMARY KEY(train_level, train_region, train_rarity, content_category))
+    """
+    train_level = models.IntegerField(_('train_level'), null=False, blank=False, default=0)
+    train_region = models.IntegerField(_('train_region'), null=False, blank=False, default=0)
+    train_rarity = models.IntegerField(_('train_rarity'), null=False, blank=False, default=0)
+
+    train_parts = models.CharField(_('train_parts'), max_length=255, null=False, blank=False, default='')
+    gold = models.IntegerField(_('gold'), null=False, blank=False, default=0)
+    price = models.CharField(_('price'), max_length=255, null=False, blank=False, default='')
+
+    class Meta:
+        verbose_name = 'Milestone'
+        verbose_name_plural = 'Milestone'
+        indexes = [
+            models.Index(fields=['train_level', 'train_region', 'train_rarity'])
+        ]
+
+    @cached_property
+    def price_to_dict(self):
+        ret = {}
+        data = json.loads(self.price, strict=False)
+
+        if data:
+            for row in data:
+                _id = row.get('id', 0)
+                _amount = row.get('amount', 0)
+                ret.update({_id: _amount})
+
+        return ret
