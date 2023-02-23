@@ -281,7 +281,7 @@ def trains_loads_amount_article_id(version: RunVersion, article_id: int) -> int:
     return amount
 
 
-def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> List[PlayerTrain]:
+def trains_find_match_with_job(version: RunVersion, job: PlayerJob, **kwargs) -> List[PlayerTrain]:
     """
         job에 맞는 기차를 검색 합니다.
         작업중인 / 대기중인 기차를 검색합니다.
@@ -292,7 +292,7 @@ def trains_find_match_with_job(version: RunVersion, job: PlayerJob) -> List[Play
     """
     requirements = job.requirements_to_dict
 
-    return trains_find(version=version, **requirements, has_load=False)
+    return trains_find(version=version, **requirements, **kwargs)
 
 
 def trains_unload(version: RunVersion, train: PlayerTrain):
@@ -1021,13 +1021,12 @@ class JobDisptchingHelper:
 
             if with_warehouse_limit:
                 required_article_id = self.jobs[job_id].article_id
-                has_amount = self.warehouse[
-                    required_article_id].article_amount if required_article_id in self.warehouse else 0
+                has_amount = self.warehouse[required_article_id].article_amount if required_article_id in self.warehouse else 0
                 available_amount = max(0, has_amount - self.assigned_job_amount[job_id])
 
                 amount = min(available_amount, amount)
 
-            if amount == 0:
+            if amount <= 0:
                 continue
 
             self.assigned_job_amount[job_id] += amount
@@ -1074,11 +1073,22 @@ def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) ->
     if version.has_union:
         finder = JobDisptchingHelper(dispatcher=version.guild_dispatchers + 2)
         all_jobs = {job.id: job for job in jobs_find(version, union_jobs=True, expired_jobs=False)}
+
         all_trains = {train.id: train for train in trains_find(version=version)}
 
         if all_jobs:
             for job_id, job in all_jobs.items():
-                trains = trains_find_match_with_job(version=version, job=job)
+                param = {
+                    'version': version,
+                    'job': job,
+                }
+                if with_warehouse_limit:
+                    param.update({
+                        'is_idle': True,
+                        'has_load': False,
+                    })
+
+                trains = trains_find_match_with_job(**param)
                 finder.add_job_train(job, trains)
                 warehouse_cnt = warehouse_get_amount(version=version, article_id=job.required_article_id)
 
@@ -1125,8 +1135,19 @@ def jobs_find_priority(version: RunVersion, locked_job_location_id: Set[int], wi
                     job: PlayerJob
                     if job.job_location_id in locked_job_location_id:
                         continue
+                        
+                    param = {
+                        'version': version,
+                        'job': job,
+                    }
+                    if with_warehouse_limit:
+                        param.update({
+                            'is_idle': True,
+                            'has_load': False,
+                        })
 
-                    trains = trains_find_match_with_job(version=version, job=job)
+                    trains = trains_find_match_with_job(**param)
+
                     if trains:
                         possible = True
 

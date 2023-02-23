@@ -195,6 +195,8 @@ class Strategy(object):
         ret.append("-" * 80)
         jobs = {}
         trains = {}
+        required_articles = {}
+
         for priority in job_priority:
             if priority.job.id not in jobs:
                 jobs.update({priority.job.id: priority.job})
@@ -204,6 +206,7 @@ class Strategy(object):
 
         for job_id, job in jobs.items():
             ret.append(f" + job: {job}")
+
             for priority in trains.get(job_id, []):
                 train = priority.train
                 instance_id = f'{train.instance_id:3d}'
@@ -212,8 +215,16 @@ class Strategy(object):
                 rarity = f'{train.train.get_rarity_display():2s}'
                 name = f'{train.train.asset_name:27s}'
                 ret.append(f'    Id:{instance_id} / amount:{capacity:6s} / era:{era} / rarity:{rarity} / name:{name} ')
+
+                required_articles.setdefault(job.required_article_id, 0)
+                required_articles[job.required_article_id] += priority.amount
+
         ret.append('')
         print('\n'.join(ret))
+        print(" summary articles")
+        for article_id, amount in required_articles.items():
+            print(f"    {article_id} need {amount:,d}")
+        print("")
 
     def update_union_progress(self, force: bool = False):
         now = timezone.now()
@@ -337,19 +348,7 @@ class Strategy(object):
 
         next_dt = self._command_basic_job()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
-        """
-            Queue 형태
-            
-            Factory[ 1 ~ 6 ] - need product list
-            destination [ 1 ~ 6 ] - need article list 
-            
-            step 1. union Quest.
-                - contract material - required.
-                    - short? add to factory, destination
-                        - loop. in factory - required material & available to add
-                            - add to factory, destination, ...
-            step 2. 
-        """
+
         self.ship_material = get_ship_materials(version=self.version)
         self.dump_material(title='Step 0. Ship 재료 (Pass)', material=self.ship_material)
         strategy = MaterialStrategy()
