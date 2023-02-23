@@ -17,7 +17,7 @@ from app_root.strategies.managers import jobs_find, trains_find, \
     jobs_check_warehouse, warehouse_get_amount, article_find_contract, factory_find_product_orders, \
     factory_find_player_factory, jobs_find_priority, jobs_find_locked_job_location_ids
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands, collect_job_complete, \
-    check_upgrade_train
+    check_upgrade_train, check_factory
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
     get_destination_materials, get_factory_materials, command_collect_materials_if_possible, \
     command_collect_factory_product_redundancy, command_factory_strategy, expand_material_strategy, \
@@ -315,6 +315,9 @@ class Strategy(object):
 
         ret: Optional[datetime] = None
         send_commands(HeartBeat(version=self.version))
+
+        next_dt = check_factory(version=self.version)
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         # 2. collect
         next_dt = strategy_collect_reward_commands(version=self.version)

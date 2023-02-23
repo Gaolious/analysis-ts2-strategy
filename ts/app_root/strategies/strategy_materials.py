@@ -655,6 +655,8 @@ def material_strategy_factory(
         strategy: MaterialStrategy,
         warehouse_count: Dict[int, Tuple[TSArticle, int]]
 ):
+    max_iter = 10
+    cur_iter = 0
     player_factories = factory_find_player_factory(version=version)
     product_orders = {}
 
@@ -665,6 +667,9 @@ def material_strategy_factory(
         })
 
     while not strategy.all_empty_factory():
+        cur_iter += 1
+        if cur_iter >= max_iter:
+            break
 
         for player_factory in player_factories:
             factory_id = int(player_factory.factory_id)
