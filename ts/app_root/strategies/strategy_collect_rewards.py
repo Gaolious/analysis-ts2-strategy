@@ -1,7 +1,7 @@
 from typing import Optional, Dict, List
 
 from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList, PlayerTrain, \
-    PlayerFactory
+    PlayerFactory, PlayerBuilding, PlayerCompetition, PlayerGift
 from app_root.servers.mixins import RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON
 from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade, TSFactory
 from datetime import datetime, timedelta
@@ -9,12 +9,12 @@ from datetime import datetime, timedelta
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
     DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand, \
     JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand, TrainUpgradeCommand, \
-    FactoryAcquireCommand
+    FactoryAcquireCommand, CollectGiftCommand
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
     warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
     find_xp, trains_get_upgrade_material, warehouse_get_amount
-from app_root.utils import get_curr_server_str_datetime_s
+from app_root.utils import get_curr_server_str_datetime_s, get_remain_time
 
 
 def collect_daily_reward(version: RunVersion) -> datetime:
@@ -106,6 +106,48 @@ def collect_whistle(version: RunVersion) -> datetime:
     pass
 
 
+def collect_gift(version: RunVersion):
+    print(f"# [Strategy Process] - Collect gift")
+
+    queryset = PlayerCompetition.objects.filter(
+        version_id=version.id, content_category=3, type='union', level_from__lte=version.level_id
+    )
+    start_dt = None
+    end_dt = None
+    delta = timedelta(minutes=5)
+
+    for competition in queryset.all():
+        starts_at = get_remain_time(version=version, finish_at=competition.starts_at)
+        enrolment_available_to = get_remain_time(version=version, finish_at=competition.enrolment_available_to)
+        finishes_at = get_remain_time(version=version, finish_at=competition.finishes_at)
+        expires_at = get_remain_time(version=version, finish_at=competition.expires_at)
+        print(f"  - Competitions: starts_at={starts_at}, enrolment_available_to={enrolment_available_to}, finishes_at={finishes_at}, expires_at={expires_at}")
+
+        if competition.starts_at:
+            if start_dt is None or start_dt < competition.starts_at:
+                start_dt = competition.starts_at
+
+        if competition.enrolment_available_to:
+            if end_dt is None or end_dt >= competition.enrolment_available_to:
+                end_dt = competition.enrolment_available_to
+
+        if competition.finishes_at:
+            if end_dt is None or end_dt >= competition.finishes_at:
+                end_dt = competition.finishes_at
+
+        if competition.expires_at:
+            if end_dt is None or end_dt >= competition.expires_at:
+                end_dt = competition.expires_at
+
+    if start_dt and end_dt and start_dt <= version.now <= end_dt - delta:
+        print(f"  - Now Collectible Gift")
+        for gift in PlayerGift.objects.filter(version_id=version.id).all():
+            cmd = CollectGiftCommand(version=version, gift=gift)
+            send_commands(commands=cmd)
+    else:
+        print(f"  - Now Not Collectible Gift")
+
+
 def collect_offer_container(version: RunVersion) -> datetime:
     ret = None
     print(f"# [Strategy Process] - Collect Offer Container")
@@ -170,6 +212,8 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
     ret = update_next_event_time(previous=ret, event_time=next_dt)
 
     # gift
+    next_dt = collect_gift(version=version)
+    ret = update_next_event_time(previous=ret, event_time=next_dt)
 
     # ship
 
@@ -182,6 +226,9 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
     check_levelup(version=version)
 
     check_expired_contracts(version=version)
+
+    check_building(version=version)
+
     return ret
 
 
@@ -370,5 +417,92 @@ def check_factory(version: RunVersion):
         send_commands(cmd)
 
 
+def check_building(version: RunVersion):
+    print(f"# [Strategy Process] - Check Building")
+
+    for bld in PlayerBuilding.objects.filter(version_id=version.id).all():
+        print(f"  - #{bld.instance_id} / Lv. {bld.level} / upgrade_task {bld.upgrade_task} / parcel_number {bld.parcel_number}")
+    pass
+
+    """
+    UpgradeTaskNextReplaceAt,
+    UpgradeTaskNextVideoReplaceAt 
+    
+    추가 필요.
+    
+     
+    초기상태
+
+"UpgradeTaskNextReplaceAt": "2023-02-24T03:36:49Z",
+"UpgradeTaskNextVideoReplaceAt": "2023-02-23T13:26:10Z",
+{"InstanceId": 1,"DefinitionId": 100,"Rotation": 0,"Level": 6},
+{"UpgradeTask": {"AvailableFrom": "2023-02-23T23:36:50Z","RequiredArticles": [{"Id": 12,"Amount": 7},{"Id": 10,"Amount": 6},{"Id": 232,"Amount": 20}]},"InstanceId": 2,"DefinitionId": 102,"ParcelNumber": 2,"Rotation": 0,"Level": 7},
+{"UpgradeTask": {"AvailableFrom": "2023-02-23T00:16:10Z","RequiredArticles": [{"Id": 11,"Amount": 12},{"Id": 107,"Amount": 9}]},"InstanceId": 3,"DefinitionId": 104,"ParcelNumber": 3,"Rotation": 0,"Level": 6},
+{"InstanceId": 4,"DefinitionId": 109,"Rotation": 0,"Level": 6},
+{"UpgradeTask": {"AvailableFrom": "2023-02-23T23:51:27Z","RequiredArticles": [{"Id": 11,"Amount": 6},{"Id": 10,"Amount": 7},{"Id": 104,"Amount": 22}]},"InstanceId": 5,"DefinitionId": 106,"ParcelNumber": 5,"Rotation": 0,"Level": 10},
+{"UpgradeTask": {"AvailableFrom": "2023-02-23T23:50:04Z","RequiredArticles": [{"Id": 102,"Amount": 14},{"Id": 107,"Amount": 8}]},"InstanceId": 6,"DefinitionId": 101,"ParcelNumber": 1,"Rotation": 0,"Level": 8},
+{"InstanceId": 7,"DefinitionId": 103,"ParcelNumber": 4,"Rotation": 0,"Level": 7},
+{"InstanceId": 8,"DefinitionId": 105,"Rotation": 0,"Level": 6},
+{"InstanceId": 9,"DefinitionId": 107,"Rotation": 0,"Level": 5},
+{"InstanceId": 10,"DefinitionId": 14,"Rotation": 0,"Level": 1}
 
 
+    지우기. 1회(광고 X)
+{"Id":2,"Time":"2023-02-24T05:06:29Z","Commands":[{"Command":"CityLoop:Building:UpgradeTask:Replace","Time":"2023-02-24T05:06:29Z","Parameters":{"BuildingId":3}}],"Transactional":false}
+{"Success":true,"RequestId":"1f23af25-3b5e-412e-9deb-242e2481adca","Time":"2023-02-24T05:06:32Z","Data":{"CollectionId":2,"Commands":[
+    {"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":7,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:06:32Z","RequiredArticles":[{"Id":12,"Amount":7},{"Id":10,"Amount":6},{"Id":107,"Amount":7}]}}}]}}
+
+    업그레이드
+{"Id":3,"Time":"2023-02-24T05:07:01Z","Commands":[{"Command":"CityLoop:Building:Upgrade","Time":"2023-02-24T05:07:01Z","Parameters":{"BuildingId":6,"UsesAutoCollect":false}}],"Transactional":false}
+{"Success":true,"RequestId":"97d8bc1c-8258-422d-b754-4b81c1500a1d","Time":"2023-02-24T05:07:03Z","Data":{"CollectionId":3,"Commands":[{"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":3,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:19:03Z","RequiredArticles":[{"Id":12,"Amount":13},{"Id":232,"Amount":25}]}}},{"Command":"Population:Update","Data":{"Population":{"LastCalculatedCount":59,"LastCalculatedAt":"2023-02-24T05:07:01Z"}}},{"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"city_task","Level":2,"Progress":53}}}]}}
+
+
+{"Id":4,"Time":"2023-02-24T05:07:09Z","Commands":[{"Command":"Game:Sleep","Time":"2023-02-24T05:07:09Z","Parameters":{},"Debug":{"CollectionsInQueue":0,"CollectionsInQueueIds":""}}],"Transactional":false}
+{"Success":true,"RequestId":"c7c7f345-1c00-41da-8806-418164764019","Time":"2023-02-24T05:07:47Z","Data":{"CollectionId":4,"Commands":[]}}
+
+
+{"Id":5,"Time":"2023-02-24T05:07:49Z","Commands":[{"Command":"Game:WakeUp","Time":"2023-02-24T05:07:09Z","Parameters":{}},{"Command":"CityLoop:Building:UpgradeTask:ReplaceInstantly","Time":"2023-02-24T05:07:46Z","Parameters":{"BuildingId":2,"ArticleId":16}}],"Transactional":false}
+{"Success":true,"RequestId":"01d6522a-f9f6-404a-be19-5ac0ab2d7740","Time":"2023-02-24T05:07:50Z","Data":{"CollectionId":5,"Commands":[{"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":6,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:07:50Z","RequiredArticles":[{"Id":10,"Amount":14},{"Id":107,"Amount":10}]}}}]}}
+
+
+
+"UpgradeTaskNextReplaceAt": "2023-02-24T09:06:29Z",
+"UpgradeTaskNextVideoReplaceAt": "2023-02-24T06:07:46Z",
+
+
+{"InstanceId": 1,"DefinitionId": 100,"Rotation": 0,"Level": 6},
+{"InstanceId": 2,"DefinitionId": 102,"ParcelNumber": 2,"Rotation": 0,"Level": 7},
+{"UpgradeTask": {"AvailableFrom": "2023-02-24T05:19:03Z","RequiredArticles": [{"Id": 12,"Amount": 13},{"Id": 232,"Amount": 25}]},"InstanceId": 3,"DefinitionId": 104,"ParcelNumber": 3,"Rotation": 0,"Level": 6},
+{"InstanceId": 4,"DefinitionId": 109,"Rotation": 0,"Level": 6},
+{"UpgradeTask": {"AvailableFrom": "2023-02-23T23:51:27Z","RequiredArticles": [{"Id": 11,"Amount": 6},{"Id": 10,"Amount": 7},{"Id": 104,"Amount": 22}]},"InstanceId": 5,"DefinitionId": 106,"ParcelNumber": 5,"Rotation": 0,"Level": 10},
+{"UpgradeTask": {"AvailableFrom": "2023-02-24T05:07:50Z","RequiredArticles": [{"Id": 10,"Amount": 14},{"Id": 107,"Amount": 10}]},"InstanceId": 6,"DefinitionId": 101,"ParcelNumber": 1,"Rotation": 0,"Level": 9},
+{"UpgradeTask": {"AvailableFrom": "2023-02-24T05:06:32Z","RequiredArticles": [{"Id": 12,"Amount": 7},{"Id": 10,"Amount": 6},{"Id": 107,"Amount": 7}]},"InstanceId": 7,"DefinitionId": 103,"ParcelNumber": 4,"Rotation": 0,"Level": 7},
+{"InstanceId": 8,"DefinitionId": 105,"Rotation": 0,"Level": 6},
+{"InstanceId": 9,"DefinitionId": 107,"Rotation": 0,"Level": 5},
+{"InstanceId": 10,"DefinitionId": 14,"Rotation": 0,"Level": 1}
+
+
+
+{"Id":2,"Time":"2023-02-24T05:00:59Z","Commands":[{"Command":"CityLoop:Building:Move:ToStash","Time":"2023-02-24T05:00:57Z","Parameters":{"BuildingId":7}}],"Transactional":false}
+{"Success":true,"RequestId":"9d42cb19-f2f5-4cd2-8167-eee026d5c021","Time":"2023-02-24T05:01:02Z","Data":{"CollectionId":2,"Commands":[{"Command":"Population:Update","Data":{"Population":{"LastCalculatedCount":47,"LastCalculatedAt":"2023-02-24T05:00:57Z"}}}]}}
+
+24 14:01:11 | T: 3039 | I | SSL_AsyncWrite  | POST /api/v2/command-processing/run-collection HTTP/1.1
+PXFD-Request-Id: 781b7555-ec45-4577-a1a0-9166ada5dfae
+PXFD-Retry-No: 0
+PXFD-Sent-At: 2023-02-24T05:01:10.658Z
+PXFD-Client-Information: {"Store":"google_play","Version":"2.7.0.4123","Language":"ko"}
+PXFD-Client-Version: 2.7.0.4123
+PXFD-Device-Token: 0cbd8657b85587591462e728d4129ab0
+PXFD-Game-Access-Token: be034580-530e-5105-97d2-ec1acba9d147
+PXFD-Player-Id: 76408422
+Content-Type: application/json
+Content-Length: 191
+Host: game.trainstation2.com
+Accept-Encoding: gzip, deflate
+
+
+{"Id":3,"Time":"2023-02-24T05:01:10Z","Commands":[{"Command":"CityLoop:Building:Move:FromStash","Time":"2023-02-24T05:01:09Z","Parameters":{"Parcel":4,"BuildingId":7}}],"Transactional":false}
+24 14:01:11 | T: 3044 | I | IO.Mem.Write    | {"Success":true,"RequestId":"781b7555-ec45-4577-a1a0-9166ada5dfae","Time":"2023-02-24T05:01:11Z","Data":{"CollectionId":3,"Commands":[
+{"Command":"Population:Update","Data":{"Population":{"LastCalculatedCount":58,"LastCalculatedAt":"2023-02-24T05:01:09Z"}}}]}}
+
+    """
