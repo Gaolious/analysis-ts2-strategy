@@ -8,7 +8,7 @@ from django.conf import settings
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
-    PlayerMap
+    PlayerMap, PlayerGift
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone, \
     TSTrainUpgrade, TSFactory
 from app_root.strategies.data_types import JobPriority
@@ -1135,7 +1135,7 @@ def jobs_find_priority(version: RunVersion, locked_job_location_id: Set[int], wi
                     job: PlayerJob
                     if job.job_location_id in locked_job_location_id:
                         continue
-                        
+
                     param = {
                         'version': version,
                         'job': job,
@@ -1668,7 +1668,7 @@ def achievement_set_used(version: RunVersion, achievement: PlayerAchievement):
     ])
 
 ###########################################################################
-# achievement
+# level up
 ###########################################################################
 def user_level_up(version: RunVersion):
     warehouse_add_article(
@@ -1680,3 +1680,16 @@ def user_level_up(version: RunVersion):
     version.save(update_fields=[
         'level_id'
     ])
+
+###########################################################################
+# gift collected
+###########################################################################
+def collect_gift(version: RunVersion, gift: PlayerGift):
+    if gift:
+        for article_id, amount in gift.reward_to_dict.items():
+            warehouse_add_article(
+                version=version,
+                article_id=article_id,
+                amount=amount,
+            )
+        gift.delete()

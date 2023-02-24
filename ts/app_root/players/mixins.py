@@ -861,6 +861,20 @@ class PlayerGiftMixin(BaseVersionMixin):
 
         return ret, _
 
+    @cached_property
+    def reward_to_dict(self) -> Dict[int, int]:
+        json_data = json.loads(self.reward)
+        ret = {}
+
+        for cond in json_data.get('Items', []):
+            _id = cond.get('Id')
+            _article_id = cond.get('Value')
+            _amount = cond.get('Amount')
+            if _id == 8:
+                ret.setdefault(_article_id, 0)
+                ret[_article_id] += _amount
+        return ret
+
 
 class PlayerLeaderBoardMixin(BaseVersionMixin):
     player_job = models.ForeignKey(

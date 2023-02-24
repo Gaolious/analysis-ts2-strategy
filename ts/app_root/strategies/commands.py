@@ -10,12 +10,12 @@ from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
     PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard, PlayerContract, \
-    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest
+    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest, PlayerGift
 from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct, TSTrainUpgrade, TSFactory
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
     contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used, \
-    jobs_set_collect, jobs_set_dispatched, user_level_up, trains_set_upgrade, factory_acquire
+    jobs_set_collect, jobs_set_dispatched, user_level_up, trains_set_upgrade, factory_acquire, collect_gift
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -485,6 +485,7 @@ class TrainUpgradeCommand(BaseCommand):
             upgrade=self.train_upgrade,
         )
 
+
 ###################################################################
 # Daily Reward
 ###################################################################
@@ -653,7 +654,11 @@ class DailyRewardClaimWithVideoCommand(BaseCommand):
                     'expire_at',
                 ]
             )
+
+
+###################################################################
 # Achievement
+###################################################################
 class CollectAchievementCommand(BaseCommand):
     COMMAND = 'Achievement:CollectWithVideoReward'
     achievement: PlayerAchievement
@@ -692,6 +697,7 @@ class CollectAchievementCommand(BaseCommand):
             article_id=self.reward_article_id,
             amount=self.reward_article_amount * 2
         )
+
 
 ###################################################################
 # Whistle
@@ -1127,6 +1133,47 @@ class LevelUpCommand(BaseCommand):
 
     def post_processing(self, server_data: Dict):
         user_level_up(version=self.version)
+
+
+###################################################################
+# CityLoop
+###################################################################
+
+
+###################################################################
+# Gift
+###################################################################
+
+class CollectGiftCommand(BaseCommand):
+    """
+    gift에서 수집
+    {
+        "Command":"Gift:Claim",
+        "Time":"2023-01-09T02:37:59Z",
+        "Parameters":{
+            "Id":"8295a2de-d048-4228-ac02-e3d36c2d3b4a"
+        }
+    }
+    """
+    COMMAND = 'Gift:Claim'
+    gift: PlayerGift
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, gift: PlayerGift, **kwargs):
+        super(CollectGiftCommand, self).__init__(**kwargs)
+        self.gift = gift
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {
+            'Id': self.gift.job_id
+        }
+
+    def post_processing(self, server_data: Dict):
+        collect_gift(version=self.version, gift=self.gift)
 
 
 class StartGame(ImportHelperMixin):
