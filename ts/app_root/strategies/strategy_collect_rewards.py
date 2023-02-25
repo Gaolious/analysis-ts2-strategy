@@ -418,6 +418,28 @@ def check_factory(version: RunVersion):
         send_commands(cmd)
 
 
+def _remove_task_from_building(version: RunVersion, task: PlayerCityLoopTask, building: PlayerBuilding) -> bool:
+    if task.next_replace_at and task.next_replace_at < version.now:
+        print(f"  - Try Replace now.")
+        cmd = CityLoopBuildingReplaceCommand(version=version, building=building)
+        send_commands(cmd)
+        return True
+
+    elif task.next_video_replace_at and task.next_video_replace_at < version.now:
+        print(f"  - Try Replace with video now.")
+        cmd = GameSleep(version=version, sleep_seconds=30)
+        send_commands(commands=cmd)
+
+        cmd_list = [
+            GameWakeup(version=version),
+            CityLoopBuildingReplaceInstantlyCommand(version=version, building=building)
+        ]
+        send_commands(commands=cmd_list)
+        return True
+
+    print(f"  - Can't Replace Task. All Busy now.")
+    return False
+
 def check_building(version: RunVersion):
     print(f"# [Strategy Process] - Check Building")
     task = PlayerCityLoopTask.objects.filter(version_id=version.id).first()
@@ -462,7 +484,10 @@ def check_building(version: RunVersion):
                     cmd = CityLoopBuildingUpgradeCommand(version=version, building=target)
                     send_commands(cmd)
                 else:
-                    print(f"  - [Try {curr_try}] Target is not enough material | PASS")
+                    print(f"  - [Try {curr_try}] Target is not enough material - Remove Task. | PASS")
+                    if _remove_task_from_building(version=version, task=task, building=target):
+                        continue
+                        
 
                 return
 
@@ -473,21 +498,7 @@ def check_building(version: RunVersion):
                     return
                 cancel_target = available_list[-1]
 
-                if task.next_replace_at and task.next_replace_at < version.now:
-                    print(f"  - [Try {curr_try}] Try Replace now.")
-                    cmd = CityLoopBuildingReplaceCommand(version=version, building=cancel_target)
-                    send_commands(cmd)
-                    continue
-                elif task.next_video_replace_at and task.next_video_replace_at < version.now:
-                    print(f"  - [Try {curr_try}] Try Replace with video now.")
-                    cmd = GameSleep(version=version, sleep_seconds=30)
-                    send_commands(commands=cmd)
-
-                    cmd_list = [
-                        GameWakeup(version=version),
-                        CityLoopBuildingReplaceInstantlyCommand(version=version, building=cancel_target)
-                    ]
-                    send_commands(commands=cmd_list)
+                if _remove_task_from_building(version=version, task=task, building=cancel_target):
                     continue
                 else:
                     return
