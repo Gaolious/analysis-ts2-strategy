@@ -1525,32 +1525,28 @@ def daily_offer_set_used(version: RunVersion, offer_item: PlayerDailyOfferItem):
 ###########################################################################
 
 def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
-    now = version.now
+    now: datetime = version.now
     queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
-    delta = timedelta(seconds=settings.WHISTLE_INTERVAL_SECOND)
-    ret = []
 
-    max_spawn = None
+    ret = []
+    if not now or not version.init_recv_1:
+        return ret
+
+    seconds = (now - version.init_recv_1).total_seconds()
+    if seconds < settings.WHISTLE_INTERVAL_SECOND:
+        return ret
 
     for whistle in queryset:
-        # if whistle.spawn_time and now < whistle.spawn_time + delta:
-        #     continue
-        # if whistle.collectable_from and now < whistle.collectable_from + delta:
-        #     continue
+        if not whistle.spawn_time or now < whistle.spawn_time:
+            continue
+        if not whistle.collectable_from or now < whistle.collectable_from:
+            continue
         if whistle.expires_at and whistle.expires_at <= now:
             continue
         if whistle.is_for_video_reward:
             continue
 
-        if not max_spawn or max_spawn < whistle.spawn_time:
-            max_spawn = whistle.spawn_time
-        if not max_spawn or max_spawn < whistle.collectable_from:
-            max_spawn = whistle.spawn_time
         ret.append(whistle)
-
-    # if max_spawn + delta <= now:
-    #     return ret
-    # else:
     return []
 
 
