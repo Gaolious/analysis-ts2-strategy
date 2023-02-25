@@ -112,6 +112,9 @@ class GameSleep(BaseCommand):
 
     def post_processing(self, server_data: Dict):
         sleep(self.sleep_seconds)
+        self.version.update_now(
+            self.version.now + timedelta(seconds=self.sleep_seconds)
+        )
 
 
 class GameWakeup(BaseCommand):
