@@ -467,7 +467,7 @@ def test_materials_find_redundancy(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('user_name, run_version_id', [
-    ('gaolious', 8),
+    ('gaolious', 41),
     # ('gaolious', 34),  # 가능 상태
 ])
 def test_prepare_contract(

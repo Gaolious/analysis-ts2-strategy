@@ -1547,8 +1547,8 @@ def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
             continue
 
         ret.append(whistle)
-        
-    return []
+
+    return ret
 
 
 def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:
