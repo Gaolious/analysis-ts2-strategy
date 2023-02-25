@@ -4,7 +4,7 @@ from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, P
     PlayerFactory, PlayerBuilding, PlayerCompetition, PlayerGift, PlayerCityLoopTask, PlayerCityLoopParcel, \
     PlayerWhistleItem
 from app_root.servers.mixins import RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON
-from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade, TSFactory
+from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade, TSFactory, TSArticle
 from datetime import datetime, timedelta
 
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
@@ -101,28 +101,25 @@ def collect_train_unload(version: RunVersion) -> datetime:
 def collect_whistle(version: RunVersion) -> datetime:
     print(f"# [Strategy Process] - Collect Whistle")
 
-    return None
     for whistle in whistle_get_collectable_list(version=version):
-        category = whistle.category
-        position = whistle.position
-        spawn_time = get_remain_time(version=version, finish_at=whistle.spawn_time)
-        collectable_from = get_remain_time(version=version, finish_at=whistle.collectable_from)
-        expires_at = get_remain_time(version=version, finish_at=whistle.expires_at)
-        s = f'''category: {category} | Position: {position} | spawn_time : {spawn_time} | collectable_from : {collectable_from} | expires_at : {expires_at}'''
-
         reward = []
+        articles_str = []
         for row in PlayerWhistleItem.objects.filter(player_whistle=whistle, item_id=8).all():
             reward.append({'Id': row.item_id, 'Value': row.value, 'Amount': row.amount})
+            article = TSArticle.objects.filter(id=row.value).first()
+            articles_str.append(
+                f'''[{article.id}|{article.name}:{row.amount}]'''
+            )
 
+        print(f'''      => rewards : {','.join(articles_str)}''')
         if warehouse_can_add_with_rewards(version=version, reward=reward):
-            print(f'''   - {s} | Try Collect''')
+            print(f'''      => Can Add Rewards - Try Collect''')
             cmd = CollectWhistle(version=version, whistle=whistle)
             send_commands(commands=cmd)
         else:
-            print(f'''   - {s} | Not enough warehouse | PASS''')
+            print(f'''      => Not enough warehouse | PASS''')
 
     return whistle_get_next_event_time(version=version)
-
 
 
 def collect_gift(version: RunVersion):

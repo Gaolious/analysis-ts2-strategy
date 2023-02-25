@@ -12,6 +12,8 @@ from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion,
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone, \
     TSTrainUpgrade, TSFactory
 from app_root.strategies.data_types import JobPriority
+from app_root.utils import get_remain_time
+
 
 def cache_run_version(field: str):
 
@@ -1534,18 +1536,31 @@ def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
 
     seconds = (now - version.init_recv_1).total_seconds()
     if seconds < settings.WHISTLE_INTERVAL_SECOND:
+        print(f'''   - elapsed time is {seconds} < {settings.WHISTLE_INTERVAL_SECOND} - PASS''')
         return ret
 
     for whistle in queryset:
+        category = whistle.category
+        position = whistle.position
+        spawn_time = get_remain_time(version=version, finish_at=whistle.spawn_time)
+        collectable_from = get_remain_time(version=version, finish_at=whistle.collectable_from)
+        expires_at = get_remain_time(version=version, finish_at=whistle.expires_at)
+        s = f'''category: {category} | Position: {position} | spawn_time : {spawn_time} | collectable_from : {collectable_from} | expires_at : {expires_at}'''
+
         if not whistle.spawn_time or now < whistle.spawn_time:
+            print(f'''   - {s} | spawn_time - PASS''')
             continue
         if not whistle.collectable_from or now < whistle.collectable_from:
+            print(f'''   - {s} | collectable_from - PASS''')
             continue
         if whistle.expires_at and whistle.expires_at <= now:
+            print(f'''   - {s} | expires_at - PASS''')
             continue
         if whistle.is_for_video_reward:
+            print(f'''   - {s} | video - PASS''')
             continue
 
+        print(f'''   - {s}''')
         ret.append(whistle)
 
     return ret
@@ -1561,11 +1576,8 @@ def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:
             before_expires_at=whistle.expires_at,
             after_expires_at=now,
         )
-
-        whistle.expires_at = now
-        whistle.save(update_fields=[
-            'expires_at'
-        ])
+        PlayerWhistleItem.objects.filter(player_whistle=whistle).delete()
+        whistle.delete()
         return True
 
     return False
