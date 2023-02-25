@@ -112,6 +112,33 @@ class PlayerBuildingMixin(BaseVersionMixin):
     def is_placed(self):
         return True if self.parcel_number else False
 
+    @cached_property
+    def _upgrade_task_json(self) -> Dict:
+        if self.upgrade_task:
+            return json.loads(self.upgrade_task)
+        else:
+            return {}
+
+    @cached_property
+    def requirements_to_dict(self) -> Dict[int, int]:
+        json_data = self._upgrade_task_json
+        ret = {}
+        if json_data:
+            for cond in json_data.get('RequiredArticles', []):
+                _article_id = cond.get('Id')
+                _amount = cond.get('Amount')
+                ret.setdefault(_article_id, 0)
+                ret[_article_id] += _amount
+        return ret
+
+    @cached_property
+    def available_from(self) -> datetime:
+        json_data = json.loads(self.upgrade_task)
+        if json_data:
+            return convert_datetime(json_data.get('AvailableFrom'))
+
+    def __str__(self):
+        return f"""#{self.instance_id:3d} / Lv. {self.level:3d} / parcel {self.parcel_number:2d} / {self.upgrade_task}"""
 
 class PlayerDestinationMixin(BaseVersionMixin):
     location = models.ForeignKey(
@@ -1944,6 +1971,66 @@ class PlayerDailyOfferItemMixin(BaseVersionMixin):
                     purchased=purchased,
                     purchase_count=purchase_count,
                     definition_id=definition_id,
+                    created=now, modified=now
+                )
+
+                ret.append(instance)
+
+        return ret, _
+
+
+class PlayerCityLoopParcelMixin(BaseVersionMixin):
+    parcel = models.IntegerField(_('parcel'), null=False, blank=False, default=0)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+
+            for parcel in data:
+                instance = cls(
+                    version_id=version_id,
+                    parcel=parcel,
+                    created=now, modified=now
+                )
+
+                ret.append(instance)
+
+        return ret, _
+
+class PlayerCityLoopTaskMixin(BaseVersionMixin):
+    next_replace_at = models.DateTimeField(_('UpgradeTaskNextReplaceAt'), null=True, blank=False)
+    next_video_replace_at = models.DateTimeField(_('UpgradeTaskNextVideoReplaceAt'), null=True, blank=False)
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def create_instance(cls, *, data: Dict, version_id: int, **kwargs) -> Tuple[List, List]:
+        ret = []
+        now = timezone.now()
+
+        if data and isinstance(data, dict):
+            data = [data]
+
+        if data:
+
+            for task in data:
+                next_replace_at = task.pop('UpgradeTaskNextReplaceAt', None)
+                next_video_replace_at = task.get('UpgradeTaskNextVideoReplaceAt', None)
+
+                instance = cls(
+                    version_id=version_id,
+                    next_replace_at=next_replace_at,
+                    next_video_replace_at=next_video_replace_at,
                     created=now, modified=now
                 )
 
