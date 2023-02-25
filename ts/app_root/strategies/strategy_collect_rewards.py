@@ -478,17 +478,21 @@ def check_building(version: RunVersion):
                     for article_id, amount in target.requirements_to_dict.items()
                 }
                 satisfied = {article_id: a >= b for article_id, (a, b) in condition.items()}
+                satisfied_for_city_plans = {
+                    a: b for a, b in satisfied.items() if a in (10, 11, 12)  # blue, yellow, red city plans
+                }
 
                 if all(satisfied.values()):
                     print(f"  - [Try {curr_try}] Try Upgrade")
                     cmd = CityLoopBuildingUpgradeCommand(version=version, building=target)
                     send_commands(cmd)
                 else:
-                    print(f"  - [Try {curr_try}] Target is not enough material - Remove Task. | PASS")
-                    if _remove_task_from_building(version=version, task=task, building=target):
-                        continue
-                        
-
+                    if satisfied_for_city_plans and all(satisfied_for_city_plans.values()):
+                        print(f"  - [Try {curr_try}] Target is not enough normal city plan & city plan | PASS")
+                    else:
+                        print(f"  - [Try {curr_try}] Target is not enough city plan - Remove Task. | PASS")
+                        if _remove_task_from_building(version=version, task=task, building=target):
+                            continue
                 return
 
             elif len(cancelable_list) > 0:
