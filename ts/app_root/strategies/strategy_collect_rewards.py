@@ -10,11 +10,12 @@ from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, D
     DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand, \
     JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand, TrainUpgradeCommand, \
     FactoryAcquireCommand, CollectGiftCommand, CityLoopBuildingUpgradeCommand, CityLoopBuildingReplaceCommand, \
-    CityLoopBuildingReplaceInstantlyCommand
+    CityLoopBuildingReplaceInstantlyCommand, CollectWhistle
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
     warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
-    find_xp, trains_get_upgrade_material, warehouse_get_amount
+    find_xp, trains_get_upgrade_material, warehouse_get_amount, whistle_get_collectable_list, \
+    whistle_get_next_event_time
 from app_root.utils import get_curr_server_str_datetime_s, get_remain_time
 
 
@@ -97,14 +98,21 @@ def collect_train_unload(version: RunVersion) -> datetime:
 
 
 def collect_whistle(version: RunVersion) -> datetime:
+    print(f"# [Strategy Process] - Collect Whistle")
 
-    # for whistle in whistle_get_collectable_list(version=self.version):
-    #     cmd = CollectWhistle(version=self.version, whistle=whistle)
-    #     self._send_commands(commands=[cmd])
-    #
-    # return whistle_get_next_event_time(version=self.version)
+    for whistle in whistle_get_collectable_list(version=version):
+        category = whistle.category
+        position = whistle.position
+        spawn_time = get_remain_time(version=version, finish_at=whistle.spawn_time)
+        collectable_from = get_remain_time(version=version, finish_at=whistle.collectable_from)
+        expires_at = get_remain_time(version=version, finish_at=whistle.expires_at)
+        s = f'''category: {category} | Position: {position} | spawn_time : {spawn_time} | collectable_from : {collectable_from} | expires_at : {expires_at}'''
+        print(f'''   - {s} | Try Collect''')
+        cmd = CollectWhistle(version=version, whistle=whistle)
+        send_commands(commands=cmd)
 
-    pass
+    return whistle_get_next_event_time(version=version)
+
 
 
 def collect_gift(version: RunVersion):
