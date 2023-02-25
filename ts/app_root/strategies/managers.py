@@ -8,7 +8,7 @@ from django.conf import settings
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
-    PlayerMap, PlayerGift, PlayerBuilding
+    PlayerMap, PlayerGift, PlayerBuilding, PlayerWhistleItem
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone, \
     TSTrainUpgrade, TSFactory
 from app_root.strategies.data_types import JobPriority
@@ -1545,8 +1545,6 @@ def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
             continue
         if whistle.is_for_video_reward:
             continue
-
-        ret.append(whistle)
     return []
 
 
