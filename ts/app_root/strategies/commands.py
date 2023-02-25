@@ -1194,6 +1194,10 @@ class CityLoopBuildingReplaceCommand(BaseCommand):
         }
 
     def post_processing(self, server_data: Dict):
+        self.building.upgrade_task = ''
+        self.building.save(update_fields=[
+            'upgrade_task'
+        ])
         task = PlayerCityLoopTask.objects.filter(version_id=self.version.id).first()
         if task:
             task.next_replace_at = self.version.now + timedelta(hours=24)
@@ -1230,6 +1234,10 @@ class CityLoopBuildingReplaceInstantlyCommand(BaseCommand):
         }
 
     def post_processing(self, server_data: Dict):
+        self.building.upgrade_task = ''
+        self.building.save(update_fields=[
+            'upgrade_task'
+        ])
         task = PlayerCityLoopTask.objects.filter(version_id=self.version.id).first()
         if task:
             task.next_video_replace_at = self.version.now + timedelta(hours=24)
