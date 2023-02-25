@@ -10,7 +10,8 @@ from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
     PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard, PlayerContract, \
-    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest, PlayerGift, PlayerBuilding
+    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest, PlayerGift, PlayerBuilding, \
+    PlayerCityLoopTask
 from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct, TSTrainUpgrade, TSFactory
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
@@ -1192,6 +1193,14 @@ class CityLoopBuildingReplaceCommand(BaseCommand):
             'BuildingId': self.building.instance_id,
         }
 
+    def post_processing(self, server_data: Dict):
+        task = PlayerCityLoopTask.objects.filter(version_id=self.version.id).first()
+        if task:
+            task.next_replace_at = self.version.now + timedelta(hours=24)
+            task.save(update_fields=[
+                'next_replace_at'
+            ])
+
 
 class CityLoopBuildingReplaceInstantlyCommand(BaseCommand):
     """
@@ -1219,6 +1228,15 @@ class CityLoopBuildingReplaceInstantlyCommand(BaseCommand):
             'BuildingId': self.building.instance_id,
             "ArticleId": 16  # video reward
         }
+
+    def post_processing(self, server_data: Dict):
+        task = PlayerCityLoopTask.objects.filter(version_id=self.version.id).first()
+        if task:
+            task.next_video_replace_at = self.version.now + timedelta(hours=24)
+            task.save(update_fields=[
+                'next_video_replace_at'
+            ])
+
 
 ###################################################################
 # Warehouse Upgrade
