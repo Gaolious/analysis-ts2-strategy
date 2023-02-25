@@ -1200,7 +1200,7 @@ class CityLoopBuildingReplaceCommand(BaseCommand):
         ])
         task = PlayerCityLoopTask.objects.filter(version_id=self.version.id).first()
         if task:
-            task.next_replace_at = self.version.now + timedelta(hours=24)
+            task.next_replace_at = self.version.now + timedelta(hours=4)
             task.save(update_fields=[
                 'next_replace_at'
             ])
@@ -1240,7 +1240,7 @@ class CityLoopBuildingReplaceInstantlyCommand(BaseCommand):
         ])
         task = PlayerCityLoopTask.objects.filter(version_id=self.version.id).first()
         if task:
-            task.next_video_replace_at = self.version.now + timedelta(hours=24)
+            task.next_video_replace_at = self.version.now + timedelta(hours=1)
             task.save(update_fields=[
                 'next_video_replace_at'
             ])
