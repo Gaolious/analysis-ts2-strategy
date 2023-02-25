@@ -101,6 +101,7 @@ def collect_train_unload(version: RunVersion) -> datetime:
 def collect_whistle(version: RunVersion) -> datetime:
     print(f"# [Strategy Process] - Collect Whistle")
 
+    return None
     for whistle in whistle_get_collectable_list(version=version):
         category = whistle.category
         position = whistle.position
