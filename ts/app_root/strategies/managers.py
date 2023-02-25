@@ -1590,25 +1590,25 @@ def whistle_get_next_event_time(version: RunVersion) -> datetime:
     now = version.now
     ret = None
 
-    if not now or not version.init_recv_1:
-        return ret
-
-    seconds = (now - version.init_recv_1).total_seconds()
-    if seconds < settings.WHISTLE_INTERVAL_SECOND:
-        return ret
-
-    for whistle in PlayerWhistle.objects.filter(version_id=version.id, category=1).all():
-        if not whistle.spawn_time:
-            continue
-        if not whistle.collectable_from:
-            continue
-        if whistle.expires_at and whistle.expires_at <= now:
-            continue
-        if whistle.is_for_video_reward:
-            continue
-
-        ret = update_next_event_time(previous=ret, event_time=whistle.spawn_time)
-        ret = update_next_event_time(previous=ret, event_time=whistle.collectable_from)
+    # if not now or not version.init_recv_1:
+    #     return ret
+    #
+    # seconds = (now - version.init_recv_1).total_seconds()
+    # if seconds < settings.WHISTLE_INTERVAL_SECOND:
+    #     return ret
+    #
+    # for whistle in PlayerWhistle.objects.filter(version_id=version.id, category=1).all():
+    #     if not whistle.spawn_time:
+    #         continue
+    #     if not whistle.collectable_from:
+    #         continue
+    #     if whistle.expires_at and whistle.expires_at <= now:
+    #         continue
+    #     if whistle.is_for_video_reward:
+    #         continue
+    #
+    #     ret = update_next_event_time(previous=ret, event_time=whistle.spawn_time)
+    #     ret = update_next_event_time(previous=ret, event_time=whistle.collectable_from)
 
     return ret
 
