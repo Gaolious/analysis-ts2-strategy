@@ -1545,6 +1545,9 @@ def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
             continue
         if whistle.is_for_video_reward:
             continue
+
+        ret.append(whistle)
+        
     return []
 
 
