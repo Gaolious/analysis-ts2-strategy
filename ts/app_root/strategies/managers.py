@@ -1528,7 +1528,7 @@ def daily_offer_set_used(version: RunVersion, offer_item: PlayerDailyOfferItem):
 
 def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
     now: datetime = version.now
-    queryset = PlayerWhistle.objects.filter(version_id=version.id).all()
+    queryset = PlayerWhistle.objects.filter(version_id=version.id, category=1).all()
 
     ret = []
     if not now or not version.init_recv_1:
@@ -1594,7 +1594,7 @@ def whistle_get_next_event_time(version: RunVersion) -> datetime:
     if seconds < settings.WHISTLE_INTERVAL_SECOND:
         return ret
 
-    for whistle in PlayerWhistle.objects.filter(version_id=version.id).all():
+    for whistle in PlayerWhistle.objects.filter(version_id=version.id, category=1).all():
         if not whistle.spawn_time:
             continue
         if not whistle.collectable_from:
