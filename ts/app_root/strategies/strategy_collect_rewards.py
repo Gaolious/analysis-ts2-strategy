@@ -1,7 +1,7 @@
 from typing import Optional, Dict, List
 
 from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList, PlayerTrain, \
-    PlayerFactory, PlayerBuilding, PlayerCompetition, PlayerGift
+    PlayerFactory, PlayerBuilding, PlayerCompetition, PlayerGift, PlayerCityLoopTask, PlayerCityLoopParcel
 from app_root.servers.mixins import RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON
 from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade, TSFactory
 from datetime import datetime, timedelta
@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
     DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand, \
     JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand, TrainUpgradeCommand, \
-    FactoryAcquireCommand, CollectGiftCommand
+    FactoryAcquireCommand, CollectGiftCommand, CityLoopBuildingUpgradeCommand, CityLoopBuildingReplaceCommand, \
+    CityLoopBuildingReplaceInstantlyCommand
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
     warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
@@ -419,10 +420,79 @@ def check_factory(version: RunVersion):
 
 def check_building(version: RunVersion):
     print(f"# [Strategy Process] - Check Building")
+    task = PlayerCityLoopTask.objects.filter(version_id=version.id).first()
+    # parcels = list(PlayerCityLoopParcel.objects.filter(version_id=version.id).values_list('parcel', flat=True))
+    if task:
+        for curr_try in range(3):
+            upgrade_list = []
+            task.refresh_from_db()
 
-    for bld in PlayerBuilding.objects.filter(version_id=version.id).all():
-        print(f"  - #{bld.instance_id} / Lv. {bld.level} / upgrade_task {bld.upgrade_task} / parcel_number {bld.parcel_number}")
-    pass
+            for bld in PlayerBuilding.objects.filter(version_id=version.id, parcel_number__gt=0, level__lt=150).all():
+                upgrade_list.append(bld)
+
+            if not upgrade_list:
+                return
+
+            upgrade_list.sort(key=lambda x: (x.level, x.upgrade_task), reverse=True)
+            target = upgrade_list[0]
+            cancelable_list = [o for o in upgrade_list[1:] if o.upgrade_task]
+
+            next_replace_at = get_remain_time(version=version, finish_at=task.next_replace_at)
+            next_video_replace_at = get_remain_time(version=version, finish_at=task.next_video_replace_at)
+            print(f"  - Task NextReplace At: {next_replace_at} / NextVideoReplace At: {next_video_replace_at}")
+            print(f"  - [Try {curr_try}] Target : {target}")
+            for cancel in cancelable_list:
+                print(f"  - [Try {curr_try}] Candidate : {cancel}")
+
+            if target.upgrade_task:
+
+                if target.available_from and target.available_from > version.now:
+                    dt = get_remain_time(version=version, finish_at=target.available_from)
+                    print(f"  - [Try {curr_try}] Target is not Available. remain: {dt} | PASS")
+                    return
+
+                condition = {
+                    article_id: (warehouse_get_amount(version=version, article_id=article_id), amount)
+                    for article_id, amount in target.requirements_to_dict.items()
+                }
+                satisfied = {article_id: a >= b for article_id, (a, b) in condition.items()}
+
+                if all(satisfied.values()):
+                    print(f"  - [Try {curr_try}] Try Upgrade")
+                    cmd = CityLoopBuildingUpgradeCommand(version=version, building=target)
+                    send_commands(cmd)
+                else:
+                    print(f"  - [Try {curr_try}] Target is not enough material | PASS")
+
+                return
+
+            elif len(cancelable_list) > 0:
+                available_list = [o for o in cancelable_list if o.available_from and o.available_from < version.now]
+                if not available_list:
+                    print(f"  - [Try {curr_try}] cancelable list is empty. all busy now. | PASS")
+                    return
+                cancel_target = available_list[-1]
+
+                if task.next_replace_at and task.next_replace_at < version.now:
+                    print(f"  - [Try {curr_try}] Try Replace now.")
+                    cmd = CityLoopBuildingReplaceCommand(version=version, building=cancel_target)
+                    send_commands(cmd)
+                    continue
+                elif task.next_video_replace_at and task.next_video_replace_at < version.now:
+                    print(f"  - [Try {curr_try}] Try Replace with video now.")
+                    cmd = GameSleep(version=version, sleep_seconds=30)
+                    send_commands(commands=cmd)
+
+                    cmd_list = [
+                        GameWakeup(version=version),
+                        CityLoopBuildingReplaceInstantlyCommand(version=version, building=cancel_target)
+                    ]
+                    send_commands(commands=cmd_list)
+                    continue
+                else:
+                    return
+
+
 
     """
     UpgradeTaskNextReplaceAt,

@@ -8,7 +8,7 @@ from django.conf import settings
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
-    PlayerMap, PlayerGift
+    PlayerMap, PlayerGift, PlayerBuilding
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone, \
     TSTrainUpgrade, TSFactory
 from app_root.strategies.data_types import JobPriority
@@ -1667,6 +1667,7 @@ def achievement_set_used(version: RunVersion, achievement: PlayerAchievement):
         'level'
     ])
 
+
 ###########################################################################
 # level up
 ###########################################################################
@@ -1681,6 +1682,7 @@ def user_level_up(version: RunVersion):
         'level_id'
     ])
 
+
 ###########################################################################
 # gift collected
 ###########################################################################
@@ -1693,3 +1695,22 @@ def collect_gift(version: RunVersion, gift: PlayerGift):
                 amount=amount,
             )
         gift.delete()
+
+
+###########################################################################
+# gift collected
+###########################################################################
+def cityloop_building_set_upgrade(version: RunVersion, building: PlayerBuilding):
+    if building:
+        building.upgrade_task = ''
+        building.level += 1
+        building.save(update_fields=[
+            'upgrade_task',
+            'level',
+        ])
+        for article_id, amount in building.requirements_to_dict.items():
+            warehouse_add_article(
+                version=version,
+                article_id=article_id,
+                amount=-amount,
+            )

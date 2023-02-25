@@ -10,12 +10,13 @@ from app_root.exceptions import check_response
 from app_root.mixins import ImportHelperMixin
 from app_root.players.models import PlayerTrain, PlayerDailyReward, PlayerWhistle, PlayerWhistleItem, PlayerDestination, \
     PlayerDailyOfferContainer, PlayerDailyOffer, PlayerDailyOfferItem, PlayerJob, PlayerLeaderBoard, PlayerContract, \
-    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest, PlayerGift
+    PlayerFactoryProductOrder, PlayerContractList, PlayerAchievement, PlayerQuest, PlayerGift, PlayerBuilding
 from app_root.servers.models import RunVersion, EndPoint, TSDestination, TSProduct, TSTrainUpgrade, TSFactory
 from app_root.strategies.managers import warehouse_add_article, whistle_remove, trains_unload, \
     trains_set_destination, container_offer_set_used, Player_destination_set_used, daily_offer_set_used, trains_set_job, \
     contract_set_used, factory_order_product, factory_collect_product, contract_set_active, achievement_set_used, \
-    jobs_set_collect, jobs_set_dispatched, user_level_up, trains_set_upgrade, factory_acquire, collect_gift
+    jobs_set_collect, jobs_set_dispatched, user_level_up, trains_set_upgrade, factory_acquire, collect_gift, \
+    cityloop_building_set_upgrade
 from app_root.utils import get_curr_server_str_datetime_s, get_curr_server_datetime
 from core.utils import convert_datetime
 
@@ -1139,6 +1140,90 @@ class LevelUpCommand(BaseCommand):
 # CityLoop
 ###################################################################
 
+class CityLoopBuildingUpgradeCommand(BaseCommand):
+    """
+    24 14:07:02 | T: 2644 | I | SSL_AsyncWrite  | {"Id":3,"Time":"2023-02-24T05:07:01Z","Commands":[
+    {"Command":"CityLoop:Building:Upgrade","Time":"2023-02-24T05:07:01Z","Parameters":{"BuildingId":6,"UsesAutoCollect":false}}],"Transactional":false}
+    24 14:07:03 | T: 2644 | I | IO.Mem.Write    | {"Success":true,"RequestId":"97d8bc1c-8258-422d-b754-4b81c1500a1d","Time":"2023-02-24T05:07:03Z","Data":{"CollectionId":3,"Commands":[{"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":3,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:19:03Z","RequiredArticles":[{"Id":12,"Amount":13},{"Id":232,"Amount":25}]}}},{"Command":"Population:Update","Data":{"Population":{"LastCalculatedCount":59,"LastCalculatedAt":"2023-02-24T05:07:01Z"}}},{"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"city_task","Level":2,"Progress":53}}}]}}
+
+    """
+    COMMAND = 'CityLoop:Building:Upgrade'
+    building: PlayerBuilding
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, building: PlayerBuilding, **kwargs):
+        super(CityLoopBuildingUpgradeCommand, self).__init__(**kwargs)
+        self.building = building
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {
+            'BuildingId': self.building.instance_id,
+            "UsesAutoCollect": False
+        }
+
+    def post_processing(self, server_data: Dict):
+        cityloop_building_set_upgrade(version=self.version, building=self.building)
+
+
+class CityLoopBuildingReplaceCommand(BaseCommand):
+    """
+{"Id":2,"Time":"2023-02-24T05:06:29Z","Commands":[{"Command":"CityLoop:Building:UpgradeTask:Replace","Time":"2023-02-24T05:06:29Z","Parameters":{"BuildingId":3}}],"Transactional":false}
+{"Success":true,"RequestId":"1f23af25-3b5e-412e-9deb-242e2481adca","Time":"2023-02-24T05:06:32Z","Data":{"CollectionId":2,"Commands":[
+    {"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":7,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:06:32Z","RequiredArticles":[{"Id":12,"Amount":7},{"Id":10,"Amount":6},{"Id":107,"Amount":7}]}}}]}}
+    """
+    COMMAND = 'CityLoop:Building:UpgradeTask:Replace'
+    building: PlayerBuilding
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, building: PlayerBuilding, **kwargs):
+        super(CityLoopBuildingReplaceCommand, self).__init__(**kwargs)
+        self.building = building
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {
+            'BuildingId': self.building.instance_id,
+        }
+
+
+class CityLoopBuildingReplaceInstantlyCommand(BaseCommand):
+    """
+{"Id":5,"Time":"2023-02-24T05:07:49Z","Commands":[
+    {"Command":"Game:WakeUp","Time":"2023-02-24T05:07:09Z","Parameters":{}},
+    {"Command":"CityLoop:Building:UpgradeTask:ReplaceInstantly","Time":"2023-02-24T05:07:46Z",
+    "Parameters":{"BuildingId":2,"ArticleId":16}}],"Transactional":false}
+{"Success":true,"RequestId":"01d6522a-f9f6-404a-be19-5ac0ab2d7740","Time":"2023-02-24T05:07:50Z","Data":{"CollectionId":5,"Commands":[{"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":6,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:07:50Z","RequiredArticles":[{"Id":10,"Amount":14},{"Id":107,"Amount":10}]}}}]}}
+
+    """
+    COMMAND = 'CityLoop:Building:UpgradeTask:ReplaceInstantly'
+    building: PlayerBuilding
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, building: PlayerBuilding, **kwargs):
+        super(CityLoopBuildingReplaceInstantlyCommand, self).__init__(**kwargs)
+        self.building = building
+
+    def get_parameters(self) -> dict:
+        """
+
+        :return:
+        """
+        return {
+            'BuildingId': self.building.instance_id,
+            "ArticleId": 16  # video reward
+        }
+
+###################################################################
+# Warehouse Upgrade
+###################################################################
+
 
 ###################################################################
 # Gift
@@ -1288,6 +1373,9 @@ class RunCommand(ImportHelperMixin):
             'Map:NewJob': self._parse_command_new_job,
             'Region:Quest:Change': self._parse_command_quest_change,
             'ContractList:Update': self._parse_command_contract_list_update,
+            'CityLoop:Building:UpgradeTask': self._parse_cityloop_building_upgrade_task,
+            'Population:Update': self._parse_population_update,
+            'Achievement:Change': self._parse_population_update,
         }
         commands = server_data.pop('Commands', [])
         if commands:
@@ -1354,7 +1442,6 @@ class RunCommand(ImportHelperMixin):
 
             if bulk_list:
                 PlayerContract.objects.bulk_create(bulk_list, 100)
-
 
     def _parse_command_contract_new(self, data):
         """
@@ -1424,6 +1511,64 @@ class RunCommand(ImportHelperMixin):
             if bulk_list:
                 PlayerJob.objects.bulk_create(bulk_list, 100)
 
+    def _parse_population_update(self, data):
+        """
+        {"Command":"Population:Update","Data":{"Population":{"LastCalculatedCount":59,"LastCalculatedAt":"2023-02-24T05:07:01Z"}}},
+
+        :param data:
+        :return:
+        """
+        if data:
+            population = data.pop('Population', {})
+
+            if population:
+                self.version.population = population.get('LastCalculatedCount') or 0
+                self.version.save(update_fields=['population'])
+
+    def _parse_achievement_change(self, data):
+        """
+        {"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"city_task","Level":2,"Progress":53}}}]}}
+
+        :param data:
+        :return:
+        """
+        if data:
+            achievement = data.pop('Achievement', {})
+            bulk_list, _ = PlayerAchievement.create_instance(data=achievement, version_id=self.version.id)
+            if bulk_list:
+                for instance in bulk_list:
+                    old = PlayerAchievement.objects.filter(version_id=self.version.id, achievement=instance.achievement).first()
+                    if old:
+                        instance.id = old.id
+                        instance.save()
+                bulk_list = [o for o in bulk_list if not o.id]
+
+            if bulk_list:
+                PlayerAchievement.objects.bulk_create(bulk_list, 100)
+
+    def _parse_cityloop_building_upgrade_task(self, data):
+        """
+        {"Success":true,"RequestId":"97d8bc1c-8258-422d-b754-4b81c1500a1d","Time":"2023-02-24T05:07:03Z","Data":{"CollectionId":3,"Commands":[
+        {"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":3,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:19:03Z","RequiredArticles":[{"Id":12,"Amount":13},{"Id":232,"Amount":25}]}}},
+
+{"Success":true,"RequestId":"1f23af25-3b5e-412e-9deb-242e2481adca","Time":"2023-02-24T05:06:32Z","Data":{"CollectionId":2,"Commands":[
+    {"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":7,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:06:32Z","RequiredArticles":[{"Id":12,"Amount":7},{"Id":10,"Amount":6},{"Id":107,"Amount":7}]}}}]}}
+
+{"Success":true,"RequestId":"01d6522a-f9f6-404a-be19-5ac0ab2d7740","Time":"2023-02-24T05:07:50Z","Data":{"CollectionId":5,"Commands":[
+{"Command":"CityLoop:Building:UpgradeTask","Data":{"BuildingId":6,"UpgradeTask":{"AvailableFrom":"2023-02-24T05:07:50Z","RequiredArticles":[{"Id":10,"Amount":14},{"Id":107,"Amount":10}]}}}]}}
+
+        :param data:
+        :return:
+        """
+        if data:
+            building_id = data.pop('BuildingId', None)
+            upgrade_task = data.pop('UpgradeTask', '')
+            if building_id:
+                bld = PlayerBuilding.objects.filter(version=self.version, instance_id=building_id).first()
+                bld.upgrade_task = json.dumps(upgrade_task, separators=(',', ':')) if upgrade_task else ''
+                bld.save(update_fields=[
+                    'upgrade_task'
+                ])
 
     def reduce(self, data):
         if isinstance(data, list):
@@ -1516,170 +1661,4 @@ Accept-Encoding: gzip, deflate
 아래 사이트에서 버전 읽어서 처리 해보자.    
     https://apkcombo.com/ko/train-station-2/com.pixelfederation.ts2/download/apk
     
-"""
-
-"""
-      "Type": "gifts",
-      "Data": {
-        "Gifts": [
-          {
-            "Id": "3feee06e-56f5-419d-8606-bde30f4ee606",
-            "Reward": {
-              "Items": [
-                {
-                  "Id": 8,
-                  "Value": 100000,
-                  "Amount": 1316
-                },
-                {
-                  "Id": 8,
-                  "Value": 100003,
-                  "Amount": 982
-                }
-              ]
-            },
-            "Type": 6
-          }
-        ]
-      }
-
-
-      
-          {
-            "Id": "dfab2318-b542-46b8-be2e-1899bc0f3ea9",
-            "JobLocationId": 100002,
-            "JobLevel": 7,
-            "JobType": 45,
-            "Duration": 3600,
-            "ConditionMultiplier": 1,
-            "RewardMultiplier": 1,
-            "RequiredArticle": {
-              "Id": 100005,
-              "Amount": 12800
-            },
-            "CurrentArticleAmount": 3250,
-            "Reward": {"Items": [{"Id": 8,"Value": 100000,"Amount": 3350},{"Id": 8,"Value": 100003,"Amount": 2250}]
-            },
-            "UnlocksAt": "2022-12-05T12:00:00Z",
-            "ExpiresAt": "2023-03-03T12:00:00Z"
-          },
-          {
-            "Id": "563b3067-a1a7-4a8b-9986-4ab8b0048e26",
-            "JobLocationId": 100005,
-            "JobLevel": 7,
-            "JobType": 45,
-            "Duration": 3600,
-            "ConditionMultiplier": 1,
-            "RewardMultiplier": 1,
-            "RequiredArticle": {
-              "Id": 100010,
-              "Amount": 11500
-            },
-            "CurrentArticleAmount": 120,
-            "Reward": {"Items": [{"Id": 8,"Value": 100000,"Amount": 3350},{"Id": 8,"Value": 100003,"Amount": 2500}]
-            },
-            "UnlocksAt": "2022-12-05T12:00:00Z",
-            "ExpiresAt": "2023-03-03T12:00:00Z"
-          },
-          {
-            "Id": "e6d646b6-732d-448a-869d-9a25e3cec41b",
-            "JobLocationId": 100007,
-            "JobLevel": 17,
-            "JobType": 45,
-            "Duration": 3600,
-            "ConditionMultiplier": 1,
-            "RewardMultiplier": 1,
-            "RequiredArticle": {
-              "Id": 100010,
-              "Amount": 10300
-            },
-            "CurrentArticleAmount": 7187,
-            "Reward": {
-              "Items": [
-                {
-                  "Id": 8,
-                  "Value": 100000,
-                  "Amount": 3350
-                },
-                {
-                  "Id": 8,
-                  "Value": 100003,
-                  "Amount": 2250
-                }
-              ]
-            },
-            "Bonus": {
-              "Reward": {
-                "Items": []
-              }
-            },
-            "Requirements": [
-              {
-                "Type": "region",
-                "Value": 4
-              },
-              {
-                "Type": "content_category",
-                "Value": 3
-              }
-            ],
-            "UnlocksAt": "2022-12-05T12:00:00Z",
-            "ExpiresAt": "2023-03-03T12:00:00Z"
-          },
-          {
-            "Id": "7a3e7c99-c24d-4192-9af3-424e921f516c",
-            "JobLocationId": 100010,
-            "JobLevel": 18,
-            "JobType": 45,
-            "Duration": 3600,
-            "ConditionMultiplier": 1,
-            "RewardMultiplier": 1,
-            "RequiredArticle": {
-              "Id": 100010,
-              "Amount": 12800
-            },
-            "CurrentArticleAmount": 900,
-            "Reward": {
-              "Items": [
-                {
-                  "Id": 8,
-                  "Value": 100000,
-                  "Amount": 3350
-                },
-                {
-                  "Id": 8,
-                  "Value": 100003,
-                  "Amount": 2250
-                }
-              ]
-            },
-            "Bonus": {
-              "Reward": {
-                "Items": []
-              }
-            },
-            "Requirements": [
-              {
-                "Type": "region",
-                "Value": 3
-              },
-              {
-                "Type": "rarity",
-                "Value": 3
-              },
-              {
-                "Type": "era",
-                "Value": 2
-              }
-            ],
-            "UnlocksAt": "2022-12-05T12:00:00Z",
-            "ExpiresAt": "2023-03-03T12:00:00Z"
-          }
-        ],
-
-"""
-
-"""
-
-
 """

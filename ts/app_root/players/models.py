@@ -8,9 +8,9 @@ from app_root.players.mixins import PlayerBuildingMixin, PlayerDestinationMixin,
     PlayerLeaderBoardMixin, PlayerLeaderBoardProgressMixin, PlayerTrainMixin, PlayerWarehouseMixin, \
     PlayerWhistleItemMixin, PlayerWhistleMixin, PlayerAchievementMixin, PlayerDailyRewardMixin, PlayerMapMixin, \
     PlayerQuestMixin, PlayerVisitedRegionMixin, PlayerShipOfferMixin, PlayerCompetitionMixin, \
-    PlayerUnlockedContentMixin, PlayerOfferContainerMixin, PlayerDailyOfferMixin, PlayerDailyOfferItemMixin
-from app_root.utils import get_remain_time
-from core.models.mixins import BaseModelMixin, TimeStampedMixin, TaskModelMixin
+    PlayerUnlockedContentMixin, PlayerOfferContainerMixin, PlayerDailyOfferMixin, PlayerDailyOfferItemMixin, \
+    PlayerCityLoopParcelMixin, PlayerCityLoopTaskMixin
+from core.models.mixins import BaseModelMixin, TimeStampedMixin
 
 """
     초기 데이터는 저장되어 있는 파일을 참고.
@@ -253,3 +253,14 @@ class PlayerDailyOfferItem(PlayerDailyOfferItemMixin, BaseModelMixin, TimeStampe
         verbose_name = 'Player DailyOffer Item'
         verbose_name_plural = 'Player DailyOffer Items'
 
+
+class PlayerCityLoopParcel(PlayerCityLoopParcelMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'CityLoop Parcel'
+        verbose_name_plural = 'CityLoop Parcels'
+
+
+class PlayerCityLoopTask(PlayerCityLoopTaskMixin, BaseModelMixin, TimeStampedMixin):
+    class Meta:
+        verbose_name = 'CityLoop Task'
+        verbose_name_plural = 'CityLoop Task'

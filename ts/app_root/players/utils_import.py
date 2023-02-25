@@ -11,7 +11,7 @@ from app_root.players.models import PlayerBuilding, PlayerDestination, PlayerFac
     PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
     PlayerAchievement, PlayerDailyReward, PlayerMap, PlayerQuest, PlayerVisitedRegion, PlayerShipOffer, \
     PlayerLeaderBoard, PlayerLeaderBoardProgress, PlayerCompetition, PlayerUnlockedContent, PlayerDailyOfferContainer, \
-    PlayerDailyOffer, PlayerDailyOfferItem
+    PlayerDailyOffer, PlayerDailyOfferItem, PlayerCityLoopTask, PlayerCityLoopParcel
 from app_root.servers.models import EndPoint, RunVersion
 
 LOGGING_MENU = 'plyaers.import'
@@ -228,23 +228,29 @@ class InitdataHelper(ImportHelperMixin):
             => population upgrade task, 및 population 수량. 확인.
         """
         # Population
-        population = data.get('Population')
-        if population:
-            """
-                'LastCalculatedCount' = {int} 33066
-                'LastCalculatedAt' = {str} '2022-12-30T06:22:24Z'
-            """
-            self.version.population = population.get('LastCalculatedCount') or 0
-            self.version.save(update_fields=['population'])
-
-        # Buildings
-        buildings = data.get('Buildings')
-        if buildings:
-
-            bulk_list, _ = PlayerBuilding.create_instance(data=buildings, version_id=self.version.id)
-
+        if data:
+            bulk_list, _ = PlayerCityLoopTask.create_instance(data=data, version_id=self.version.id)
             if bulk_list:
-                PlayerBuilding.objects.bulk_create(bulk_list, 100)
+                PlayerCityLoopTask.objects.bulk_create(bulk_list, 100)
+
+            population = data.get('Population')
+
+            if population:
+                self.version.population = population.get('LastCalculatedCount') or 0
+                self.version.save(update_fields=['population'])
+
+            # Buildings
+            buildings = data.get('Buildings')
+            if buildings:
+                bulk_list, _ = PlayerBuilding.create_instance(data=buildings, version_id=self.version.id)
+                if bulk_list:
+                    PlayerBuilding.objects.bulk_create(bulk_list, 100)
+
+            parcels = data.get('Parcels')
+            if parcels:
+                bulk_list, _ = PlayerCityLoopParcel.create_instance(data=parcels, version_id=self.version.id)
+                if bulk_list:
+                    PlayerCityLoopParcel.objects.bulk_create(bulk_list, 100)
 
     def _parse_init_event(self, data):
         """
