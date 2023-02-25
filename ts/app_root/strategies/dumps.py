@@ -27,10 +27,11 @@ def ts_dump_default(version: RunVersion) -> List[str]:
     key = f'Key: {find_key(version):,d}'
     gem = f'Gem: {find_gem(version):,d}'
     gold = f'Gold: {find_gold(version):,d}'
+    population = f'Population: {version.population:,d}'
     warehouse = f'Warehouse : {warehouse_used_capacity(version)} / {warehouse_max_capacity(version)}'
     ret.append('# [Default]')
     ret.append(line)
-    ret.append(f'{lv:10s} | {xp:20s} | {key:10s} | {gem:10s} | {gold:10s}')
+    ret.append(f'{lv:10s} | {xp:20s} | {key:10s} | {gem:10s} | {gold:10s} | {population}')
     ret.append(warehouse)
     ret.append('')
     return ret
