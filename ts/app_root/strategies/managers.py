@@ -1563,7 +1563,10 @@ def whistle_get_collectable_list(version: RunVersion) -> List[PlayerWhistle]:
         print(f'''   - {s}''')
         ret.append(whistle)
 
-    return ret
+    if len(ret) == 4:
+        return ret
+    else:
+        return []
 
 
 def whistle_remove(version: RunVersion, whistle: PlayerWhistle) -> bool:
