@@ -224,8 +224,8 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
     next_dt = collect_train_unload(version=version)
     ret = update_next_event_time(previous=ret, event_time=next_dt)
 
-    next_dt = collect_whistle(version=version)
-    ret = update_next_event_time(previous=ret, event_time=next_dt)
+    # next_dt = collect_whistle(version=version)
+    # ret = update_next_event_time(previous=ret, event_time=next_dt)
 
     # gift
     next_dt = collect_gift(version=version)
