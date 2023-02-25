@@ -1,7 +1,8 @@
 from typing import Optional, Dict, List
 
 from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList, PlayerTrain, \
-    PlayerFactory, PlayerBuilding, PlayerCompetition, PlayerGift, PlayerCityLoopTask, PlayerCityLoopParcel
+    PlayerFactory, PlayerBuilding, PlayerCompetition, PlayerGift, PlayerCityLoopTask, PlayerCityLoopParcel, \
+    PlayerWhistleItem
 from app_root.servers.mixins import RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON
 from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade, TSFactory
 from datetime import datetime, timedelta
@@ -107,9 +108,17 @@ def collect_whistle(version: RunVersion) -> datetime:
         collectable_from = get_remain_time(version=version, finish_at=whistle.collectable_from)
         expires_at = get_remain_time(version=version, finish_at=whistle.expires_at)
         s = f'''category: {category} | Position: {position} | spawn_time : {spawn_time} | collectable_from : {collectable_from} | expires_at : {expires_at}'''
-        print(f'''   - {s} | Try Collect''')
-        cmd = CollectWhistle(version=version, whistle=whistle)
-        send_commands(commands=cmd)
+
+        reward = []
+        for row in PlayerWhistleItem.objects.filter(player_whistle=whistle, item_id=8).all():
+            reward.append({'Id': row.item_id, 'Value': row.value, 'Amount': row.amount})
+
+        if warehouse_can_add_with_rewards(version=version, reward=reward):
+            print(f'''   - {s} | Try Collect''')
+            cmd = CollectWhistle(version=version, whistle=whistle)
+            send_commands(commands=cmd)
+        else:
+            print(f'''   - {s} | Not enough warehouse | PASS''')
 
     return whistle_get_next_event_time(version=version)
 
