@@ -1504,18 +1504,17 @@ class RunCommand(ImportHelperMixin):
                 PlayerContract.objects.bulk_create(bulk_list, 100)
 
     def _parse_command_whistle_spawn(self, data):
-        pass
-        # whistles = data.get('Whistle')
-        # if whistles:
-        #     bulk_list, bulk_item_list = PlayerWhistle.create_instance(data=whistles, version_id=self.version.id)
-        #
-        #     if bulk_list:
-        #         PlayerWhistle.objects.bulk_create(bulk_list, 100)
-        #
-        #     if bulk_item_list:
-        #         PlayerWhistleItem.objects.bulk_create(bulk_item_list, 100)
-        #
-        # self.print_remain('_parse_init_whistles', data)
+        whistles = data.get('Whistle')
+        if whistles:
+            bulk_list, bulk_item_list = PlayerWhistle.create_instance(data=whistles, version_id=self.version.id)
+
+            if bulk_list:
+                PlayerWhistle.objects.bulk_create(bulk_list, 100)
+
+            if bulk_item_list:
+                PlayerWhistleItem.objects.bulk_create(bulk_item_list, 100)
+
+        self.print_remain('_parse_init_whistles', data)
 
     def _parse_command_quest_change(self, data):
         quests = data.get('Quest')
