@@ -259,7 +259,7 @@ class Strategy(object):
 
             self.job_dispatching_priority = jobs_find_priority(
                 version=self.version,
-                locked_job_location_id=processing_job_location_id | locked_job_location_id,
+                locked_job_location_id=locked_job_location_id,
                 with_warehouse_limit=False
             )
             self.dump_job_priority('Without resource', self.job_dispatching_priority)
