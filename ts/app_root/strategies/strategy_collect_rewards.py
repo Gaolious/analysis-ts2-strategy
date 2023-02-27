@@ -126,13 +126,16 @@ def collect_gift(version: RunVersion):
     print(f"# [Strategy Process] - Collect gift")
 
     queryset = PlayerCompetition.objects.filter(
-        version_id=version.id, content_category=3, type='union', level_from__lte=version.level_id
+        version_id=version.id, content_category=3, type='union', level_from__lte=version.level_id,
+        scope__in=['global', 'group']
     )
     start_dt = None
     end_dt = None
     delta = timedelta(minutes=5)
+    cnt = 0
 
     for competition in queryset.all():
+        cnt += 1
         starts_at = get_remain_time(version=version, finish_at=competition.starts_at)
         enrolment_available_to = get_remain_time(version=version, finish_at=competition.enrolment_available_to)
         finishes_at = get_remain_time(version=version, finish_at=competition.finishes_at)
@@ -155,7 +158,7 @@ def collect_gift(version: RunVersion):
             if end_dt is None or end_dt >= competition.expires_at:
                 end_dt = competition.expires_at
 
-    if start_dt and end_dt and start_dt <= version.now <= end_dt - delta:
+    if cnt == 2 and start_dt and end_dt and start_dt <= version.now <= end_dt - delta:
         print(f"  - Now Collectible Gift")
         for gift in PlayerGift.objects.filter(version_id=version.id).all():
             cmd = CollectGiftCommand(version=version, gift=gift)
