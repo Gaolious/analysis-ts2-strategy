@@ -407,10 +407,31 @@ class Strategy(object):
 
         if self.event_job_dispatching_priority:
             self.event_job_material.clear()
-            for instance in self.event_job_dispatching_priority:
-                article_id = int(instance.job.required_article_id)
-                article_amount = int(instance.amount)
-                self.event_job_material.add(article_id=article_id, amount=int(article_amount))
+
+            if self.version.warehouse_level >= 100:
+                for instance in self.event_job_dispatching_priority:
+                    article_id = int(instance.job.required_article_id)
+                    article_amount = int(instance.amount)
+                    self.event_job_material.add(article_id=article_id, amount=int(article_amount))
+                avg_amount = warehouse_avg_count(version=self.version)
+                material_ids = [
+                    9001, 9002, 9003, 9004, 9005,
+                ]
+                for article_id in material_ids:
+                    if article_id not in self.event_job_material.required_articles:
+                        self.event_job_material.required_articles.update({
+                            article_id: avg_amount
+                        })
+                    elif self.event_job_material.required_articles[article_id] < avg_amount:
+                        self.event_job_material.required_articles.update({
+                            article_id: avg_amount
+                        })
+            else:
+                for instance in self.event_job_dispatching_priority:
+                    article_id = int(instance.job.required_article_id)
+                    article_amount = int(instance.amount)
+                    self.event_job_material.add(article_id=article_id, amount=int(article_amount))
+                    break
 
             self.dump_material(title="Step 1-1. Event Quest 재료", material=self.event_job_material)
             strategy = MaterialStrategy()
@@ -461,20 +482,8 @@ class Strategy(object):
             factory_strategy_dict=self.factory_strategy,
             article_source=self.article_source
         )
-        material = Material()
-        avg_amount = warehouse_avg_count(version=self.version)
 
-        material_ids = [
-            9001, 9002, 9003, 9004, 9005,
-        ]
-        for article_id in material_ids:
-            material.add(article_id=article_id, amount=avg_amount)
 
-        command_collect_materials_if_possible(
-            version=self.version,
-            requires=material,
-            article_source=self.article_source
-        )
 
         return ret
 
