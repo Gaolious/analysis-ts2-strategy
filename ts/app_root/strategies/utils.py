@@ -426,14 +426,16 @@ class Strategy(object):
                         self.event_job_material.required_articles.update({
                             article_id: avg_amount
                         })
+                self.dump_material(title="Step 1-1. Event Quest 재료 (for All)", material=self.event_job_material)
+
             else:
                 for instance in self.event_job_dispatching_priority:
                     article_id = int(instance.job.required_article_id)
                     article_amount = int(instance.amount)
                     self.event_job_material.add(article_id=article_id, amount=int(article_amount))
                     break
+                self.dump_material(title="Step 1-1. Event Quest 재료 (only one)", material=self.event_job_material)
 
-            self.dump_material(title="Step 1-1. Event Quest 재료", material=self.event_job_material)
             strategy = MaterialStrategy()
             expand_material_strategy(
                 version=self.version,
