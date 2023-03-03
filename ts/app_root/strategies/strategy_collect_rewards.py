@@ -12,11 +12,13 @@ from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, D
     JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand, TrainUpgradeCommand, \
     FactoryAcquireCommand, CollectGiftCommand, CityLoopBuildingUpgradeCommand, CityLoopBuildingReplaceCommand, \
     CityLoopBuildingReplaceInstantlyCommand, CollectWhistle
+from app_root.strategies.data_types import Material, MaterialStrategy
 from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
     warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
     find_xp, trains_get_upgrade_material, warehouse_get_amount, whistle_get_collectable_list, \
     whistle_get_next_event_time
+from app_root.strategies.strategy_materials import expand_material_strategy
 from app_root.utils import get_curr_server_str_datetime_s, get_remain_time
 
 
@@ -246,7 +248,8 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
 
     check_expired_contracts(version=version)
 
-    check_building(version=version)
+    next_dt = check_building(version=version)
+    ret = update_next_event_time(previous=ret, event_time=next_dt)
 
     return ret
 
@@ -458,6 +461,7 @@ def _remove_task_from_building(version: RunVersion, task: PlayerCityLoopTask, bu
     print(f"  - Can't Replace Task. All Busy now.")
     return False
 
+
 def check_building(version: RunVersion):
     print(f"# [Strategy Process] - Check Building")
     task = PlayerCityLoopTask.objects.filter(version_id=version.id).first()
@@ -489,7 +493,7 @@ def check_building(version: RunVersion):
                 if target.available_from and target.available_from > version.now:
                     dt = get_remain_time(version=version, finish_at=target.available_from)
                     print(f"  - [Try {curr_try}] Target is not Available. remain: {dt} | PASS")
-                    return
+                    return target.available_from
 
                 condition = {
                     article_id: (warehouse_get_amount(version=version, article_id=article_id), amount)

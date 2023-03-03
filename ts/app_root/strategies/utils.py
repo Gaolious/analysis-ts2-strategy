@@ -387,13 +387,13 @@ class Strategy(object):
         # )
 
         # Step 2. Destination 여분 재료 채우기
-        self.destination_material = get_destination_materials(version=self.version)
-        self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
-        command_collect_materials_if_possible(
-            version=self.version,
-            requires=self.destination_material,
-            article_source=self.article_source
-        )
+        # self.destination_material = get_destination_materials(version=self.version)
+        # self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
+        # command_collect_materials_if_possible(
+        #     version=self.version,
+        #     requires=self.destination_material,
+        #     article_source=self.article_source
+        # )
 
         print("Step 2. 공장 제품중 창고 부족분 채우기.")
         # Step 2. 공장 제품중 창고 부족분 채우기.
