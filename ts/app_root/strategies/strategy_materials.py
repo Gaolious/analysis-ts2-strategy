@@ -33,7 +33,7 @@ def get_ship_materials(version: RunVersion) -> Material:
 def build_article_sources(version: RunVersion) -> Dict[int, ArticleSource]:
     article_source = {}
 
-    countables = warehouse_countable(version=version, basic=True, event=False, union=True)
+    countables = warehouse_countable(version=version, basic=True, event=True, union=True)
 
     for article_id, (article, amount) in countables.items():
         if article_id not in article_source:
