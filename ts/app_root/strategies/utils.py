@@ -15,7 +15,7 @@ from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, \
     update_next_event_time, jobs_find_union_priority, \
     jobs_check_warehouse, warehouse_get_amount, article_find_contract, factory_find_product_orders, \
-    factory_find_player_factory, jobs_find_priority, jobs_find_locked_job_location_ids
+    factory_find_player_factory, jobs_find_priority, jobs_find_locked_job_location_ids, jobs_find_event_priority
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands, collect_job_complete, \
     check_upgrade_train, check_factory
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
@@ -39,6 +39,7 @@ class Strategy(object):
 
     ship_material: Material
     union_job_material: Material
+    event_job_material: Material
     job_material: Material
     destination_material: Material
     factory_material: Material
@@ -49,10 +50,13 @@ class Strategy(object):
         self.user_id = user_id
         self.version = None
         self.union_job_dispatching_priority = []
+        self.event_job_dispatching_priority = []
         self.job_dispatching_priority = []
         self.article_source = {}
         self.ship_material = Material()
         self.union_job_material = Material()
+        self.event_job_material = Material()
+
         self.job_material = Material()
         self.factory_strategy = {}
         self.destination_strategy = {}
@@ -250,6 +254,23 @@ class Strategy(object):
 
         return None
 
+    def _command_event_job(self) -> Optional[datetime]:
+        if self.version.has_union:
+            print(f"# [Strategy Process] - Event Job")
+
+            # union quest item
+            self.event_job_dispatching_priority = jobs_find_event_priority(version=self.version, with_warehouse_limit=False)
+            self.dump_job_priority('Without resource', self.event_job_dispatching_priority)
+
+            if jobs_check_warehouse(version=self.version, job_priority=self.event_job_dispatching_priority):
+                dispatching_job(version=self.version, job_priority=self.event_job_dispatching_priority)
+            else:
+                temporary_train_job_amount_list = jobs_find_event_priority(version=self.version, with_warehouse_limit=True)
+                self.dump_job_priority('out of resource.', temporary_train_job_amount_list)
+                dispatching_job(version=self.version, job_priority=temporary_train_job_amount_list)
+
+        return None
+
     def _command_basic_job(self) -> Optional[datetime]:
         if not self.version.has_union and self.version.level_id < 26:
             print(f"# [Strategy Process] - Story/Side Job")
@@ -343,11 +364,14 @@ class Strategy(object):
         next_dt = strategy_dispatching_gold_destinations(version=self.version)
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
-        next_dt = self._command_union_job()
+        next_dt = self._command_event_job()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
-        next_dt = self._command_basic_job()
-        ret = update_next_event_time(previous=ret, event_time=next_dt)
+        # next_dt = self._command_union_job()
+        # ret = update_next_event_time(previous=ret, event_time=next_dt)
+        #
+        # next_dt = self._command_basic_job()
+        # ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         self.ship_material = get_ship_materials(version=self.version)
         self.dump_material(title='Step 0. Ship 재료 (Pass)', material=self.ship_material)
@@ -372,6 +396,26 @@ class Strategy(object):
             expand_material_strategy(
                 version=self.version,
                 requires=self.union_job_material,
+                article_source=self.article_source,
+                strategy=strategy,
+            )
+            command_material_strategy(
+                version=self.version,
+                strategy=strategy
+            )
+
+        if self.event_job_dispatching_priority:
+            self.event_job_material.clear()
+            for instance in self.event_job_dispatching_priority:
+                article_id = int(instance.job.required_article_id)
+                article_amount = int(instance.amount)
+                self.event_job_material.add(article_id=article_id, amount=int(article_amount))
+
+            self.dump_material(title="Step 1-1. Event Quest 재료", material=self.event_job_material)
+            strategy = MaterialStrategy()
+            expand_material_strategy(
+                version=self.version,
+                requires=self.event_job_material,
                 article_source=self.article_source,
                 strategy=strategy,
             )

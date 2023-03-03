@@ -296,7 +296,7 @@ AUTH_USER_MODEL = 'users.User'
 # Client Information
 ###########################################################
 CLIENT_INFORMATION_STORE = 'google_play'
-CLIENT_INFORMATION_VERSION = '2.7.0.4123'
-CLIENT_INFORMATION_LANGUAGE = 'ko'
+CLIENT_INFORMATION_VERSION = '2.8.1.4210'
+CLIENT_INFORMATION_LANGUAGE = 'en'
 
 WHISTLE_INTERVAL_SECOND = 10 * 60

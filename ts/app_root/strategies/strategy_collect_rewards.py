@@ -338,7 +338,7 @@ def check_expired_contracts(version: RunVersion):
     print(f"# [Strategy Process] - Refresh Expired Contracts")
 
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
-        if contract_list.expires_at and contract_list.is_expired(version.now):
+        if contract_list.expires_at and contract_list.is_expired(version.now) and contract_list.contract_list_id != 1:
             cmd = ContractListRefreshCommand(version=version, contract_list=contract_list)
             send_commands(cmd)
 

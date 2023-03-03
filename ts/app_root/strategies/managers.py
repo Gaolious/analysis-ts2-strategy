@@ -990,7 +990,7 @@ class JobDisptchingHelper:
 
         return ret, -hours
 
-    def recur(self, idx: int, used_dispatcher: int, with_warehouse_limit: bool):
+    def recur(self, idx: int, used_dispatcher: int, with_warehouse_limit: bool, depth=0):
         if used_dispatcher > 0:
             score = self.get_score(used_dispatcher)
 
@@ -1001,6 +1001,8 @@ class JobDisptchingHelper:
         if used_dispatcher >= self.number_of_dispatchers:
             return
         if idx >= len(self.train_id_list):
+            return
+        if depth >= 7:
             return
 
         train_id = self.train_id_list[idx]
@@ -1034,7 +1036,7 @@ class JobDisptchingHelper:
             self.assigned_job_amount[job_id] += amount
             self.assign.append((train_id, job_id, amount))
 
-            self.recur(idx=idx + 1, used_dispatcher=used_dispatcher + 1, with_warehouse_limit=with_warehouse_limit)
+            self.recur(idx=idx + 1, used_dispatcher=used_dispatcher + 1, with_warehouse_limit=with_warehouse_limit, depth=depth+1)
 
             self.assigned_job_amount[job_id] -= amount
             del self.assign[-1]
@@ -1048,6 +1050,7 @@ class JobDisptchingHelper:
             train_id, job_id, amount
         """
         self.train_id_list = sorted(self.train_job_relation.keys(), key=lambda k: self.trains[k].capacity, reverse=True)
+        self.train_id_list = self.train_id_list[:7]
         self.best_score = None
         self.assigned_job_amount = {job_id: 0 for job_id in self.jobs}
         self.best_assign = []
@@ -1075,6 +1078,56 @@ def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) ->
     if version.has_union:
         finder = JobDisptchingHelper(dispatcher=version.guild_dispatchers + 2)
         all_jobs = {job.id: job for job in jobs_find(version, union_jobs=True, expired_jobs=False)}
+
+        all_trains = {train.id: train for train in trains_find(version=version)}
+
+        if all_jobs:
+            for job_id, job in all_jobs.items():
+                param = {
+                    'version': version,
+                    'job': job,
+                }
+                if with_warehouse_limit:
+                    param.update({
+                        'is_idle': True,
+                        'has_load': False,
+                    })
+
+                trains = trains_find_match_with_job(**param)
+                finder.add_job_train(job, trains)
+                warehouse_cnt = warehouse_get_amount(version=version, article_id=job.required_article_id)
+
+                finder.add_warehouse(
+                    article_id=job.required_article_id,
+                    amount=warehouse_cnt
+                )
+
+            for train_id, job_id, amount in finder.dispatching(with_warehouse_limit):
+                instance = JobPriority(train=all_trains[train_id], job=all_jobs[job_id], amount=amount)
+                ret.append(instance)
+                # print(f"{train.str_dump()} / {job} / Amount={amount}")
+
+    return ret
+
+
+
+def jobs_find_event_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
+    """
+
+    :param version:
+    :return:
+    """
+    # 재료 수집이 가능한가 ? & expired 체크 & event expired 체크 & union expired 체크
+    # job의 travel time (1hour) 고려해서
+
+    # job 우선순위를 정하고.
+
+    # 재료 수집에 걸리는 시간
+    #
+    ret = []
+    if version.has_union:
+        finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
+        all_jobs = {job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False, completed_jobs=False) if job.job_type == 12}
 
         all_trains = {train.id: train for train in trains_find(version=version)}
 
