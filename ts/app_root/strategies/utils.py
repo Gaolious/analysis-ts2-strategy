@@ -15,7 +15,8 @@ from app_root.strategies.dumps import ts_dump
 from app_root.strategies.managers import jobs_find, trains_find, \
     update_next_event_time, jobs_find_union_priority, \
     jobs_check_warehouse, warehouse_get_amount, article_find_contract, factory_find_product_orders, \
-    factory_find_player_factory, jobs_find_priority, jobs_find_locked_job_location_ids, jobs_find_event_priority
+    factory_find_player_factory, jobs_find_priority, jobs_find_locked_job_location_ids, jobs_find_event_priority, \
+    warehouse_avg_count
 from app_root.strategies.strategy_collect_rewards import strategy_collect_reward_commands, collect_job_complete, \
     check_upgrade_train, check_factory
 from app_root.strategies.strategy_materials import get_ship_materials, build_article_sources, build_factory_strategy, \
@@ -384,25 +385,25 @@ class Strategy(object):
         )
 
         # Step 1. contract. / union quest materials.
-        if self.union_job_dispatching_priority:
-            self.union_job_material.clear()
-            for instance in self.union_job_dispatching_priority:
-                article_id = int(instance.job.required_article_id)
-                article_amount = int(instance.amount)
-                self.union_job_material.add(article_id=article_id, amount=int(article_amount))
-
-            self.dump_material(title="Step 1-1. Union Quest 재료", material=self.union_job_material)
-            strategy = MaterialStrategy()
-            expand_material_strategy(
-                version=self.version,
-                requires=self.union_job_material,
-                article_source=self.article_source,
-                strategy=strategy,
-            )
-            command_material_strategy(
-                version=self.version,
-                strategy=strategy
-            )
+        # if self.union_job_dispatching_priority:
+        #     self.union_job_material.clear()
+        #     for instance in self.union_job_dispatching_priority:
+        #         article_id = int(instance.job.required_article_id)
+        #         article_amount = int(instance.amount)
+        #         self.union_job_material.add(article_id=article_id, amount=int(article_amount))
+        #
+        #     self.dump_material(title="Step 1-1. Union Quest 재료", material=self.union_job_material)
+        #     strategy = MaterialStrategy()
+        #     expand_material_strategy(
+        #         version=self.version,
+        #         requires=self.union_job_material,
+        #         article_source=self.article_source,
+        #         strategy=strategy,
+        #     )
+        #     command_material_strategy(
+        #         version=self.version,
+        #         strategy=strategy
+        #     )
 
         if self.event_job_dispatching_priority:
             self.event_job_material.clear()
@@ -458,6 +459,20 @@ class Strategy(object):
         command_factory_strategy(
             version=self.version,
             factory_strategy_dict=self.factory_strategy,
+            article_source=self.article_source
+        )
+        material = Material()
+        avg_amount = warehouse_avg_count(version=self.version)
+
+        material_ids = [
+            9001, 9002, 9003, 9004, 9005,
+        ]
+        for article_id in material_ids:
+            material.add(article_id=article_id, amount=avg_amount)
+
+        command_collect_materials_if_possible(
+            version=self.version,
+            requires=material,
             article_source=self.article_source
         )
 

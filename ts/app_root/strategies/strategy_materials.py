@@ -568,7 +568,11 @@ def material_strategy_add_queue(
     for required_article_id, required_article_amount in requires.items():
         source = article_source.get(required_article_id)
         if source.contracts:
-            if required_article_amount * 2 < warehouse_get_amount(version=version, article_id=required_article_id):
+            multiply = 1
+            if version.warehouse_level >= 50:
+                multiply = 2
+
+            if required_article_amount * multiply < warehouse_get_amount(version=version, article_id=required_article_id):
                 ret.append(f'''{'  ' * depth} - Required:[{source.article}] - Enough material (more than x2)| PASS''')
                 continue
 
