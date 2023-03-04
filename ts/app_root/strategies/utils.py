@@ -365,9 +365,6 @@ class Strategy(object):
         next_dt = strategy_dispatching_gold_destinations(version=self.version)
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
-        next_dt = self._command_event_job()
-        ret = update_next_event_time(previous=ret, event_time=next_dt)
-
         # next_dt = self._command_union_job()
         # ret = update_next_event_time(previous=ret, event_time=next_dt)
         #
@@ -404,6 +401,48 @@ class Strategy(object):
         #         version=self.version,
         #         strategy=strategy
         #     )
+
+
+        # command_collect_materials_if_possible(
+        #     version=self.version,
+        #     requires=self.job_material,
+        #     article_source=self.article_source
+        # )
+
+        # Step 2. Destination 여분 재료 채우기
+        # self.destination_material = get_destination_materials(version=self.version)
+        # self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
+        # command_collect_materials_if_possible(
+        #     version=self.version,
+        #     requires=self.destination_material,
+        #     article_source=self.article_source
+        # )
+
+        if self.version.warehouse_level >= 100:
+            print("Step 2. 공장 제품중 창고 부족분 채우기.")
+            # Step 2. 공장 제품중 창고 부족분 채우기.
+            command_collect_factory_product_redundancy(
+                version=self.version,
+                factory_strategy_dict=self.factory_strategy,
+                article_source=self.article_source
+            )
+
+        # Step 2. Factory 여분 재료 채우기
+        self.factory_material = get_factory_materials(version=self.version, factory_strategy_dict=self.factory_strategy)
+        self.dump_material(title="Factory(Redundancy)", material=self.factory_material)
+        command_collect_materials_if_possible(
+            version=self.version,
+            requires=self.factory_material,
+            article_source=self.article_source
+        )
+        command_factory_strategy(
+            version=self.version,
+            factory_strategy_dict=self.factory_strategy,
+            article_source=self.article_source
+        )
+
+        next_dt = self._command_event_job()
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         if self.event_job_dispatching_priority:
             self.event_job_material.clear()
@@ -447,45 +486,6 @@ class Strategy(object):
                 version=self.version,
                 strategy=strategy
             )
-
-        # command_collect_materials_if_possible(
-        #     version=self.version,
-        #     requires=self.job_material,
-        #     article_source=self.article_source
-        # )
-
-        # Step 2. Destination 여분 재료 채우기
-        # self.destination_material = get_destination_materials(version=self.version)
-        # self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
-        # command_collect_materials_if_possible(
-        #     version=self.version,
-        #     requires=self.destination_material,
-        #     article_source=self.article_source
-        # )
-
-        if self.version.warehouse_level >= 100:
-            print("Step 2. 공장 제품중 창고 부족분 채우기.")
-            # Step 2. 공장 제품중 창고 부족분 채우기.
-            command_collect_factory_product_redundancy(
-                version=self.version,
-                factory_strategy_dict=self.factory_strategy,
-                article_source=self.article_source
-            )
-
-        # Step 2. Factory 여분 재료 채우기
-        self.factory_material = get_factory_materials(version=self.version, factory_strategy_dict=self.factory_strategy)
-        self.dump_material(title="Factory(Redundancy)", material=self.factory_material)
-        command_collect_materials_if_possible(
-            version=self.version,
-            requires=self.factory_material,
-            article_source=self.article_source
-        )
-        command_factory_strategy(
-            version=self.version,
-            factory_strategy_dict=self.factory_strategy,
-            article_source=self.article_source
-        )
-
         return ret
 
     def run(self):
