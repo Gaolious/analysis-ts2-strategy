@@ -1,0 +1,64 @@
+{
+  "project_info": {
+    "project_number": "389445276055",
+    "firebase_url": "https://trainstation-2-30223076.firebaseio.com",
+    "project_id": "trainstation-2-30223076",
+    "storage_bucket": "trainstation-2-30223076.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:389445276055:android:efbd60f62f7fb4bb",
+        "android_client_info": {
+          "package_name": "com.pixelfederation.ts2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "389445276055-uaf0evkun82v4vv6latptbnptlvuat10.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pixelfederation.ts2",
+            "certificate_hash": "919887b2ab9e4ba56d29535547b026c0fbc2fb05"
+          }
+        },
+        {
+          "client_id": "389445276055-mibeetvremfhm1se5vnnmq76ihgmht3e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pixelfederation.ts2",
+            "certificate_hash": "010caf65dd3e33d29f2bd7982aec0e5a6b354b47"
+          }
+        },
+        {
+          "client_id": "389445276055-cvu2fhcvu3hh27fk1fan1hom96c8p44b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_O_eamXZfqGmgHEksFKCpD4QEwciCBiM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "389445276055-cvu2fhcvu3hh27fk1fan1hom96c8p44b.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "389445276055-o2nagvb6frrjk6gcot5smkrnsg6vu92g.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.pixelfederation.trainstationgame2",
+                "app_store_id": "1427248206"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
