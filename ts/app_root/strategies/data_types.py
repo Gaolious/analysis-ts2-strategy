@@ -145,6 +145,10 @@ class MaterialStrategy:
         self.warehouse_used[article_id] += amount
 
     def push_contract(self, contract: PlayerContract):
+        for c in self.contract_queue:
+            if c.id == contract.id:
+                return
+            
         self.contract_queue.append(contract)
 
     def push_factory(self, product: TSProduct, amount: int):

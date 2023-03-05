@@ -307,6 +307,7 @@ class Strategy(object):
                         version=self.version,
                         strategy=strategy
                     )
+
                 temporary_train_job_amount_list = jobs_find_priority(
                     version=self.version,
                     locked_job_location_id=locked_job_location_id,
