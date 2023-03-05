@@ -407,7 +407,7 @@ class Strategy(object):
         #     article_source=self.article_source
         # )
 
-        # Step 2. Destination 여분 재료 채우기
+        print("# Destination 여분 재료 채우기")
         self.destination_material = get_destination_materials(version=self.version)
         self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
         command_collect_materials_if_possible(
@@ -416,16 +416,14 @@ class Strategy(object):
             article_source=self.article_source
         )
 
-        if self.version.warehouse_level >= 100:
-            print("Step 2. 공장 제품중 창고 부족분 채우기.")
-            # Step 2. 공장 제품중 창고 부족분 채우기.
-            command_collect_factory_product_redundancy(
-                version=self.version,
-                factory_strategy_dict=self.factory_strategy,
-                article_source=self.article_source
-            )
+        print("# 공장 제품중 창고 부족분 채우기.")
+        command_collect_factory_product_redundancy(
+            version=self.version,
+            factory_strategy_dict=self.factory_strategy,
+            article_source=self.article_source
+        )
 
-        # Step 2. Factory 여분 재료 채우기
+        print("# Factory 여분 재료 채우기")
         self.factory_material = get_factory_materials(version=self.version, factory_strategy_dict=self.factory_strategy)
         self.dump_material(title="Factory(Redundancy)", material=self.factory_material)
         command_collect_materials_if_possible(
