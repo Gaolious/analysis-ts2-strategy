@@ -686,6 +686,16 @@ def contract_get_ship(version: RunVersion) -> PlayerContract:
 ###########################################################################
 # Factory
 ###########################################################################
+def factory_find_need_create(version: RunVersion) -> List[TSFactory]:
+    ret = []
+    for factory in TSFactory.objects.filter(type=1, level_from__lte=version.level_id).all():
+        player_factory = PlayerFactory.objects.filter(version_id=version.id, factory_id=factory.id).first()
+        if player_factory:
+            continue
+        ret.append(factory)
+    return ret
+
+
 def factory_acquire(version: RunVersion, factory: TSFactory):
     PlayerFactory.objects.create(
         version=version,

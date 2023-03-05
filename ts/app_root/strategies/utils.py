@@ -256,20 +256,18 @@ class Strategy(object):
         return None
 
     def _command_event_job(self) -> Optional[datetime]:
-        if self.version.has_union:
-            print(f"# [Strategy Process] - Event Job")
+        print(f"# [Strategy Process] - Event Job")
 
-            # union quest item
-            self.event_job_dispatching_priority = jobs_find_event_priority(version=self.version, with_warehouse_limit=False)
-            self.dump_job_priority('Without resource', self.event_job_dispatching_priority)
+        # union quest item
+        self.event_job_dispatching_priority = jobs_find_event_priority(version=self.version, with_warehouse_limit=False)
+        self.dump_job_priority('Without resource', self.event_job_dispatching_priority)
 
-            if jobs_check_warehouse(version=self.version, job_priority=self.event_job_dispatching_priority):
-                dispatching_job(version=self.version, job_priority=self.event_job_dispatching_priority)
-            else:
-                temporary_train_job_amount_list = jobs_find_event_priority(version=self.version, with_warehouse_limit=True)
-                self.dump_job_priority('out of resource.', temporary_train_job_amount_list)
-                dispatching_job(version=self.version, job_priority=temporary_train_job_amount_list)
-
+        if jobs_check_warehouse(version=self.version, job_priority=self.event_job_dispatching_priority):
+            dispatching_job(version=self.version, job_priority=self.event_job_dispatching_priority)
+        else:
+            temporary_train_job_amount_list = jobs_find_event_priority(version=self.version, with_warehouse_limit=True)
+            self.dump_job_priority('out of resource.', temporary_train_job_amount_list)
+            dispatching_job(version=self.version, job_priority=temporary_train_job_amount_list)
         return None
 
     def _command_basic_job(self) -> Optional[datetime]:
@@ -410,13 +408,13 @@ class Strategy(object):
         # )
 
         # Step 2. Destination 여분 재료 채우기
-        # self.destination_material = get_destination_materials(version=self.version)
-        # self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
-        # command_collect_materials_if_possible(
-        #     version=self.version,
-        #     requires=self.destination_material,
-        #     article_source=self.article_source
-        # )
+        self.destination_material = get_destination_materials(version=self.version)
+        self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
+        command_collect_materials_if_possible(
+            version=self.version,
+            requires=self.destination_material,
+            article_source=self.article_source
+        )
 
         if self.version.warehouse_level >= 100:
             print("Step 2. 공장 제품중 창고 부족분 채우기.")
