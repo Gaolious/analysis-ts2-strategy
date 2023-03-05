@@ -583,7 +583,6 @@ def material_strategy_add_queue(
                 s += amount
                 strategy.push_contract(contract)
                 ret.append(f'''{'  ' * depth} - Required:[{source.article}] - Contract Slot[{contract.slot}][{amount} 개]''')
-                break
 
         elif source.destinations:
             warehouse_amount = 0
