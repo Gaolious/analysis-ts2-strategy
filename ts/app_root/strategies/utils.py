@@ -239,7 +239,7 @@ class Strategy(object):
                 lb_helper.run()
 
     def _command_union_job(self) -> Optional[datetime]:
-        if self.version.has_union and self.version.do_union_quest:
+        if self.version.do_union_quest:
             print(f"# [Strategy Process] - Union Job")
 
             # union quest item
@@ -271,10 +271,10 @@ class Strategy(object):
                 dispatching_job(version=self.version, job_priority=temporary_train_job_amount_list)
             return None
 
-    def _command_basic_job(self) -> Optional[datetime]:
+    def _command_story_job(self) -> Optional[datetime]:
         self.job_material.clear()
 
-        if not self.version.has_union and self.version.level_id < 26:
+        if self.version.do_story_quest:
             print(f"# [Strategy Process] - Story/Side Job")
 
             # union quest item
@@ -369,7 +369,7 @@ class Strategy(object):
         next_dt = self._command_union_job()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
         #
-        next_dt = self._command_basic_job()
+        next_dt = self._command_story_job()
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         self.ship_material = get_ship_materials(version=self.version)
