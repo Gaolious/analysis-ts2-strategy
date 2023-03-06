@@ -82,6 +82,16 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
         verbose_name_plural = 'Versions'
 
     @property
+    def do_union_quest(self):
+        if self.has_union and self.level_id >= 100:
+            return True
+        return False
+
+    @property
+    def do_event_quest(self):
+        return True
+
+    @property
     def has_union(self) -> bool:
         if self.guild_id:
             return True
