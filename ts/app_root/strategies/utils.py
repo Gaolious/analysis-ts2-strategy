@@ -403,12 +403,6 @@ class Strategy(object):
                 strategy=strategy
             )
 
-        # command_collect_materials_if_possible(
-        #     version=self.version,
-        #     requires=self.job_material,
-        #     article_source=self.article_source
-        # )
-
         print("# Destination 여분 재료 채우기")
         self.destination_material = get_destination_materials(version=self.version)
         self.dump_material(title="Destination(Redundancy)", material=self.destination_material)
