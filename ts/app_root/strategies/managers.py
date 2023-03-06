@@ -583,9 +583,10 @@ def article_find_contract(version: RunVersion, article_id=None, available_only=T
 
                 ret[reward_article_id].append(contract)
 
-    for key in ret.keys():
-        ret[key] = sorted(ret[key], reverse=True,
-                                 key=lambda x: x.reward_to_article_dict.get(key, 0))
+    if version.level_id >= 100:
+        for key in ret.keys():
+            ret[key] = sorted(ret[key], reverse=True,
+                                     key=lambda x: x.reward_to_article_dict.get(key, 0))
 
     return ret
 
@@ -1396,7 +1397,7 @@ def warehouse_avg_count(version: RunVersion, warehouse_countable_articles=None, 
     if warehouse_countable_articles is None:
         warehouse_countable_articles = warehouse_countable(version=version, basic=True, event=False, union=False)
 
-    avg_amount = int(max(0, warehouse_capacity - 500) / len(warehouse_countable_articles) * 0.8)
+    avg_amount = int(max(0, warehouse_capacity - 1000) / len(warehouse_countable_articles) * 0.8)
     return avg_amount
 
 
