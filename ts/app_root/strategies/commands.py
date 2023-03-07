@@ -1354,19 +1354,23 @@ Accept-Encoding: gzip, deflate
         :param kwargs:
         :return:
         """
-        data = data.get('Data', {})
+        json_data = json.loads(data, strict=False)
 
-        uid = data.get('Uid', '')
-        token = data.get('Token', '')
-        self.version.firebase_token = token
-        self.version.firebase_uid = uid
+        if json_data:
+            data = json_data.get('Data', {})
 
-        self.version.save(
-            update_fields=[
-                'firebase_token',
-                'firebase_uid',
-            ]
-        )
+            if data:
+                uid = data.get('Uid', '')
+                token = data.get('Token', '')
+                self.version.firebase_token = token
+                self.version.firebase_uid = uid
+
+                self.version.save(
+                    update_fields=[
+                        'firebase_token',
+                        'firebase_uid',
+                    ]
+                )
 
 
 class StartGame(ImportHelperMixin):
