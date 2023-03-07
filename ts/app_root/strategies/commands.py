@@ -1406,7 +1406,8 @@ class StartGame(ImportHelperMixin):
             payload=payload
         )
 
-
+    def parse_data(self, data, **kwargs) -> str:
+        pass
 
 class RunCommand(ImportHelperMixin):
     commands: List[BaseCommand]
