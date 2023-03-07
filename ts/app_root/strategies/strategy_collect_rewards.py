@@ -248,7 +248,6 @@ def strategy_collect_reward_commands(version: RunVersion) -> datetime:
 
     check_expired_contracts(version=version)
 
-    next_dt = check_building(version=version)
     ret = update_next_event_time(previous=ret, event_time=next_dt)
 
     return ret
@@ -511,6 +510,7 @@ def check_building(version: RunVersion):
                 else:
                     if satisfied_for_city_plans and all(satisfied_for_city_plans.values()):
                         print(f"  - [Try {curr_try}] Target is not enough normal city plan & city plan | PASS")
+                        return target
                     else:
                         print(f"  - [Try {curr_try}] Target is not enough city plan - Remove Task. | PASS")
                         if _remove_task_from_building(version=version, task=task, building=target):
