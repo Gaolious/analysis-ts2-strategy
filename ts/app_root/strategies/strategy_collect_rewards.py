@@ -461,7 +461,7 @@ def _remove_task_from_building(version: RunVersion, task: PlayerCityLoopTask, bu
     return False
 
 
-def check_building(version: RunVersion):
+def check_building(version: RunVersion) -> PlayerCityLoopTask:
     print(f"# [Strategy Process] - Check Building")
     task = PlayerCityLoopTask.objects.filter(version_id=version.id).first()
     # parcels = list(PlayerCityLoopParcel.objects.filter(version_id=version.id).values_list('parcel', flat=True))
@@ -474,7 +474,7 @@ def check_building(version: RunVersion):
                 upgrade_list.append(bld)
 
             if not upgrade_list:
-                return
+                return None
 
             upgrade_list.sort(key=lambda x: (x.level, x.upgrade_task), reverse=True)
             target = upgrade_list[0]
@@ -492,7 +492,7 @@ def check_building(version: RunVersion):
                 if target.available_from and target.available_from > version.now:
                     dt = get_remain_time(version=version, finish_at=target.available_from)
                     print(f"  - [Try {curr_try}] Target is not Available. remain: {dt} | PASS")
-                    return target.available_from
+                    return None
 
                 condition = {
                     article_id: (warehouse_get_amount(version=version, article_id=article_id), amount)
@@ -515,19 +515,19 @@ def check_building(version: RunVersion):
                         print(f"  - [Try {curr_try}] Target is not enough city plan - Remove Task. | PASS")
                         if _remove_task_from_building(version=version, task=task, building=target):
                             continue
-                return
+                return None
 
             elif len(cancelable_list) > 0:
                 available_list = [o for o in cancelable_list if o.available_from and o.available_from < version.now]
                 if not available_list:
                     print(f"  - [Try {curr_try}] cancelable list is empty. all busy now. | PASS")
-                    return
+                    return None
                 cancel_target = available_list[-1]
 
                 if _remove_task_from_building(version=version, task=task, building=cancel_target):
                     continue
                 else:
-                    return
+                    return None
 
 
 
