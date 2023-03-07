@@ -567,6 +567,8 @@ def material_strategy_add_queue(
 
     for required_article_id, required_article_amount in requires.items():
         source = article_source.get(required_article_id)
+        if not source:
+            continue
         if source.contracts:
             multiply = 1
             if version.warehouse_level >= 50:

@@ -461,7 +461,7 @@ def _remove_task_from_building(version: RunVersion, task: PlayerCityLoopTask, bu
     return False
 
 
-def check_building(version: RunVersion) -> PlayerCityLoopTask:
+def check_building(version: RunVersion) -> PlayerBuilding:
     print(f"# [Strategy Process] - Check Building")
     task = PlayerCityLoopTask.objects.filter(version_id=version.id).first()
     # parcels = list(PlayerCityLoopParcel.objects.filter(version_id=version.id).values_list('parcel', flat=True))

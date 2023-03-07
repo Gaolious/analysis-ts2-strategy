@@ -361,7 +361,10 @@ class Strategy(object):
         if target and self.version.do_upgrade_building:
             strategy = MaterialStrategy()
             material = Material()
-            material.add_dict(target.requirements_to_dict)
+            for article_id, amount in target.requirements_to_dict:
+                if article_id in (10, 11, 12):
+                    continue
+                material.add(article_id=article_id, amount=amount)
             expand_material_strategy(
                 version=self.version,
                 requires=material,
