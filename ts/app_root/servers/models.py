@@ -82,6 +82,12 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
         verbose_name_plural = 'Versions'
 
     @property
+    def do_upgrade_building(self):
+        if self.warehouse_level < 100:
+            return True
+        return False
+
+    @property
     def do_union_quest(self):
         # if self.has_union and self.level_id >= 100:
         return True
