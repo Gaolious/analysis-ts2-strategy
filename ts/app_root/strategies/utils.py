@@ -8,7 +8,7 @@ from app_root.exceptions import TsRespInvalidOrExpiredSession
 from app_root.players.utils_import import InitdataHelper, LeaderboardHelper
 from app_root.servers.models import RunVersion
 from app_root.servers.utils_import import EndpointHelper, LoginHelper, SQLDefinitionHelper
-from app_root.strategies.commands import HeartBeat, StartGame, send_commands
+from app_root.strategies.commands import HeartBeat, StartGame, send_commands, FirebaseAuthToken
 from app_root.strategies.data_types import JobPriority, ArticleSource, Material, \
     FactoryStrategy, MaterialStrategy
 from app_root.strategies.dumps import ts_dump
@@ -134,6 +134,9 @@ class Strategy(object):
 
         init_helper = InitdataHelper(version=self.version, use_cache=USE_CACHE)
         init_helper.run()
+
+        firebase = FirebaseAuthToken(version=self.version, use_cache=USE_CACHE)
+        firebase.run()
 
         sg = StartGame(version=self.version, use_cache=USE_CACHE)
         sg.run()
@@ -483,7 +486,6 @@ class Strategy(object):
                     article_id = int(instance.job.required_article_id)
                     article_amount = int(instance.amount)
                     self.event_job_material.add(article_id=article_id, amount=int(article_amount))
-                    break
                 self.dump_material(title="Step 1-1. Event Quest 재료 (only one)", material=self.event_job_material)
 
             strategy = MaterialStrategy()

@@ -27,6 +27,9 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
     # from _parse_init_player
     player_id = models.CharField(_('PlayerId'), max_length=50, null=False, blank=False)
     player_name = models.CharField(_('PlayerName'), max_length=50, null=False, blank=False)
+    firebase_token = models.TextField(_('firebase token'), max_length=10*1024, null=False, blank=True, default='')
+    firebase_uid = models.CharField(_('firebase uid'), max_length=50, null=False, blank=True, default='')
+
     level = models.ForeignKey(
         to='servers.TSUserLevel',
         on_delete=models.DO_NOTHING, related_name='+', null=False, blank=False, db_constraint=False
@@ -201,6 +204,8 @@ class EndPoint(BaseModelMixin, TimeStampedMixin):
     ENDPOINT_COMMAND_PROCESSING = 'command_processing_collection'
     ENDPOINT_START_GAME = 'start_game'
     ENDPOINT_UPDATE_DEVICE_ID = 'update_device_id'
+    ENDPOINT_FIREBASE_AUTH = 'firebase_auth_token'
+
     ENDPOINT_INIT_DATA_URLS = '_initdata_urls_'
     name = models.CharField(_('version'), max_length=255, null=False, blank=False)
     name_hash = models.BigIntegerField(_('name hash'), null=False, blank=False, default=0, db_index=True)

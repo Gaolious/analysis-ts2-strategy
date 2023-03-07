@@ -1290,6 +1290,85 @@ class CollectGiftCommand(BaseCommand):
         collect_gift(version=self.version, gift=self.gift)
 
 
+class FirebaseAuthToken(ImportHelperMixin):
+    NAME = 'firebase'
+    """
+{"Name":"firebase_auth_token","Url":"https://game.trainstation2.com/api/v2/query/get-firebase-auth-token"},
+
+22 09:38:34 | T: 5734 | I | SSL_AsyncWrite  | GET /api/v2/query/get-firebase-auth-token HTTP/1.1
+PXFD-Request-Id: 1b0774e9-5c8a-456e-af7b-db41fcce178f
+PXFD-Retry-No: 0
+PXFD-Sent-At: 2023-02-22T00:38:34.000Z
+PXFD-Client-Information: {"Store":"google_play","Version":"2.7.0.4123","Language":"ko"}
+PXFD-Client-Version: 2.7.0.4123
+PXFD-Device-Token: 0cbd8657b85587591462e728d4129ab0
+PXFD-Game-Access-Token: 8df91df3-89f2-5708-9b03-0c59e4c9f0bc
+PXFD-Player-Id: 76408422
+Host: game.trainstation2.com
+Accept-Encoding: gzip, deflate
+
+
+22 09:38:35 | T: 5735 | I | IO.Mem.Write    | {"Success":true,"RequestId":"1b0774e9-5c8a-456e-af7b-db41fcce178f","Time":"2023-02-22T00:38:35Z",
+"Data":{
+    "Uid":"prod_76408422",
+    "Token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJmaXJlYmFzZS1hZG1pbnNkay1nNmR6NkB0cmFpbnN0YXRpb24tMi0zMDIyMzA3Ni5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsInN1YiI6ImZpcmViYXNlLWFkbWluc2RrLWc2ZHo2QHRyYWluc3RhdGlvbi0yLTMwMjIzMDc2LmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiJwcm9kXzc2NDA4NDIyIiwiaWF0IjoxNjc3MDI2MzE1LjM2NzcxNCwiZXhwIjoxNjc3MDI5OTE1LjM2NzcxNH0.QjPjNOHm4pf1tHDuYYmXa8cgX30qfdTL6T733AL2BHCuTzT3UnH4CGALJ_TBiae4VVfJia0ATrZiuTOfrP2RpBORqKdFnoAyBrAQTNRp3KijIhzXPsm36bFWUwWleErq-WK4j0OdU8m5ZRbIzCK56xGiJgwSQcj3T_R0As8xPfdnDWBX0y5Z1p5UWva7ojF55DKJz7BzPFiM06NDeOaNdJ03nE1BbS2OAWA2VfFp9dCoq7WXOOSO0SabQaE9T_PWsgl8KUgbn6R6Q6BFVxkXGix4tN2VSSw2y8wrxy4FRZf5W3P6RaPDBDEHBgdxPnpk7XG-6l1CyCJnMsXzsGEyiA",
+    "Env":"prod"
+}
+}
+   
+    """
+    def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
+        for url in EndPoint.get_urls(EndPoint.ENDPOINT_FIREBASE_AUTH):
+            yield url, '', '', ''
+            break
+
+    def get_data(self, url, **kwargs) -> str:
+        """
+
+        :param url:
+        :param kwargs:
+        :return:
+        """
+        mask = self.HEADER_REQUEST_ID \
+               | self.HEADER_RETRY_NO \
+               | self.HEADER_SENT_AT \
+               | self.HEADER_CLIENT_INFORMATION \
+               | self.HEADER_CLIENT_VERSION \
+               | self.HEADER_DEVICE_TOKEN \
+               | self.HEADER_GAME_ACCESS_TOKEN \
+               | self.HEADER_PLAYER_ID
+
+        headers = self.get_headers(mask=mask)
+
+        return self.get(
+            url=url,
+            headers=headers,
+            params={},
+        )
+
+    def parse_data(self, data, **kwargs) -> str:
+        """
+        data =
+        {"Success":true,"RequestId":"df10975f-2ba4-4fc0-a40e-5ba2fa574844","Time":"2023-03-07T13:45:34Z","Data":{"Uid":"prod_76406092","Token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJmaXJlYmFzZS1hZG1pbnNkay1nNmR6NkB0cmFpbnN0YXRpb24tMi0zMDIyMzA3Ni5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsInN1YiI6ImZpcmViYXNlLWFkbWluc2RrLWc2ZHo2QHRyYWluc3RhdGlvbi0yLTMwMjIzMDc2LmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiJwcm9kXzc2NDA2MDkyIiwiaWF0IjoxNjc4MTk2NzM0Ljc4ODA4NiwiZXhwIjoxNjc4MjAwMzM0Ljc4ODA4Nn0.noZlvUTf8lduYG93tUrfyQKdsn0BsenK4wc4pEleu2DnpVUt4r5BO73M6nNEEqISW_6zIWHIdfbB3DBVATjg309FIJYbws5Mq_W7zwG58If80jyBSnLXdopjWaoSml9t4I2YrAmXeq2X1mp9KPanxdlJoK-Ju0C-xgM3tCYAqqHsrmub8CfTnPTrsvtMdJ9fdXTYwIoAPLC_VnqYFqTd91V4b-EmOAhw4jFxa-3ltrjVBEyTeBCcRDuy2wU7N4V3mLx0POgq2j7xC4vlwaY37GscgYobuVGlo1tlPgg7VsJlWxFpQeKfnD-borN9LzVEIvp90FGm7T0PBcfPd1vzuQ","Env":"prod"}}
+        :param data:
+        :param kwargs:
+        :return:
+        """
+        data = data.get('Data', {})
+
+        uid = data.get('Uid', '')
+        token = data.get('Token', '')
+        self.version.firebase_token = token
+        self.version.firebase_uid = uid
+
+        self.version.save(
+            update_fields=[
+                'firebase_token',
+                'firebase_uid',
+            ]
+        )
+
+
 class StartGame(ImportHelperMixin):
     NAME = 'startgame'
 
@@ -1323,8 +1402,6 @@ class StartGame(ImportHelperMixin):
             payload=payload
         )
 
-    def parse_data(self, data, **kwargs) -> str:
-        pass
 
 
 class RunCommand(ImportHelperMixin):
