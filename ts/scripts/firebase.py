@@ -9,7 +9,10 @@ import firebase_admin
 
 
 def run():
-    # refer : https://engineering.sada.com/how-to-use-json-web-tokens-for-service-to-service-authentication-b272059b7ed5
+    # https://cloud.google.com/identity-platform/docs/use-rest-api?hl=ko
+
+    # 예제 코드 있음. 확인 필요.
+    # https://www.programcreek.com/python/?code=firebase%2Ffirebase-admin-python%2Ffirebase-admin-python-master%2Fintegration%2Ftest_auth.py
 
     project_id = 'trainstation-2-30223076'
 
