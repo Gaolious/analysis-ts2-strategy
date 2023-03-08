@@ -92,15 +92,13 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
 
     @property
     def do_union_quest(self):
-        if self.level_id >= 100:
-            return True
-        return False
+        return True
 
     @property
     def do_event_quest(self):
         # if self.level_id >= 100:
         #     return True
-        return True
+        return False
 
     @property
     def do_story_quest(self):
