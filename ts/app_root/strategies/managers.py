@@ -1061,7 +1061,7 @@ class JobDisptchingHelper:
             train_id, job_id, amount
         """
         self.train_id_list = sorted(self.train_job_relation.keys(), key=lambda k: self.trains[k].capacity, reverse=True)
-        self.train_id_list = self.train_id_list[:7]
+        self.train_id_list = self.train_id_list[:10]
         self.best_score = None
         self.assigned_job_amount = {job_id: 0 for job_id in self.jobs}
         self.best_assign = []
@@ -1098,11 +1098,11 @@ def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) ->
                     'version': version,
                     'job': job,
                 }
-                if with_warehouse_limit:
-                    param.update({
-                        'is_idle': True,
-                        'has_load': False,
-                    })
+                # if with_warehouse_limit:
+                param.update({
+                    'is_idle': True,
+                    'has_load': False,
+                })
 
                 trains = trains_find_match_with_job(**param)
                 finder.add_job_train(job, trains)
