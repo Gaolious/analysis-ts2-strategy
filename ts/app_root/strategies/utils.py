@@ -455,50 +455,50 @@ class Strategy(object):
             article_source=self.article_source
         )
 
-        next_dt = self._command_event_job()
-        ret = update_next_event_time(previous=ret, event_time=next_dt)
+        # next_dt = self._command_event_job()
+        # ret = update_next_event_time(previous=ret, event_time=next_dt)
 
-        if self.event_job_dispatching_priority:
-            self.event_job_material.clear()
-
-            if self.version.warehouse_level >= 100:
-                for instance in self.event_job_dispatching_priority:
-                    article_id = int(instance.job.required_article_id)
-                    article_amount = int(instance.amount)
-                    self.event_job_material.add(article_id=article_id, amount=int(article_amount))
-                avg_amount = warehouse_avg_count(version=self.version)
-                material_ids = [
-                    9001, 9002, 9003, 9004, 9005,
-                ]
-                for article_id in material_ids:
-                    if article_id not in self.event_job_material.required_articles:
-                        self.event_job_material.required_articles.update({
-                            article_id: avg_amount
-                        })
-                    elif self.event_job_material.required_articles[article_id] < avg_amount:
-                        self.event_job_material.required_articles.update({
-                            article_id: avg_amount
-                        })
-                self.dump_material(title="Step 1-1. Event Quest 재료 (for All)", material=self.event_job_material)
-
-            else:
-                for instance in self.event_job_dispatching_priority:
-                    article_id = int(instance.job.required_article_id)
-                    article_amount = int(instance.amount)
-                    self.event_job_material.add(article_id=article_id, amount=int(article_amount))
-                self.dump_material(title="Step 1-1. Event Quest 재료 (only one)", material=self.event_job_material)
-
-            strategy = MaterialStrategy()
-            expand_material_strategy(
-                version=self.version,
-                requires=self.event_job_material,
-                article_source=self.article_source,
-                strategy=strategy,
-            )
-            command_material_strategy(
-                version=self.version,
-                strategy=strategy
-            )
+        # if self.event_job_dispatching_priority:
+        #     self.event_job_material.clear()
+        #
+        #     if self.version.warehouse_level >= 100:
+        #         for instance in self.event_job_dispatching_priority:
+        #             article_id = int(instance.job.required_article_id)
+        #             article_amount = int(instance.amount)
+        #             self.event_job_material.add(article_id=article_id, amount=int(article_amount))
+        #         avg_amount = warehouse_avg_count(version=self.version)
+        #         material_ids = [
+        #             9001, 9002, 9003, 9004, 9005,
+        #         ]
+        #         for article_id in material_ids:
+        #             if article_id not in self.event_job_material.required_articles:
+        #                 self.event_job_material.required_articles.update({
+        #                     article_id: avg_amount
+        #                 })
+        #             elif self.event_job_material.required_articles[article_id] < avg_amount:
+        #                 self.event_job_material.required_articles.update({
+        #                     article_id: avg_amount
+        #                 })
+        #         self.dump_material(title="Step 1-1. Event Quest 재료 (for All)", material=self.event_job_material)
+        #
+        #     else:
+        #         for instance in self.event_job_dispatching_priority:
+        #             article_id = int(instance.job.required_article_id)
+        #             article_amount = int(instance.amount)
+        #             self.event_job_material.add(article_id=article_id, amount=int(article_amount))
+        #         self.dump_material(title="Step 1-1. Event Quest 재료 (only one)", material=self.event_job_material)
+        #
+        #     strategy = MaterialStrategy()
+        #     expand_material_strategy(
+        #         version=self.version,
+        #         requires=self.event_job_material,
+        #         article_source=self.article_source,
+        #         strategy=strategy,
+        #     )
+        #     command_material_strategy(
+        #         version=self.version,
+        #         strategy=strategy
+        #     )
         return ret
 
     def run(self):
