@@ -407,10 +407,19 @@ class Strategy(object):
         # Step 1. contract. / union quest materials.
         if self.union_job_dispatching_priority:
             self.union_job_material.clear()
+            tmp = {}
+            avg_count = warehouse_avg_count(version=self.version)
+
+            for job in jobs_find(union_jobs=True, expired_jobs=False, completed_jobs=False):
+                for article_id, amount in job.requirements_to_dict.items():
+                    tmp.update({
+                        article_id: avg_count
+                    })
+
             for instance in self.union_job_dispatching_priority:
                 article_id = int(instance.job.required_article_id)
                 article_amount = int(instance.amount)
-                self.union_job_material.add(article_id=article_id, amount=int(article_amount))
+                self.union_job_material.add(article_id=article_id, amount=max(tmp[article_id], article_amount))
 
             self.dump_material(title="Step 1-1. Union Quest 재료", material=self.union_job_material)
             strategy = MaterialStrategy()
