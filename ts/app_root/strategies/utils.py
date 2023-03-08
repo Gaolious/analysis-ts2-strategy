@@ -410,7 +410,7 @@ class Strategy(object):
             tmp = {}
             avg_count = warehouse_avg_count(version=self.version)
 
-            for job in jobs_find(union_jobs=True, expired_jobs=False, completed_jobs=False):
+            for job in jobs_find(version=self.version, union_jobs=True, expired_jobs=False, completed_jobs=False):
                 for article_id, amount in job.requirements_to_dict.items():
                     tmp.update({
                         article_id: avg_count
