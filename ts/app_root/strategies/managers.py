@@ -1401,7 +1401,7 @@ def warehouse_avg_count(version: RunVersion, warehouse_countable_articles=None, 
         }
         warehouse_countable_articles = warehouse_countable(version=version, basic=True, **param)
 
-    avg_amount = int(max(0, warehouse_capacity - 1000) / len(warehouse_countable_articles) * 0.8)
+    avg_amount = int(max(0, warehouse_capacity - 600) / len(warehouse_countable_articles) * 0.8)
     return avg_amount
 
 
