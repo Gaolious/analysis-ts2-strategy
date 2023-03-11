@@ -542,7 +542,7 @@ class Strategy(object):
             if self.version:
                 now = get_curr_server_datetime(version=self.version)
                 self.version.next_event_datetime = now + timedelta(minutes=10)
-                self.version.set_completed(save=True, update_fields=[])
+                self.version.set_completed(save=True, update_fields=['next_event_datetime'])
 
         except Exception as e:
             if self.version:
