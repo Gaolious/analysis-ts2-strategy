@@ -1,0 +1,21 @@
+{
+  "name": "ts-firestore",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rm -rf dist && tsc index.ts --outDir dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5"
+  },
+  "description": "",
+  "dependencies": {
+    "firebase": "^9.17.1",
+    "firebase-admin": "^11.5.0"
+  }
+}

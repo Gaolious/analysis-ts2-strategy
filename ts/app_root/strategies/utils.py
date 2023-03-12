@@ -12,6 +12,7 @@ from app_root.strategies.commands import HeartBeat, StartGame, send_commands, Fi
 from app_root.strategies.data_types import JobPriority, ArticleSource, Material, \
     FactoryStrategy, MaterialStrategy
 from app_root.strategies.dumps import ts_dump
+from app_root.strategies.firestore import execute_firestore
 from app_root.strategies.managers import jobs_find, trains_find, \
     update_next_event_time, jobs_find_union_priority, \
     jobs_check_warehouse, warehouse_get_amount, article_find_contract, factory_find_product_orders, \
@@ -137,6 +138,8 @@ class Strategy(object):
 
         firebase = FirebaseAuthToken(version=self.version, use_cache=USE_CACHE)
         firebase.run()
+
+        execute_firestore(version=self.version)
 
         sg = StartGame(version=self.version, use_cache=USE_CACHE)
         sg.run()
