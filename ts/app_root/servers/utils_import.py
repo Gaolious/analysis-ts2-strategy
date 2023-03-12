@@ -24,7 +24,6 @@ class EndpointHelper(ImportHelperMixin):
     def get_data(self, url, **kwargs) -> str:
         mask = self.HEADER_REQUEST_ID \
                | self.HEADER_RETRY_NO \
-               | self.HEADER_SENT_AT \
                | self.HEADER_CLIENT_INFORMATION \
                | self.HEADER_CLIENT_VERSION
 

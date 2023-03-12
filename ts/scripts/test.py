@@ -2,6 +2,7 @@ from unittest import mock
 
 from app_root.servers.models import RunVersion
 from app_root.strategies.dumps import ts_dump
+from app_root.strategies.firestore import execute_firestore
 from app_root.users.models import User
 
 
@@ -21,7 +22,9 @@ def dump(version_id: int = None):
 
 
 def run():
-    dump(13)
+    # dump(13)
+    rv = RunVersion.objects.filter(id=121).first()
+    execute_firestore(rv)
     """
 25/23/gaolious1/22.log
 

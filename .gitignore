@@ -135,3 +135,5 @@ dump/
 download/
 
 fabfile.py
+
+ts-firestore/node_modules/
