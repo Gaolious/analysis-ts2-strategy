@@ -28,8 +28,10 @@ def run_nodejs(version: RunVersion):
     timeout = 30
 
     try:
+        print('commands : ', commands)
+
         out = subprocess.run(
-            commands, shell=True, capture_output=True, timeout=timeout, cwd=str(cwd)
+            commands, shell=False, capture_output=True, timeout=timeout
         )
         print(out)
 

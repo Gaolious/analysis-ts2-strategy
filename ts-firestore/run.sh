@@ -3,8 +3,12 @@
 NODE=`which node` || '/usr/bin/node'
 
 tmp=`realpath "${0}"`
-pushd `dirname "${tmp}"`
+BASE=`dirname "${tmp}"`
 
-echo `pwd`
+#echo "Current Path : `pwd`"
+#echo "Current Param : $@"
 
-"${NODE}" ./dist/index.js $@
+export NODE_PATH="${BASE}/node_modules"
+
+echo "${NODE}" "${BASE}/dist/index.js" $@
+"${NODE}" "${BASE}/dist/index.js" $@
