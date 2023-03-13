@@ -542,9 +542,14 @@ def convert_number_as_string(text: str, default=None):
     """
     try:
         text = number_pattern.sub('', text)
-        text = convert_trim(text, default).replace('.', '').replace('-', '').replace(',', '')
+        text = convert_trim(text, default)
+        sign = ''
+        if text.startswith('-'):
+            sign = '-'
+        text = text.replace('.', '').replace('-', '').replace(',', '')
+
         if text:
-            return text
+            return f'{sign}{text}'
 
     except Exception:
         pass
