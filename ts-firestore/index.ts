@@ -6,7 +6,10 @@ import {getJobs} from "./src/db";
 const args = getArgs();
 
 (async () => {
+    console.log(`# 0. Current Path : ${__dirname}`)
+    process.chdir(__dirname);
     console.log("# 1. Read Parameter")
+    console.log(args);
     if (args['path'] === undefined) return;
 
     const inFilename = path.join(path.normalize(<string>args['path']), "firestore.json");

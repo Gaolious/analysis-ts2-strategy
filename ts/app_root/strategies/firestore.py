@@ -20,24 +20,19 @@ appId = '1:389445276055:android:efbd60f62f7fb4bb'
 def run_nodejs(version: RunVersion):
     config_path = version.get_account_path()
 
-    node = Path('/usr/local/bin/node')
-    node_path = Path('/usr/local/bin/node')
-    if not node_path.exists():
-        node_path = Path('/usr/bin/node')
-
+    cwd = settings.SOURCE_PATH / 'ts-firestore'
     commands = [
-        str(node_path),
-        str(settings.SOURCE_PATH / 'ts-firestore' / 'dist' / 'index.js'),
+        str(cwd / 'run.sh'),
         '--path={}'.format(config_path),
     ]
-    cmd = ' '.join(commands)
-
     timeout = 30
 
     try:
-        out = subprocess.check_output(
-            cmd, shell=True, timeout=timeout
+        out = subprocess.run(
+            commands, shell=True, capture_output=True, timeout=timeout, cwd=str(cwd)
         )
+        print(out)
+
     except subprocess.TimeoutExpired as e:
         print(str(e))
     except subprocess.CalledProcessError as e:
@@ -68,19 +63,6 @@ def write_fireston_json(version: RunVersion):
 
 
 def read_fireston_json(version: RunVersion):
-    config = {
-        'token': version.firebase_token,
-        'guildId': version.guild_id,
-        'firebaseConfig': {
-            'apiKey': apiKey,
-            'authDomain': authDomain,
-            'projectId': projectId,
-            'storageBucket': storageBucket,
-            'databaseURL': databaseURL,
-            'appId': appId,
-        }
-    }
-
     config_path = version.get_account_path()
     jobs = config_path / 'guild_jobs.json'
     if jobs.exists():
