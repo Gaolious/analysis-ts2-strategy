@@ -961,17 +961,18 @@ class JobDisptchingHelper:
             article_id: WAREHOUSE(article_id=article_id, amount=amount)
         })
 
-    best_score: Tuple[float, int]
+    best_score: Tuple[int, float, int]
     best_assign: List[Tuple[int, int, int]] = []
 
     train_id_list: List[int] = []
     assigned_job_amount: Dict[int, int] = {}
     assign: List[Tuple[int, int, int]] = []
 
-    def get_score(self, used_dispatcher: int) -> Tuple[float, int]:
+    def get_score(self, used_dispatcher: int) -> Tuple[int, float, int]:
         ret = 0
 
         count = {}
+        required_articles = {}
         INFINITY_HOUR = 1000000
 
         for job_id, amount in self.assigned_job_amount.items():
@@ -979,6 +980,9 @@ class JobDisptchingHelper:
 
             total = self.jobs[job_id].total_count
             curr = min(total, self.jobs[job_id].curr_count)
+            required_articles.update({
+                self.jobs[job_id].article_id: True
+            })
 
             remain = total - curr
             if remain < 1:
@@ -999,7 +1003,7 @@ class JobDisptchingHelper:
 
         hours = min(count.values())
 
-        return ret, -hours
+        return len(required_articles), ret, -hours
 
     def recur(self, idx: int, used_dispatcher: int, with_warehouse_limit: bool, depth=0):
         if used_dispatcher > 0:
