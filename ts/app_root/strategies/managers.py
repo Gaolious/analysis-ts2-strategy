@@ -1012,6 +1012,8 @@ class JobDisptchingHelper:
             if not self.best_score or self.best_score < score:
                 self.best_score = score
                 self.best_assign = [(train_id, job_id, amount) for train_id, job_id, amount in self.assign]
+                print(f" - Job Dispatch Updated : Score[{self.best_score}]")
+                print(f"     assign : {self.best_assign}")
 
         if used_dispatcher >= self.number_of_dispatchers:
             return
