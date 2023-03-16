@@ -106,7 +106,7 @@ class PlayerBuildingMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
     @property
     def is_placed(self):
@@ -197,7 +197,7 @@ class PlayerDestinationMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
     def next_event_datetime(self, init_data_request_datetime, init_data_server_datetime, now) -> datetime:
 
@@ -387,7 +387,7 @@ class PlayerFactoryProductOrderMixin(BaseVersionMixin):
                     )
                 )
 
-        return ret, _
+        return ret, []
 
     def is_completed(self, now) -> bool:
         if self.finish_time and self.finish_time <= now:
@@ -546,7 +546,7 @@ class PlayerJobMixin(BaseVersionMixin):
                     )
                 )
 
-        return ret, _
+        return ret, []
 
     # @cached_property
     # def current_guild_amount(self):
@@ -719,7 +719,7 @@ class PlayerContractListMixin(BaseVersionMixin):
                     )
                 )
 
-        return ret, _
+        return ret, []
 
     def is_available(self, now) -> bool:
         if self.available_to and not (now < self.available_to):
@@ -824,7 +824,7 @@ class PlayerContractMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
     def is_available(self, now) -> bool:
         if self.available_from and not (self.available_from + BUFFER_TIME < now):
@@ -886,7 +886,7 @@ class PlayerGiftMixin(BaseVersionMixin):
                     )
                     ret.append(instance)
 
-        return ret, _
+        return ret, []
 
     @cached_property
     def reward_to_dict(self) -> Dict[int, int]:
@@ -985,7 +985,7 @@ class PlayerLeaderBoardProgressMixin(BaseVersionMixin):
                 player_id = progress.pop('PlayerId', None)
                 avata_id = progress.pop('AvatarId', None)
                 firebase_uid = progress.pop('FirebaseUid', None)
-                _ = progress.pop('LeaderboardGroupId', None)
+                progress.pop('LeaderboardGroupId', None)
                 player_name = progress.pop('PlayerName', None)
                 progress_val = progress.pop('Progress', None)
                 position = progress.pop('Position', None)
@@ -1007,7 +1007,7 @@ class PlayerLeaderBoardProgressMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 
 class PlayerTrainMixin(BaseVersionMixin):
@@ -1153,7 +1153,7 @@ class PlayerTrainMixin(BaseVersionMixin):
 
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 
 class PlayerWarehouseMixin(BaseVersionMixin):
@@ -1185,7 +1185,7 @@ class PlayerWarehouseMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
     def __str__(self):
         return f'#{self.article_id} {self.article} - {self.amount}개'
@@ -1318,7 +1318,7 @@ class PlayerWhistleItemMixin(BaseVersionMixin):
                     )
                 )
 
-        return ret, _
+        return ret, []
 
 
 class PlayerAchievementMixin(BaseVersionMixin):
@@ -1355,7 +1355,7 @@ class PlayerAchievementMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 
 class PlayerDailyRewardMixin(BaseVersionMixin):
@@ -1415,7 +1415,7 @@ class PlayerDailyRewardMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
     def get_today_rewards(self) -> List[Dict]:
         """
@@ -1523,7 +1523,7 @@ class PlayerMapMixin(BaseVersionMixin):
                     )
                     ret.append(instance)
 
-        return ret, _
+        return ret, []
 
     @cached_property
     def next_spot_ids(self):
@@ -1578,7 +1578,7 @@ class PlayerQuestMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 
 class PlayerVisitedRegionMixin(BaseVersionMixin):
@@ -1611,7 +1611,7 @@ class PlayerVisitedRegionMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 
 class PlayerShipOfferMixin(BaseVersionMixin):
@@ -1661,7 +1661,7 @@ class PlayerShipOfferMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
     @cached_property
     def reward_to_article_dict(self) -> Dict:
@@ -1772,7 +1772,7 @@ class PlayerCompetitionMixin(BaseVersionMixin, ContentCategoryMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 
 class PlayerUnlockedContentMixin(BaseVersionMixin):
@@ -1812,7 +1812,7 @@ class PlayerUnlockedContentMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 
 class PlayerOfferContainerMixin(BaseVersionMixin):
@@ -1852,8 +1852,7 @@ class PlayerOfferContainerMixin(BaseVersionMixin):
                 )
                 ret.append(instance)
 
-        return ret, _
-
+        return ret, []
     @property
     def is_video_reward(self) -> bool:
         if self.offer_container.price_article_id == 16:
@@ -1976,7 +1975,7 @@ class PlayerDailyOfferItemMixin(BaseVersionMixin):
 
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 
 class PlayerCityLoopParcelMixin(BaseVersionMixin):
@@ -2004,7 +2003,7 @@ class PlayerCityLoopParcelMixin(BaseVersionMixin):
 
                 ret.append(instance)
 
-        return ret, _
+        return ret, []
 
 class PlayerCityLoopTaskMixin(BaseVersionMixin):
     next_replace_at = models.DateTimeField(_('UpgradeTaskNextReplaceAt'), null=True, blank=False)
@@ -2036,4 +2035,4 @@ class PlayerCityLoopTaskMixin(BaseVersionMixin):
 
                 ret.append(instance)
 
-        return ret, _
+        return ret, []

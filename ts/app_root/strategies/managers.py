@@ -1127,7 +1127,6 @@ def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) ->
     return ret
 
 
-
 def jobs_find_event_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
     """
 
