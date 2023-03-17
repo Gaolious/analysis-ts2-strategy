@@ -943,7 +943,7 @@ class JobDisptchingHelper:
                 article_id=job.required_article_id,
                 total_count=job.required_amount,
                 curr_count=job.current_progress,
-                sp=job.reward_to_article_dict.get(100003, 0)
+                sp=job.reward_to_article_dict.get(100003, 0) or job.reward_to_article_dict.get(100000, 0)
             )
         })
         for train in trains:
