@@ -902,11 +902,13 @@ class JOB:
     article_id: int
     total_count: int
     curr_count: int
+    sp: int
 
-    def __init__(self, article_id, total_count, curr_count):
+    def __init__(self, article_id, total_count, curr_count, sp=0):
         self.article_id = article_id
         self.total_count = total_count
         self.curr_count = curr_count
+        self.sp = sp
 
 
 class WAREHOUSE:
@@ -941,6 +943,7 @@ class JobDisptchingHelper:
                 article_id=job.required_article_id,
                 total_count=job.required_amount,
                 curr_count=job.current_progress,
+                sp=job.reward_to_article_dict.get(100003, 0)
             )
         })
         for train in trains:
@@ -999,7 +1002,8 @@ class JobDisptchingHelper:
         for job_id, amount in self.assigned_job_amount.items():
             remain = max(0, self.jobs[job_id].total_count - self.jobs[job_id].curr_count)
             if remain > 0:
-                ret += self.assigned_job_amount[job_id] / remain
+                ret += self.jobs[job_id].sp / remain * self.assigned_job_amount[job_id]
+                # ret += self.assigned_job_amount[job_id] / remain
 
         hours = min(count.values())
 
