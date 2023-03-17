@@ -1003,7 +1003,8 @@ class JobDisptchingHelper:
 
         hours = min(count.values())
 
-        return len(required_articles), ret, -hours
+        # return len(required_articles), ret, -hours
+        return 0, ret, -hours
 
     def recur(self, idx: int, used_dispatcher: int, with_warehouse_limit: bool, depth=0):
         if used_dispatcher > 0:
