@@ -1,4 +1,3 @@
-
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 import lzma
@@ -69,4 +68,3 @@ import lzma
 #         if 'max_length' not in kwargs:
 #             kwargs['max_length'] = 50
 #         super(FtcDateField, self).__init__(*args, **kwargs)
-

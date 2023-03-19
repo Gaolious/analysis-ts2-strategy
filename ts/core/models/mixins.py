@@ -13,8 +13,9 @@ from django.utils.translation import gettext_lazy as _
 
 class BaseModelMixin(models.Model):
     """
-        PK mixin
+    PK mixin
     """
+
     id = models.BigAutoField(primary_key=True)
 
     class Meta:
@@ -65,10 +66,11 @@ class BaseModelMixin(models.Model):
 
 class TimeStampedMixin(models.Model):
     """
-        row 생성일, 수정일 mixin
+    row 생성일, 수정일 mixin
     """
-    created = models.DateTimeField(_('created date'), blank=True, editable=False)
-    modified = models.DateTimeField(_('modified date'), blank=True, editable=False)
+
+    created = models.DateTimeField(_("created date"), blank=True, editable=False)
+    modified = models.DateTimeField(_("modified date"), blank=True, editable=False)
 
     class Meta:
         abstract = True
@@ -77,33 +79,37 @@ class TimeStampedMixin(models.Model):
         now = timezone.now()
         if not self.created:
             self.created = now
-            if 'update_fields' in kwargs:
-                kwargs['update_fields'].append('created')
+            if "update_fields" in kwargs:
+                kwargs["update_fields"].append("created")
 
-        update_fields = kwargs.get('update_fields', None)
+        update_fields = kwargs.get("update_fields", None)
         if not update_fields:
             self.modified = now
-        elif isinstance(update_fields, list) and 'modified' not in update_fields:
+        elif isinstance(update_fields, list) and "modified" not in update_fields:
             self.modified = now
-            update_fields.append('modified')
+            update_fields.append("modified")
 
         super(TimeStampedMixin, self).save(*args, **kwargs)
 
 
 class ArchiveModelMixin(models.Model):
     """
-        model 삭제시 archive
+    model 삭제시 archive
     """
 
-    archive_date = models.DateTimeField(_('created date'), blank=True, editable=False)
+    archive_date = models.DateTimeField(_("created date"), blank=True, editable=False)
 
-    old_pk = models.BigIntegerField(_('old pk'), db_index=True, blank=False, editable=False)
+    old_pk = models.BigIntegerField(
+        _("old pk"), db_index=True, blank=False, editable=False
+    )
 
     archive_user = models.ForeignKey(
         to=get_user_model(),
         on_delete=models.DO_NOTHING,
-        related_name='+',
-        null=True, blank=False, db_constraint=False,
+        related_name="+",
+        null=True,
+        blank=False,
+        db_constraint=False,
         db_index=False,
     )
 
@@ -113,30 +119,39 @@ class ArchiveModelMixin(models.Model):
 
 class TaskModelMixin(models.Model):
     """
-        Async Task 모델 Mixin
-        Task Status와 관련된 field 모음.
+    Async Task 모델 Mixin
+    Task Status와 관련된 field 모음.
     """
+
     CHOICE_TASK_STATUS_QUEUED = 10  # push to MQ
     CHOICE_TASK_STATUS_PROGRESSING = 20  # pop from MQ
     CHOICE_TASK_STATUS_ERROR = 30  # something wrong...
     CHOICE_TASK_STATUS_COMPLETED = 40  # complete
 
     CHOICE_TASK_STATUS = (
-        (CHOICE_TASK_STATUS_QUEUED, _('in queued')),
-        (CHOICE_TASK_STATUS_PROGRESSING, _('in processing')),
-        (CHOICE_TASK_STATUS_ERROR, _('error')),
-        (CHOICE_TASK_STATUS_COMPLETED, _('completed')),
+        (CHOICE_TASK_STATUS_QUEUED, _("in queued")),
+        (CHOICE_TASK_STATUS_PROGRESSING, _("in processing")),
+        (CHOICE_TASK_STATUS_ERROR, _("error")),
+        (CHOICE_TASK_STATUS_COMPLETED, _("completed")),
     )
 
     task_status = models.PositiveSmallIntegerField(
-        _('status of crawling task'),
+        _("status of crawling task"),
         choices=CHOICE_TASK_STATUS,
         default=CHOICE_TASK_STATUS_QUEUED,
     )
-    queued_datetime = models.DateTimeField(_('queued datetime'), null=True, blank=True, default=None)
-    processing_datetime = models.DateTimeField(_('processing datetime'), null=True, blank=True, default=None)
-    error_datetime = models.DateTimeField(_('error datetime'), null=True, blank=True, default=None)
-    completed_datetime = models.DateTimeField(_('completed datetime'), null=True, blank=True, default=None)
+    queued_datetime = models.DateTimeField(
+        _("queued datetime"), null=True, blank=True, default=None
+    )
+    processing_datetime = models.DateTimeField(
+        _("processing datetime"), null=True, blank=True, default=None
+    )
+    error_datetime = models.DateTimeField(
+        _("error datetime"), null=True, blank=True, default=None
+    )
+    completed_datetime = models.DateTimeField(
+        _("completed datetime"), null=True, blank=True, default=None
+    )
 
     def set_completed(self, save: bool, update_fields: List):
         self.task_status = self.CHOICE_TASK_STATUS_COMPLETED
@@ -145,15 +160,15 @@ class TaskModelMixin(models.Model):
         # cache를 이용할 때는 queued, processing 데이터가 없음.
         if not self.queued_datetime:
             self.queued_datetime = self.completed_datetime
-            update_fields.append('queued_datetime')
+            update_fields.append("queued_datetime")
 
         if not self.processing_datetime:
             self.processing_datetime = self.completed_datetime
-            update_fields.append('processing_datetime')
+            update_fields.append("processing_datetime")
 
         if save:
             self.save(
-                update_fields=update_fields + ['task_status', 'completed_datetime']
+                update_fields=update_fields + ["task_status", "completed_datetime"]
             )
 
     def set_error(self, save: bool, msg: str, update_fields: List):
@@ -163,16 +178,14 @@ class TaskModelMixin(models.Model):
         # cache를 이용할 때는 queued, processing 데이터가 없음.
         if not self.queued_datetime:
             self.queued_datetime = self.error_datetime
-            update_fields.append('queued_datetime')
+            update_fields.append("queued_datetime")
 
         if not self.processing_datetime:
             self.processing_datetime = self.error_datetime
-            update_fields.append('processing_datetime')
+            update_fields.append("processing_datetime")
 
         if save:
-            self.save(
-                update_fields=update_fields + ['task_status', 'error_datetime']
-            )
+            self.save(update_fields=update_fields + ["task_status", "error_datetime"])
 
     def set_processing(self, save: bool, update_fields: List):
         self.task_status = self.CHOICE_TASK_STATUS_PROGRESSING
@@ -180,11 +193,11 @@ class TaskModelMixin(models.Model):
 
         if not self.queued_datetime:
             self.queued_datetime = self.processing_datetime
-            update_fields.append('queued_datetime')
+            update_fields.append("queued_datetime")
 
         if save:
             self.save(
-                update_fields=update_fields + ['task_status', 'processing_datetime']
+                update_fields=update_fields + ["task_status", "processing_datetime"]
             )
 
     @property
@@ -206,13 +219,13 @@ class TaskModelMixin(models.Model):
     @property
     def task_badge_class(self):
         if self.is_queued_task:
-            return 'bg-secondary'
+            return "bg-secondary"
         elif self.is_processing_task:
-            return 'bg-info'
+            return "bg-info"
         elif self.is_error_task:
-            return 'bg-danger'
+            return "bg-danger"
         elif self.is_completed_task:
-            return 'bg-success'
+            return "bg-success"
 
     class Meta:
         abstract = True

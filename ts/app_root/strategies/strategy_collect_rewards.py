@@ -1,23 +1,77 @@
 from typing import Optional, Dict, List
 
-from app_root.players.models import PlayerAchievement, PlayerJob, PlayerQuest, PlayerContractList, PlayerTrain, \
-    PlayerFactory, PlayerBuilding, PlayerCompetition, PlayerGift, PlayerCityLoopTask, PlayerCityLoopParcel, \
-    PlayerWhistleItem
-from app_root.servers.mixins import RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON
-from app_root.servers.models import RunVersion, TSAchievement, TSMilestone, TSTrainUpgrade, TSFactory, TSArticle
+from app_root.players.models import (
+    PlayerAchievement,
+    PlayerJob,
+    PlayerQuest,
+    PlayerContractList,
+    PlayerTrain,
+    PlayerFactory,
+    PlayerBuilding,
+    PlayerCompetition,
+    PlayerGift,
+    PlayerCityLoopTask,
+    PlayerCityLoopParcel,
+    PlayerWhistleItem,
+)
+from app_root.servers.mixins import (
+    RARITY_LEGENDARY,
+    RARITY_EPIC,
+    RARITY_RARE,
+    RARITY_COMMON,
+)
+from app_root.servers.models import (
+    RunVersion,
+    TSAchievement,
+    TSMilestone,
+    TSTrainUpgrade,
+    TSFactory,
+    TSArticle,
+)
 from datetime import datetime, timedelta
 
-from app_root.strategies.commands import GameSleep, send_commands, GameWakeup, DailyRewardClaimWithVideoCommand, \
-    DailyRewardClaimCommand, ShopPurchaseItem, TrainUnloadCommand, ShopBuyContainer, CollectAchievementCommand, \
-    JobCollectCommand, RegionQuestCommand, LevelUpCommand, ContractListRefreshCommand, TrainUpgradeCommand, \
-    FactoryAcquireCommand, CollectGiftCommand, CityLoopBuildingUpgradeCommand, CityLoopBuildingReplaceCommand, \
-    CityLoopBuildingReplaceInstantlyCommand, CollectWhistle
+from app_root.strategies.commands import (
+    GameSleep,
+    send_commands,
+    GameWakeup,
+    DailyRewardClaimWithVideoCommand,
+    DailyRewardClaimCommand,
+    ShopPurchaseItem,
+    TrainUnloadCommand,
+    ShopBuyContainer,
+    CollectAchievementCommand,
+    JobCollectCommand,
+    RegionQuestCommand,
+    LevelUpCommand,
+    ContractListRefreshCommand,
+    TrainUpgradeCommand,
+    FactoryAcquireCommand,
+    CollectGiftCommand,
+    CityLoopBuildingUpgradeCommand,
+    CityLoopBuildingReplaceCommand,
+    CityLoopBuildingReplaceInstantlyCommand,
+    CollectWhistle,
+)
 from app_root.strategies.data_types import Material, MaterialStrategy
-from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_add_with_rewards, \
-    daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
-    warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
-    find_xp, trains_get_upgrade_material, warehouse_get_amount, whistle_get_collectable_list, \
-    whistle_get_next_event_time, competition_union_group
+from app_root.strategies.managers import (
+    daily_reward_get_reward,
+    warehouse_can_add_with_rewards,
+    daily_reward_get_next_event_time,
+    daily_offer_get_slots,
+    daily_offer_get_next_event_time,
+    trains_find,
+    warehouse_can_add,
+    trains_get_next_unload_event_time,
+    container_offer_find_iter,
+    update_next_event_time,
+    jobs_find,
+    find_xp,
+    trains_get_upgrade_material,
+    warehouse_get_amount,
+    whistle_get_collectable_list,
+    whistle_get_next_event_time,
+    competition_union_group,
+)
 from app_root.strategies.strategy_materials import expand_material_strategy
 from app_root.utils import get_curr_server_str_datetime_s, get_remain_time
 
@@ -35,13 +89,13 @@ def collect_daily_reward(version: RunVersion) -> datetime:
     if daily_reward:
         if daily_reward.can_claim_with_video:
             ret = warehouse_can_add_with_rewards(
-                version=version,
-                reward=daily_reward.get_today_rewards(),
-                multiply=2
+                version=version, reward=daily_reward.get_today_rewards(), multiply=2
             )
 
             if ret:
-                video_started_datetime_s = get_curr_server_str_datetime_s(version=version)
+                video_started_datetime_s = get_curr_server_str_datetime_s(
+                    version=version
+                )
                 cmd = GameSleep(version=version, sleep_seconds=30)
                 send_commands(commands=cmd)
 
@@ -51,7 +105,7 @@ def collect_daily_reward(version: RunVersion) -> datetime:
                 cmd = DailyRewardClaimWithVideoCommand(
                     version=version,
                     reward=daily_reward,
-                    video_started_datetime_s=video_started_datetime_s
+                    video_started_datetime_s=video_started_datetime_s,
                 )
                 send_commands(commands=cmd)
 
@@ -91,7 +145,9 @@ def collect_train_unload(version: RunVersion) -> datetime:
     print(f"# [Strategy Process] - Collect Train Load")
 
     for train in trains_find(version=version, has_load=True):
-        if not warehouse_can_add(version=version, article_id=train.load_id, amount=train.load_amount):
+        if not warehouse_can_add(
+            version=version, article_id=train.load_id, amount=train.load_amount
+        ):
             continue
 
         cmd = TrainUnloadCommand(version=version, train=train)
@@ -106,20 +162,20 @@ def collect_whistle(version: RunVersion) -> datetime:
     for whistle in whistle_get_collectable_list(version=version):
         reward = []
         articles_str = []
-        for row in PlayerWhistleItem.objects.filter(player_whistle=whistle, item_id=8).all():
-            reward.append({'Id': row.item_id, 'Value': row.value, 'Amount': row.amount})
+        for row in PlayerWhistleItem.objects.filter(
+            player_whistle=whistle, item_id=8
+        ).all():
+            reward.append({"Id": row.item_id, "Value": row.value, "Amount": row.amount})
             article = TSArticle.objects.filter(id=row.value).first()
-            articles_str.append(
-                f'''[{article.id}|{article.name}:{row.amount}]'''
-            )
+            articles_str.append(f"""[{article.id}|{article.name}:{row.amount}]""")
 
-        print(f'''      => rewards : {','.join(articles_str)}''')
+        print(f"""      => rewards : {','.join(articles_str)}""")
         if warehouse_can_add_with_rewards(version=version, reward=reward):
-            print(f'''      => Can Add Rewards - Try Collect''')
+            print(f"""      => Can Add Rewards - Try Collect""")
             cmd = CollectWhistle(version=version, whistle=whistle)
             send_commands(commands=cmd)
         else:
-            print(f'''      => Not enough warehouse | PASS''')
+            print(f"""      => Not enough warehouse | PASS""")
 
     return whistle_get_next_event_time(version=version)
 
@@ -148,7 +204,7 @@ def collect_offer_container(version: RunVersion) -> datetime:
         cmd_list = []
         if not offer.is_available(now=version.now):
             continue
-            
+
         if offer.is_video_reward:
             cmd_no = version.command_no
             cmd = GameSleep(version=version, sleep_seconds=30)
@@ -163,10 +219,14 @@ def collect_offer_container(version: RunVersion) -> datetime:
             sleep_command_no=cmd_no,
         )
         cmd_list.append(cmd)
-        print(f"""    - Container Offer Before : OfferId={offer.offer_container_id} | last_bought_at={offer.last_bought_at} | count={offer.count}""")
+        print(
+            f"""    - Container Offer Before : OfferId={offer.offer_container_id} | last_bought_at={offer.last_bought_at} | count={offer.count}"""
+        )
         send_commands(commands=cmd_list)
         offer.refresh_from_db()
-        print(f"""    - Container Offer After : OfferId={offer.offer_container_id} | last_bought_at={offer.last_bought_at} | count={offer.count}""")
+        print(
+            f"""    - Container Offer After : OfferId={offer.offer_container_id} | last_bought_at={offer.last_bought_at} | count={offer.count}"""
+        )
 
     for offer in container_offer_find_iter(version=version, available_only=False):
         container = offer.offer_container
@@ -247,7 +307,7 @@ def strategy_collect_achievement_commands(version: RunVersion):
                     achievement=achievement,
                     reward_article_id=reward_article_id,
                     reward_article_amount=reward_article_amount,
-                )
+                ),
             ]
 
             send_commands(cmd_list)
@@ -270,26 +330,37 @@ def collect_job_complete(version: RunVersion):
                 print(f"""    - {job} | is not collectable: Now[{version.now}]""")
                 continue
 
-            quest = PlayerQuest.objects.filter(version_id=version.id, job_location_id=job.job_location_id).first()
+            quest = PlayerQuest.objects.filter(
+                version_id=version.id, job_location_id=job.job_location_id
+            ).first()
             milestone = None
-            curr_milestone = '-'
-            curr_progress = '-'
-            required_progress = '-'
+            curr_milestone = "-"
+            curr_progress = "-"
+            required_progress = "-"
 
             if quest:
-                milestone = TSMilestone.objects.filter(job_location_id=job.job_location_id, milestone=quest.milestone).first()
+                milestone = TSMilestone.objects.filter(
+                    job_location_id=job.job_location_id, milestone=quest.milestone
+                ).first()
                 curr_milestone = quest.milestone
                 curr_progress = quest.progress
 
             if milestone:
                 required_progress = milestone.milestone_progress
 
-            print(f"""    - {job} | Try Collect[milestone:{curr_milestone} / progress:{curr_progress} / required:{required_progress}""")
+            print(
+                f"""    - {job} | Try Collect[milestone:{curr_milestone} / progress:{curr_progress} / required:{required_progress}"""
+            )
 
             cmd = JobCollectCommand(version=version, job=job)
             send_commands(cmd)
 
-            if quest and milestone and quest.progress >= milestone.milestone_progress and not milestone.force_region_collect:
+            if (
+                quest
+                and milestone
+                and quest.progress >= milestone.milestone_progress
+                and not milestone.force_region_collect
+            ):
                 cmd = RegionQuestCommand(version=version, job=job)
                 send_commands(cmd)
 
@@ -306,8 +377,14 @@ def check_expired_contracts(version: RunVersion):
     print(f"# [Strategy Process] - Refresh Expired Contracts")
 
     for contract_list in PlayerContractList.objects.filter(version_id=version.id).all():
-        if contract_list.expires_at and contract_list.is_expired(version.now) and contract_list.contract_list_id != 1:
-            cmd = ContractListRefreshCommand(version=version, contract_list=contract_list)
+        if (
+            contract_list.expires_at
+            and contract_list.is_expired(version.now)
+            and contract_list.contract_list_id != 1
+        ):
+            cmd = ContractListRefreshCommand(
+                version=version, contract_list=contract_list
+            )
             send_commands(cmd)
 
 
@@ -343,10 +420,14 @@ def check_upgrade_train(version: RunVersion):
 
     for region in region_list:
         rarity_list = [RARITY_LEGENDARY, RARITY_EPIC, RARITY_RARE, RARITY_COMMON]
-        rarity_article_ids = [legend_parts_id, epic_parts_id, rare_parts_id, common_parts_id]
+        rarity_article_ids = [
+            legend_parts_id,
+            epic_parts_id,
+            rare_parts_id,
+            common_parts_id,
+        ]
 
         for rarity, rarity_article_id in zip(rarity_list, rarity_article_ids):
-
             train_list = target_train[region].get(rarity, [])
             if not train_list:
                 continue
@@ -359,16 +440,23 @@ def check_upgrade_train(version: RunVersion):
                     del train_list[0]
                     continue
 
-                train_upgrade = trains_get_upgrade_material(version=version, train=train)
+                train_upgrade = trains_get_upgrade_material(
+                    version=version, train=train
+                )
                 if not train_upgrade:
                     break
 
                 condition = {
-                    article_id: (warehouse_get_amount(version=version, article_id=article_id), amount)
+                    article_id: (
+                        warehouse_get_amount(version=version, article_id=article_id),
+                        amount,
+                    )
                     for article_id, amount in train_upgrade.price_to_dict.items()
                 }
 
-                satisfied = {article_id: a >= b for article_id, (a, b) in condition.items()}
+                satisfied = {
+                    article_id: a >= b for article_id, (a, b) in condition.items()
+                }
                 is_satisfied_rarity_article = satisfied[rarity_article_id]
 
                 if all(satisfied.values()):
@@ -398,8 +486,12 @@ def check_factory(version: RunVersion):
     """
     print(f"# [Strategy Process] - Check Factory")
 
-    for factory in TSFactory.objects.filter(type=1, level_from__lte=version.level_id).all():
-        player_factory = PlayerFactory.objects.filter(version_id=version.id, factory_id=factory.id).first()
+    for factory in TSFactory.objects.filter(
+        type=1, level_from__lte=version.level_id
+    ).all():
+        player_factory = PlayerFactory.objects.filter(
+            version_id=version.id, factory_id=factory.id
+        ).first()
         if player_factory:
             continue
 
@@ -407,7 +499,9 @@ def check_factory(version: RunVersion):
         send_commands(cmd)
 
 
-def _remove_task_from_building(version: RunVersion, task: PlayerCityLoopTask, building: PlayerBuilding) -> bool:
+def _remove_task_from_building(
+    version: RunVersion, task: PlayerCityLoopTask, building: PlayerBuilding
+) -> bool:
     if task.next_replace_at and task.next_replace_at < version.now:
         print(f"  - Try Replace now.")
         cmd = CityLoopBuildingReplaceCommand(version=version, building=building)
@@ -421,7 +515,7 @@ def _remove_task_from_building(version: RunVersion, task: PlayerCityLoopTask, bu
 
         cmd_list = [
             GameWakeup(version=version),
-            CityLoopBuildingReplaceInstantlyCommand(version=version, building=building)
+            CityLoopBuildingReplaceInstantlyCommand(version=version, building=building),
         ]
         send_commands(commands=cmd_list)
         return True
@@ -439,7 +533,9 @@ def check_building(version: RunVersion) -> PlayerBuilding:
             upgrade_list = []
             task.refresh_from_db()
 
-            for bld in PlayerBuilding.objects.filter(version_id=version.id, parcel_number__gt=0, level__lt=150).all():
+            for bld in PlayerBuilding.objects.filter(
+                version_id=version.id, parcel_number__gt=0, level__lt=150
+            ).all():
                 upgrade_list.append(bld)
 
             if not upgrade_list:
@@ -449,56 +545,88 @@ def check_building(version: RunVersion) -> PlayerBuilding:
             target = upgrade_list[0]
             cancelable_list = [o for o in upgrade_list[1:] if o.upgrade_task]
 
-            next_replace_at = get_remain_time(version=version, finish_at=task.next_replace_at)
-            next_video_replace_at = get_remain_time(version=version, finish_at=task.next_video_replace_at)
-            print(f"  - Task NextReplace At: {next_replace_at} / NextVideoReplace At: {next_video_replace_at}")
+            next_replace_at = get_remain_time(
+                version=version, finish_at=task.next_replace_at
+            )
+            next_video_replace_at = get_remain_time(
+                version=version, finish_at=task.next_video_replace_at
+            )
+            print(
+                f"  - Task NextReplace At: {next_replace_at} / NextVideoReplace At: {next_video_replace_at}"
+            )
             print(f"  - [Try {curr_try}] Target : {target}")
             for cancel in cancelable_list:
                 print(f"  - [Try {curr_try}] Candidate : {cancel}")
 
             if target.upgrade_task:
-
                 if target.available_from and target.available_from > version.now:
-                    dt = get_remain_time(version=version, finish_at=target.available_from)
-                    print(f"  - [Try {curr_try}] Target is not Available. remain: {dt} | PASS")
+                    dt = get_remain_time(
+                        version=version, finish_at=target.available_from
+                    )
+                    print(
+                        f"  - [Try {curr_try}] Target is not Available. remain: {dt} | PASS"
+                    )
                     return None
 
                 condition = {
-                    article_id: (warehouse_get_amount(version=version, article_id=article_id), amount)
+                    article_id: (
+                        warehouse_get_amount(version=version, article_id=article_id),
+                        amount,
+                    )
                     for article_id, amount in target.requirements_to_dict.items()
                 }
-                satisfied = {article_id: a >= b for article_id, (a, b) in condition.items()}
+                satisfied = {
+                    article_id: a >= b for article_id, (a, b) in condition.items()
+                }
                 satisfied_for_city_plans = {
-                    a: b for a, b in satisfied.items() if a in (10, 11, 12)  # blue, yellow, red city plans
+                    a: b
+                    for a, b in satisfied.items()
+                    if a in (10, 11, 12)  # blue, yellow, red city plans
                 }
 
                 if all(satisfied.values()):
                     print(f"  - [Try {curr_try}] Try Upgrade")
-                    cmd = CityLoopBuildingUpgradeCommand(version=version, building=target)
+                    cmd = CityLoopBuildingUpgradeCommand(
+                        version=version, building=target
+                    )
                     send_commands(cmd)
                 else:
-                    if satisfied_for_city_plans and all(satisfied_for_city_plans.values()):
-                        print(f"  - [Try {curr_try}] Target is not enough normal city plan & city plan | PASS")
+                    if satisfied_for_city_plans and all(
+                        satisfied_for_city_plans.values()
+                    ):
+                        print(
+                            f"  - [Try {curr_try}] Target is not enough normal city plan & city plan | PASS"
+                        )
                         return target
                     else:
-                        print(f"  - [Try {curr_try}] Target is not enough city plan - Remove Task. | PASS")
-                        if _remove_task_from_building(version=version, task=task, building=target):
+                        print(
+                            f"  - [Try {curr_try}] Target is not enough city plan - Remove Task. | PASS"
+                        )
+                        if _remove_task_from_building(
+                            version=version, task=task, building=target
+                        ):
                             continue
                 return None
 
             elif len(cancelable_list) > 0:
-                available_list = [o for o in cancelable_list if o.available_from and o.available_from < version.now]
+                available_list = [
+                    o
+                    for o in cancelable_list
+                    if o.available_from and o.available_from < version.now
+                ]
                 if not available_list:
-                    print(f"  - [Try {curr_try}] cancelable list is empty. all busy now. | PASS")
+                    print(
+                        f"  - [Try {curr_try}] cancelable list is empty. all busy now. | PASS"
+                    )
                     return None
                 cancel_target = available_list[-1]
 
-                if _remove_task_from_building(version=version, task=task, building=cancel_target):
+                if _remove_task_from_building(
+                    version=version, task=task, building=cancel_target
+                ):
                     continue
                 else:
                     return None
-
-
 
     """
     UpgradeTaskNextReplaceAt,

@@ -5,9 +5,9 @@ CONTENT_CATEGORY_BASIC = 1
 CONTENT_CATEGORY_EVENT = 2
 CONTENT_CATEGORY_UNION = 3
 CHOICE_CONTENT_CATEGORY = (
-    (CONTENT_CATEGORY_BASIC, '기본'),
-    (CONTENT_CATEGORY_EVENT, '이벤트'),
-    (CONTENT_CATEGORY_UNION, '유니언'),
+    (CONTENT_CATEGORY_BASIC, "기본"),
+    (CONTENT_CATEGORY_EVENT, "이벤트"),
+    (CONTENT_CATEGORY_UNION, "유니언"),
 )
 
 RARITY_COMMON = 1
@@ -15,19 +15,19 @@ RARITY_RARE = 2
 RARITY_EPIC = 3
 RARITY_LEGENDARY = 4
 CHOICE_RARITY = (
-    (RARITY_COMMON, '일반'),
-    (RARITY_RARE, '레어'),
-    (RARITY_EPIC, '에픽'),
-    (RARITY_LEGENDARY, '전설'),
+    (RARITY_COMMON, "일반"),
+    (RARITY_RARE, "레어"),
+    (RARITY_EPIC, "에픽"),
+    (RARITY_LEGENDARY, "전설"),
 )
 
 ERA_STEAM = 1
 ERA_ELECTRON = 2
 ERA_DIESEL = 3
 CHOICE_ERA = (
-    (ERA_STEAM, '스팀'),
-    (ERA_ELECTRON, '전기'),
-    (ERA_DIESEL, '디젤'),
+    (ERA_STEAM, "스팀"),
+    (ERA_ELECTRON, "전기"),
+    (ERA_DIESEL, "디젤"),
 )
 """
     Reward : 
@@ -44,10 +44,16 @@ CHOICE_ERA = (
 
 class ContentCategoryMixin(models.Model):
     """
-        기본 / 이벤트 / 유니언
+    기본 / 이벤트 / 유니언
     """
-    content_category = models.IntegerField(_('content category'), null=False, blank=False, default=0,
-                                           choices=CHOICE_CONTENT_CATEGORY)
+
+    content_category = models.IntegerField(
+        _("content category"),
+        null=False,
+        blank=False,
+        default=0,
+        choices=CHOICE_CONTENT_CATEGORY,
+    )
 
     class Meta:
         abstract = True
@@ -67,10 +73,12 @@ class ContentCategoryMixin(models.Model):
 
 class RarityMixin(models.Model):
     """
-        일반 / 레어 / 에픽 / 전설
+    일반 / 레어 / 에픽 / 전설
     """
 
-    rarity = models.IntegerField(_('rarity'), null=False, blank=False, default=0, choices=CHOICE_RARITY)
+    rarity = models.IntegerField(
+        _("rarity"), null=False, blank=False, default=0, choices=CHOICE_RARITY
+    )
 
     class Meta:
         abstract = True
@@ -94,10 +102,12 @@ class RarityMixin(models.Model):
 
 class EraMixin(models.Model):
     """
-        스팀 / 디젤 / 전기
+    스팀 / 디젤 / 전기
     """
 
-    era = models.IntegerField(_('era'), null=False, blank=False, default=0, choices=CHOICE_ERA)
+    era = models.IntegerField(
+        _("era"), null=False, blank=False, default=0, choices=CHOICE_ERA
+    )
 
     class Meta:
         abstract = True

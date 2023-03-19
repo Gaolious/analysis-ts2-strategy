@@ -8,7 +8,6 @@ import django.utils.timezone
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -17,406 +16,1156 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='EndPoint',
+            name="EndPoint",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('name', models.CharField(max_length=255, verbose_name='version')),
-                ('name_hash', models.BigIntegerField(db_index=True, default=0, verbose_name='name hash')),
-                ('url', models.CharField(max_length=255, verbose_name='version')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                ("name", models.CharField(max_length=255, verbose_name="version")),
+                (
+                    "name_hash",
+                    models.BigIntegerField(
+                        db_index=True, default=0, verbose_name="name hash"
+                    ),
+                ),
+                ("url", models.CharField(max_length=255, verbose_name="version")),
             ],
             options={
-                'verbose_name': 'Endpoint',
-                'verbose_name_plural': 'Endpoints',
+                "verbose_name": "Endpoint",
+                "verbose_name_plural": "Endpoints",
             },
         ),
         migrations.CreateModel(
-            name='RunVersion',
+            name="RunVersion",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('task_status', models.PositiveSmallIntegerField(choices=[(10, 'in queued'), (20, 'in processing'), (30, 'error'), (40, 'completed')], default=10, verbose_name='status of crawling task')),
-                ('queued_datetime', models.DateTimeField(blank=True, default=None, null=True, verbose_name='queued datetime')),
-                ('processing_datetime', models.DateTimeField(blank=True, default=None, null=True, verbose_name='processing datetime')),
-                ('error_datetime', models.DateTimeField(blank=True, default=None, null=True, verbose_name='error datetime')),
-                ('completed_datetime', models.DateTimeField(blank=True, default=None, null=True, verbose_name='completed datetime')),
-                ('player_id', models.CharField(max_length=50, verbose_name='PlayerId')),
-                ('player_name', models.CharField(max_length=50, verbose_name='PlayerName')),
-                ('firebase_token', models.TextField(blank=True, default='', max_length=10240, verbose_name='firebase token')),
-                ('firebase_uid', models.CharField(blank=True, default='', max_length=50, verbose_name='firebase uid')),
-                ('guild_id', models.CharField(max_length=50, verbose_name='Guild ID')),
-                ('population', models.IntegerField(default=0, verbose_name='population')),
-                ('warehouse_level', models.IntegerField(default=0, verbose_name='warehouse_level')),
-                ('dispatchers', models.IntegerField(default=0, verbose_name='dispatchers')),
-                ('guild_dispatchers', models.IntegerField(default=0, verbose_name='guild_dispatchers')),
-                ('next_event_datetime', models.DateTimeField(default=None, null=True, verbose_name='next event datetime')),
-                ('command_no', models.IntegerField(blank=True, default=1, verbose_name='Command No')),
-                ('ep_sent', models.DateTimeField(default=None, null=True, verbose_name='Endpoint Sent Datetime')),
-                ('ep_server', models.DateTimeField(default=None, null=True, verbose_name='Endpoint Server Datetime')),
-                ('ep_recv', models.DateTimeField(default=None, null=True, verbose_name='Endpoint Recv Datetime')),
-                ('login_sent', models.DateTimeField(default=None, null=True, verbose_name='Login Sent Datetime')),
-                ('login_server', models.DateTimeField(default=None, null=True, verbose_name='Login Server Datetime')),
-                ('login_recv', models.DateTimeField(default=None, null=True, verbose_name='Login Recv Datetime')),
-                ('sd_sent', models.DateTimeField(default=None, null=True, verbose_name='SQL Definition Sent Datetime')),
-                ('sd_server', models.DateTimeField(default=None, null=True, verbose_name='SQL Definition Server Datetime')),
-                ('sd_recv', models.DateTimeField(default=None, null=True, verbose_name='SQL Definition Recv Datetime')),
-                ('init_sent_1', models.DateTimeField(default=None, null=True, verbose_name='Init Data Sent Datetime')),
-                ('init_server_1', models.DateTimeField(default=None, null=True, verbose_name='Init Data Server Datetime')),
-                ('init_recv_1', models.DateTimeField(default=None, null=True, verbose_name='Init Data Recv Datetime')),
-                ('init_sent_2', models.DateTimeField(default=None, null=True, verbose_name='Init Data Sent Datetime')),
-                ('init_server_2', models.DateTimeField(default=None, null=True, verbose_name='Init Data Server Datetime')),
-                ('init_recv_2', models.DateTimeField(default=None, null=True, verbose_name='Init Data Recv Datetime')),
-                ('now', models.DateTimeField(default=django.utils.timezone.now, null=True, verbose_name='now')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "task_status",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (10, "in queued"),
+                            (20, "in processing"),
+                            (30, "error"),
+                            (40, "completed"),
+                        ],
+                        default=10,
+                        verbose_name="status of crawling task",
+                    ),
+                ),
+                (
+                    "queued_datetime",
+                    models.DateTimeField(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        verbose_name="queued datetime",
+                    ),
+                ),
+                (
+                    "processing_datetime",
+                    models.DateTimeField(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        verbose_name="processing datetime",
+                    ),
+                ),
+                (
+                    "error_datetime",
+                    models.DateTimeField(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        verbose_name="error datetime",
+                    ),
+                ),
+                (
+                    "completed_datetime",
+                    models.DateTimeField(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        verbose_name="completed datetime",
+                    ),
+                ),
+                ("player_id", models.CharField(max_length=50, verbose_name="PlayerId")),
+                (
+                    "player_name",
+                    models.CharField(max_length=50, verbose_name="PlayerName"),
+                ),
+                (
+                    "firebase_token",
+                    models.TextField(
+                        blank=True,
+                        default="",
+                        max_length=10240,
+                        verbose_name="firebase token",
+                    ),
+                ),
+                (
+                    "firebase_uid",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        max_length=50,
+                        verbose_name="firebase uid",
+                    ),
+                ),
+                ("guild_id", models.CharField(max_length=50, verbose_name="Guild ID")),
+                (
+                    "population",
+                    models.IntegerField(default=0, verbose_name="population"),
+                ),
+                (
+                    "warehouse_level",
+                    models.IntegerField(default=0, verbose_name="warehouse_level"),
+                ),
+                (
+                    "dispatchers",
+                    models.IntegerField(default=0, verbose_name="dispatchers"),
+                ),
+                (
+                    "guild_dispatchers",
+                    models.IntegerField(default=0, verbose_name="guild_dispatchers"),
+                ),
+                (
+                    "next_event_datetime",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="next event datetime"
+                    ),
+                ),
+                (
+                    "command_no",
+                    models.IntegerField(
+                        blank=True, default=1, verbose_name="Command No"
+                    ),
+                ),
+                (
+                    "ep_sent",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Endpoint Sent Datetime"
+                    ),
+                ),
+                (
+                    "ep_server",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Endpoint Server Datetime"
+                    ),
+                ),
+                (
+                    "ep_recv",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Endpoint Recv Datetime"
+                    ),
+                ),
+                (
+                    "login_sent",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Login Sent Datetime"
+                    ),
+                ),
+                (
+                    "login_server",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Login Server Datetime"
+                    ),
+                ),
+                (
+                    "login_recv",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Login Recv Datetime"
+                    ),
+                ),
+                (
+                    "sd_sent",
+                    models.DateTimeField(
+                        default=None,
+                        null=True,
+                        verbose_name="SQL Definition Sent Datetime",
+                    ),
+                ),
+                (
+                    "sd_server",
+                    models.DateTimeField(
+                        default=None,
+                        null=True,
+                        verbose_name="SQL Definition Server Datetime",
+                    ),
+                ),
+                (
+                    "sd_recv",
+                    models.DateTimeField(
+                        default=None,
+                        null=True,
+                        verbose_name="SQL Definition Recv Datetime",
+                    ),
+                ),
+                (
+                    "init_sent_1",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Init Data Sent Datetime"
+                    ),
+                ),
+                (
+                    "init_server_1",
+                    models.DateTimeField(
+                        default=None,
+                        null=True,
+                        verbose_name="Init Data Server Datetime",
+                    ),
+                ),
+                (
+                    "init_recv_1",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Init Data Recv Datetime"
+                    ),
+                ),
+                (
+                    "init_sent_2",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Init Data Sent Datetime"
+                    ),
+                ),
+                (
+                    "init_server_2",
+                    models.DateTimeField(
+                        default=None,
+                        null=True,
+                        verbose_name="Init Data Server Datetime",
+                    ),
+                ),
+                (
+                    "init_recv_2",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="Init Data Recv Datetime"
+                    ),
+                ),
+                (
+                    "now",
+                    models.DateTimeField(
+                        default=django.utils.timezone.now, null=True, verbose_name="now"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Version',
-                'verbose_name_plural': 'Versions',
+                "verbose_name": "Version",
+                "verbose_name_plural": "Versions",
             },
         ),
         migrations.CreateModel(
-            name='SQLDefinition',
+            name="SQLDefinition",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('task_status', models.PositiveSmallIntegerField(choices=[(10, 'in queued'), (20, 'in processing'), (30, 'error'), (40, 'completed')], default=10, verbose_name='status of crawling task')),
-                ('queued_datetime', models.DateTimeField(blank=True, default=None, null=True, verbose_name='queued datetime')),
-                ('processing_datetime', models.DateTimeField(blank=True, default=None, null=True, verbose_name='processing datetime')),
-                ('error_datetime', models.DateTimeField(blank=True, default=None, null=True, verbose_name='error datetime')),
-                ('completed_datetime', models.DateTimeField(blank=True, default=None, null=True, verbose_name='completed datetime')),
-                ('version', models.CharField(max_length=20, verbose_name='version')),
-                ('checksum', models.CharField(max_length=50, verbose_name='checksum')),
-                ('url', models.URLField(verbose_name='download url')),
-                ('download_path', models.CharField(max_length=200, verbose_name='checksum')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "task_status",
+                    models.PositiveSmallIntegerField(
+                        choices=[
+                            (10, "in queued"),
+                            (20, "in processing"),
+                            (30, "error"),
+                            (40, "completed"),
+                        ],
+                        default=10,
+                        verbose_name="status of crawling task",
+                    ),
+                ),
+                (
+                    "queued_datetime",
+                    models.DateTimeField(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        verbose_name="queued datetime",
+                    ),
+                ),
+                (
+                    "processing_datetime",
+                    models.DateTimeField(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        verbose_name="processing datetime",
+                    ),
+                ),
+                (
+                    "error_datetime",
+                    models.DateTimeField(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        verbose_name="error datetime",
+                    ),
+                ),
+                (
+                    "completed_datetime",
+                    models.DateTimeField(
+                        blank=True,
+                        default=None,
+                        null=True,
+                        verbose_name="completed datetime",
+                    ),
+                ),
+                ("version", models.CharField(max_length=20, verbose_name="version")),
+                ("checksum", models.CharField(max_length=50, verbose_name="checksum")),
+                ("url", models.URLField(verbose_name="download url")),
+                (
+                    "download_path",
+                    models.CharField(max_length=200, verbose_name="checksum"),
+                ),
             ],
             options={
-                'verbose_name': 'Definition',
-                'verbose_name_plural': 'Definitions',
+                "verbose_name": "Definition",
+                "verbose_name_plural": "Definitions",
             },
         ),
         migrations.CreateModel(
-            name='TSAchievement',
+            name="TSAchievement",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('name', models.CharField(max_length=255, null=True, verbose_name='achievement name')),
-                ('show_level', models.IntegerField(default=0, verbose_name='level_from')),
-                ('levels', models.CharField(max_length=255, null=True, verbose_name='achievement name')),
-                ('reward_article_ids', models.CharField(max_length=255, null=True, verbose_name='article_ids')),
-                ('reward_amounts', models.CharField(max_length=255, null=True, verbose_name='article_amounts')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        max_length=255, null=True, verbose_name="achievement name"
+                    ),
+                ),
+                (
+                    "show_level",
+                    models.IntegerField(default=0, verbose_name="level_from"),
+                ),
+                (
+                    "levels",
+                    models.CharField(
+                        max_length=255, null=True, verbose_name="achievement name"
+                    ),
+                ),
+                (
+                    "reward_article_ids",
+                    models.CharField(
+                        max_length=255, null=True, verbose_name="article_ids"
+                    ),
+                ),
+                (
+                    "reward_amounts",
+                    models.CharField(
+                        max_length=255, null=True, verbose_name="article_amounts"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Achievement',
-                'verbose_name_plural': 'Achievements',
+                "verbose_name": "Achievement",
+                "verbose_name_plural": "Achievements",
             },
         ),
         migrations.CreateModel(
-            name='TSArticle',
+            name="TSArticle",
             fields=[
-                ('content_category', models.IntegerField(choices=[(1, '기본'), (2, '이벤트'), (3, '유니언')], default=0, verbose_name='content category')),
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('level_req', models.IntegerField(default=0, verbose_name='level required')),
-                ('level_from', models.IntegerField(default=0, verbose_name='level from')),
-                ('type', models.IntegerField(default=0, verbose_name='type')),
-                ('event', models.IntegerField(default=0, verbose_name='event')),
-                ('sprite', models.CharField(max_length=255, null=True, verbose_name='sprite id')),
+                (
+                    "content_category",
+                    models.IntegerField(
+                        choices=[(1, "기본"), (2, "이벤트"), (3, "유니언")],
+                        default=0,
+                        verbose_name="content category",
+                    ),
+                ),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "level_req",
+                    models.IntegerField(default=0, verbose_name="level required"),
+                ),
+                (
+                    "level_from",
+                    models.IntegerField(default=0, verbose_name="level from"),
+                ),
+                ("type", models.IntegerField(default=0, verbose_name="type")),
+                ("event", models.IntegerField(default=0, verbose_name="event")),
+                (
+                    "sprite",
+                    models.CharField(
+                        max_length=255, null=True, verbose_name="sprite id"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Article',
-                'verbose_name_plural': 'Articles',
+                "verbose_name": "Article",
+                "verbose_name_plural": "Articles",
             },
         ),
         migrations.CreateModel(
-            name='TSDestination',
+            name="TSDestination",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('sprite', models.CharField(max_length=255, null=True, verbose_name='sprite id')),
-                ('time', models.IntegerField(default=0, verbose_name='time')),
-                ('travel_duration', models.IntegerField(default=0, verbose_name='travel_duration')),
-                ('multiplier', models.IntegerField(default=0, verbose_name='multiplier')),
-                ('refresh_time', models.IntegerField(default=0, verbose_name='refresh_time')),
-                ('train_limit', models.IntegerField(default=0, verbose_name='train_limit')),
-                ('capacity', models.IntegerField(default=0, verbose_name='capacity')),
-                ('requirements', models.CharField(max_length=255, verbose_name='requirements')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "sprite",
+                    models.CharField(
+                        max_length=255, null=True, verbose_name="sprite id"
+                    ),
+                ),
+                ("time", models.IntegerField(default=0, verbose_name="time")),
+                (
+                    "travel_duration",
+                    models.IntegerField(default=0, verbose_name="travel_duration"),
+                ),
+                (
+                    "multiplier",
+                    models.IntegerField(default=0, verbose_name="multiplier"),
+                ),
+                (
+                    "refresh_time",
+                    models.IntegerField(default=0, verbose_name="refresh_time"),
+                ),
+                (
+                    "train_limit",
+                    models.IntegerField(default=0, verbose_name="train_limit"),
+                ),
+                ("capacity", models.IntegerField(default=0, verbose_name="capacity")),
+                (
+                    "requirements",
+                    models.CharField(max_length=255, verbose_name="requirements"),
+                ),
             ],
             options={
-                'verbose_name': 'Destination',
-                'verbose_name_plural': 'Destinations',
+                "verbose_name": "Destination",
+                "verbose_name_plural": "Destinations",
             },
         ),
         migrations.CreateModel(
-            name='TSFactory',
+            name="TSFactory",
             fields=[
-                ('content_category', models.IntegerField(choices=[(1, '기본'), (2, '이벤트'), (3, '유니언')], default=0, verbose_name='content category')),
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('level_req', models.IntegerField(default=0, verbose_name='level required')),
-                ('level_from', models.IntegerField(default=0, verbose_name='level from')),
-                ('starting_slot_count', models.IntegerField(default=0, verbose_name='starting_slot_count')),
-                ('max_slot_count', models.IntegerField(default=0, verbose_name='max_slot_count')),
-                ('type', models.IntegerField(default=0, verbose_name='type')),
-                ('asset_name', models.CharField(max_length=255, verbose_name='asset_name')),
-                ('sprite', models.CharField(max_length=255, verbose_name='sprite id')),
+                (
+                    "content_category",
+                    models.IntegerField(
+                        choices=[(1, "기본"), (2, "이벤트"), (3, "유니언")],
+                        default=0,
+                        verbose_name="content category",
+                    ),
+                ),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "level_req",
+                    models.IntegerField(default=0, verbose_name="level required"),
+                ),
+                (
+                    "level_from",
+                    models.IntegerField(default=0, verbose_name="level from"),
+                ),
+                (
+                    "starting_slot_count",
+                    models.IntegerField(default=0, verbose_name="starting_slot_count"),
+                ),
+                (
+                    "max_slot_count",
+                    models.IntegerField(default=0, verbose_name="max_slot_count"),
+                ),
+                ("type", models.IntegerField(default=0, verbose_name="type")),
+                (
+                    "asset_name",
+                    models.CharField(max_length=255, verbose_name="asset_name"),
+                ),
+                ("sprite", models.CharField(max_length=255, verbose_name="sprite id")),
             ],
             options={
-                'verbose_name': 'Factory',
-                'verbose_name_plural': 'Factories',
+                "verbose_name": "Factory",
+                "verbose_name_plural": "Factories",
             },
         ),
         migrations.CreateModel(
-            name='TSJobLocation',
+            name="TSJobLocation",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('local_key', models.CharField(default='', max_length=255, verbose_name='local key')),
-                ('name_local_key', models.CharField(default='', max_length=255, null=True, verbose_name='local key')),
-                ('contractor_id', models.IntegerField(default=0, verbose_name='Contractor ID')),
-                ('unlocked_by', models.CharField(default='', max_length=255, null=True, verbose_name='unlocked by')),
-                ('level_from', models.IntegerField(default=0, verbose_name='level from')),
-                ('available_from', models.DateTimeField(default=None, null=True, verbose_name='available_from')),
-                ('available_to', models.DateTimeField(default=None, null=True, verbose_name='available_to')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "local_key",
+                    models.CharField(
+                        default="", max_length=255, verbose_name="local key"
+                    ),
+                ),
+                (
+                    "name_local_key",
+                    models.CharField(
+                        default="", max_length=255, null=True, verbose_name="local key"
+                    ),
+                ),
+                (
+                    "contractor_id",
+                    models.IntegerField(default=0, verbose_name="Contractor ID"),
+                ),
+                (
+                    "unlocked_by",
+                    models.CharField(
+                        default="",
+                        max_length=255,
+                        null=True,
+                        verbose_name="unlocked by",
+                    ),
+                ),
+                (
+                    "level_from",
+                    models.IntegerField(default=0, verbose_name="level from"),
+                ),
+                (
+                    "available_from",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="available_from"
+                    ),
+                ),
+                (
+                    "available_to",
+                    models.DateTimeField(
+                        default=None, null=True, verbose_name="available_to"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Job Location',
-                'verbose_name_plural': 'Job Locations',
+                "verbose_name": "Job Location",
+                "verbose_name_plural": "Job Locations",
             },
         ),
         migrations.CreateModel(
-            name='TSLocation',
+            name="TSLocation",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('region', models.IntegerField(default=0, verbose_name='region')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                ("region", models.IntegerField(default=0, verbose_name="region")),
             ],
             options={
-                'verbose_name': 'Location',
-                'verbose_name_plural': 'Locations',
+                "verbose_name": "Location",
+                "verbose_name_plural": "Locations",
             },
         ),
         migrations.CreateModel(
-            name='TSMilestone',
+            name="TSMilestone",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('milestone', models.IntegerField(default=0, verbose_name='milestone')),
-                ('milestone_count', models.IntegerField(default=0, verbose_name='milestone_count')),
-                ('milestone_progress', models.IntegerField(default=0, verbose_name='milestone_progress')),
-                ('force_region_collect', models.BooleanField(default=False, verbose_name='force_region_collect')),
-                ('rewards', models.CharField(default='', max_length=255, verbose_name='rewards')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                ("milestone", models.IntegerField(default=0, verbose_name="milestone")),
+                (
+                    "milestone_count",
+                    models.IntegerField(default=0, verbose_name="milestone_count"),
+                ),
+                (
+                    "milestone_progress",
+                    models.IntegerField(default=0, verbose_name="milestone_progress"),
+                ),
+                (
+                    "force_region_collect",
+                    models.BooleanField(
+                        default=False, verbose_name="force_region_collect"
+                    ),
+                ),
+                (
+                    "rewards",
+                    models.CharField(
+                        default="", max_length=255, verbose_name="rewards"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Milestone',
-                'verbose_name_plural': 'Milestone',
+                "verbose_name": "Milestone",
+                "verbose_name_plural": "Milestone",
             },
         ),
         migrations.CreateModel(
-            name='TSOfferContainer',
+            name="TSOfferContainer",
             fields=[
-                ('content_category', models.IntegerField(choices=[(1, '기본'), (2, '이벤트'), (3, '유니언')], default=0, verbose_name='content category')),
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('offer_presentation_id', models.IntegerField(default=0, null=True, verbose_name='offer_presentation_id')),
-                ('priority', models.IntegerField(default=0, verbose_name='priority')),
-                ('price_article_id', models.IntegerField(default=0, verbose_name='price_article_id')),
-                ('price_article_amount', models.IntegerField(default=0, verbose_name='price_article_amount')),
-                ('cool_down_duration', models.IntegerField(default=0, verbose_name='cool_down_duration')),
-                ('cooldown_duration', models.IntegerField(default=0, verbose_name='cooldown_duration')),
-                ('availability_count', models.IntegerField(default=0, verbose_name='availability_count')),
-                ('containers', models.IntegerField(default=0, verbose_name='containers')),
-                ('offer_rarity', models.IntegerField(default=0, verbose_name='offer_rarity')),
-                ('min_player_level', models.IntegerField(default=0, verbose_name='min_player_level')),
-                ('level_from', models.IntegerField(default=0, verbose_name='level_from')),
-                ('in_app_purchase_id', models.IntegerField(default=0, verbose_name='in_app_purchase_id')),
+                (
+                    "content_category",
+                    models.IntegerField(
+                        choices=[(1, "기본"), (2, "이벤트"), (3, "유니언")],
+                        default=0,
+                        verbose_name="content category",
+                    ),
+                ),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "offer_presentation_id",
+                    models.IntegerField(
+                        default=0, null=True, verbose_name="offer_presentation_id"
+                    ),
+                ),
+                ("priority", models.IntegerField(default=0, verbose_name="priority")),
+                (
+                    "price_article_id",
+                    models.IntegerField(default=0, verbose_name="price_article_id"),
+                ),
+                (
+                    "price_article_amount",
+                    models.IntegerField(default=0, verbose_name="price_article_amount"),
+                ),
+                (
+                    "cool_down_duration",
+                    models.IntegerField(default=0, verbose_name="cool_down_duration"),
+                ),
+                (
+                    "cooldown_duration",
+                    models.IntegerField(default=0, verbose_name="cooldown_duration"),
+                ),
+                (
+                    "availability_count",
+                    models.IntegerField(default=0, verbose_name="availability_count"),
+                ),
+                (
+                    "containers",
+                    models.IntegerField(default=0, verbose_name="containers"),
+                ),
+                (
+                    "offer_rarity",
+                    models.IntegerField(default=0, verbose_name="offer_rarity"),
+                ),
+                (
+                    "min_player_level",
+                    models.IntegerField(default=0, verbose_name="min_player_level"),
+                ),
+                (
+                    "level_from",
+                    models.IntegerField(default=0, verbose_name="level_from"),
+                ),
+                (
+                    "in_app_purchase_id",
+                    models.IntegerField(default=0, verbose_name="in_app_purchase_id"),
+                ),
             ],
             options={
-                'verbose_name': 'Offer Container',
-                'verbose_name_plural': 'Offer Containers',
+                "verbose_name": "Offer Container",
+                "verbose_name_plural": "Offer Containers",
             },
         ),
         migrations.CreateModel(
-            name='TSProduct',
+            name="TSProduct",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('article_amount', models.IntegerField(default=0, verbose_name='article_amount')),
-                ('craft_time', models.IntegerField(default=0, verbose_name='craft_time')),
-                ('article_ids', models.CharField(max_length=255, verbose_name='article_ids')),
-                ('article_amounts', models.CharField(max_length=255, verbose_name='article_amounts')),
-                ('level_req', models.IntegerField(default=0, verbose_name='level required')),
-                ('level_from', models.IntegerField(default=0, verbose_name='level from')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "article_amount",
+                    models.IntegerField(default=0, verbose_name="article_amount"),
+                ),
+                (
+                    "craft_time",
+                    models.IntegerField(default=0, verbose_name="craft_time"),
+                ),
+                (
+                    "article_ids",
+                    models.CharField(max_length=255, verbose_name="article_ids"),
+                ),
+                (
+                    "article_amounts",
+                    models.CharField(max_length=255, verbose_name="article_amounts"),
+                ),
+                (
+                    "level_req",
+                    models.IntegerField(default=0, verbose_name="level required"),
+                ),
+                (
+                    "level_from",
+                    models.IntegerField(default=0, verbose_name="level from"),
+                ),
             ],
             options={
-                'verbose_name': 'Product',
-                'verbose_name_plural': 'Products',
+                "verbose_name": "Product",
+                "verbose_name_plural": "Products",
             },
         ),
         migrations.CreateModel(
-            name='TSRegion',
+            name="TSRegion",
             fields=[
-                ('content_category', models.IntegerField(choices=[(1, '기본'), (2, '이벤트'), (3, '유니언')], default=0, verbose_name='content category')),
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('level_from', models.IntegerField(default=0, verbose_name='level from')),
-                ('asset_name', models.CharField(max_length=255, verbose_name='sprite id')),
-                ('gold_amount_coefficient', models.IntegerField(default=0, verbose_name='gold_amount_coefficient')),
-                ('train_upgrade_price_coefficient', models.DecimalField(blank=True, decimal_places=10, default=Decimal('0.0'), max_digits=30, verbose_name='train_upgrade_price_coefficient')),
-                ('city_currency_coefficient', models.IntegerField(default=0, verbose_name='city_currency_coefficient')),
-                ('ordering', models.IntegerField(default=0, verbose_name='ordering')),
+                (
+                    "content_category",
+                    models.IntegerField(
+                        choices=[(1, "기본"), (2, "이벤트"), (3, "유니언")],
+                        default=0,
+                        verbose_name="content category",
+                    ),
+                ),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "level_from",
+                    models.IntegerField(default=0, verbose_name="level from"),
+                ),
+                (
+                    "asset_name",
+                    models.CharField(max_length=255, verbose_name="sprite id"),
+                ),
+                (
+                    "gold_amount_coefficient",
+                    models.IntegerField(
+                        default=0, verbose_name="gold_amount_coefficient"
+                    ),
+                ),
+                (
+                    "train_upgrade_price_coefficient",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=10,
+                        default=Decimal("0.0"),
+                        max_digits=30,
+                        verbose_name="train_upgrade_price_coefficient",
+                    ),
+                ),
+                (
+                    "city_currency_coefficient",
+                    models.IntegerField(
+                        default=0, verbose_name="city_currency_coefficient"
+                    ),
+                ),
+                ("ordering", models.IntegerField(default=0, verbose_name="ordering")),
             ],
             options={
-                'verbose_name': 'Region',
-                'verbose_name_plural': 'Regions',
+                "verbose_name": "Region",
+                "verbose_name_plural": "Regions",
             },
         ),
         migrations.CreateModel(
-            name='TSTrain',
+            name="TSTrain",
             fields=[
-                ('content_category', models.IntegerField(choices=[(1, '기본'), (2, '이벤트'), (3, '유니언')], default=0, verbose_name='content category')),
-                ('rarity', models.IntegerField(choices=[(1, '일반'), (2, '레어'), (3, '에픽'), (4, '전설')], default=0, verbose_name='rarity')),
-                ('era', models.IntegerField(choices=[(1, '스팀'), (2, '전기'), (3, '디젤')], default=0, verbose_name='era')),
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('reward', models.BooleanField(default=False, verbose_name='reward')),
-                ('region', models.IntegerField(default=0, verbose_name='region')),
-                ('max_level', models.IntegerField(default=0, verbose_name='max_level')),
-                ('asset_name', models.CharField(max_length=255, verbose_name='asset_name')),
+                (
+                    "content_category",
+                    models.IntegerField(
+                        choices=[(1, "기본"), (2, "이벤트"), (3, "유니언")],
+                        default=0,
+                        verbose_name="content category",
+                    ),
+                ),
+                (
+                    "rarity",
+                    models.IntegerField(
+                        choices=[(1, "일반"), (2, "레어"), (3, "에픽"), (4, "전설")],
+                        default=0,
+                        verbose_name="rarity",
+                    ),
+                ),
+                (
+                    "era",
+                    models.IntegerField(
+                        choices=[(1, "스팀"), (2, "전기"), (3, "디젤")],
+                        default=0,
+                        verbose_name="era",
+                    ),
+                ),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                ("reward", models.BooleanField(default=False, verbose_name="reward")),
+                ("region", models.IntegerField(default=0, verbose_name="region")),
+                ("max_level", models.IntegerField(default=0, verbose_name="max_level")),
+                (
+                    "asset_name",
+                    models.CharField(max_length=255, verbose_name="asset_name"),
+                ),
             ],
             options={
-                'verbose_name': 'Train',
-                'verbose_name_plural': 'Trains',
+                "verbose_name": "Train",
+                "verbose_name_plural": "Trains",
             },
         ),
         migrations.CreateModel(
-            name='TSTrainLevel',
+            name="TSTrainLevel",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('common', models.IntegerField(default=0, verbose_name='common')),
-                ('rare', models.IntegerField(default=0, verbose_name='rare')),
-                ('epic', models.IntegerField(default=0, verbose_name='epic')),
-                ('legendary', models.IntegerField(default=0, verbose_name='legendary')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                ("common", models.IntegerField(default=0, verbose_name="common")),
+                ("rare", models.IntegerField(default=0, verbose_name="rare")),
+                ("epic", models.IntegerField(default=0, verbose_name="epic")),
+                ("legendary", models.IntegerField(default=0, verbose_name="legendary")),
             ],
             options={
-                'verbose_name': 'Train Level',
-                'verbose_name_plural': 'Train Levels',
+                "verbose_name": "Train Level",
+                "verbose_name_plural": "Train Levels",
             },
         ),
         migrations.CreateModel(
-            name='TSTrainUpgrade',
+            name="TSTrainUpgrade",
             fields=[
-                ('content_category', models.IntegerField(choices=[(1, '기본'), (2, '이벤트'), (3, '유니언')], default=0, verbose_name='content category')),
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('train_level', models.IntegerField(default=0, verbose_name='train_level')),
-                ('train_region', models.IntegerField(default=0, verbose_name='train_region')),
-                ('train_rarity', models.IntegerField(default=0, verbose_name='train_rarity')),
-                ('train_parts', models.CharField(default='', max_length=255, verbose_name='train_parts')),
-                ('gold', models.IntegerField(default=0, verbose_name='gold')),
-                ('price', models.CharField(default='', max_length=255, verbose_name='price')),
+                (
+                    "content_category",
+                    models.IntegerField(
+                        choices=[(1, "기본"), (2, "이벤트"), (3, "유니언")],
+                        default=0,
+                        verbose_name="content category",
+                    ),
+                ),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                (
+                    "train_level",
+                    models.IntegerField(default=0, verbose_name="train_level"),
+                ),
+                (
+                    "train_region",
+                    models.IntegerField(default=0, verbose_name="train_region"),
+                ),
+                (
+                    "train_rarity",
+                    models.IntegerField(default=0, verbose_name="train_rarity"),
+                ),
+                (
+                    "train_parts",
+                    models.CharField(
+                        default="", max_length=255, verbose_name="train_parts"
+                    ),
+                ),
+                ("gold", models.IntegerField(default=0, verbose_name="gold")),
+                (
+                    "price",
+                    models.CharField(default="", max_length=255, verbose_name="price"),
+                ),
             ],
             options={
-                'verbose_name': 'Milestone',
-                'verbose_name_plural': 'Milestone',
+                "verbose_name": "Milestone",
+                "verbose_name_plural": "Milestone",
             },
         ),
         migrations.CreateModel(
-            name='TSUserLevel',
+            name="TSUserLevel",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('xp', models.IntegerField(default=0, verbose_name='XP')),
-                ('rewards', models.CharField(default='', max_length=255, verbose_name='rewards')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                ("xp", models.IntegerField(default=0, verbose_name="XP")),
+                (
+                    "rewards",
+                    models.CharField(
+                        default="", max_length=255, verbose_name="rewards"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'User Level',
-                'verbose_name_plural': 'User Levels',
+                "verbose_name": "User Level",
+                "verbose_name_plural": "User Levels",
             },
         ),
         migrations.CreateModel(
-            name='TSWarehouseLevel',
+            name="TSWarehouseLevel",
             fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('created', models.DateTimeField(blank=True, editable=False, verbose_name='created date')),
-                ('modified', models.DateTimeField(blank=True, editable=False, verbose_name='modified date')),
-                ('capacity', models.IntegerField(default=0, verbose_name='capacity')),
-                ('upgrade_article_ids', models.CharField(default='', max_length=255, verbose_name='upgrade_article_ids')),
-                ('upgrade_article_amounts', models.CharField(default='', max_length=255, verbose_name='upgrade_article_amounts')),
+                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                (
+                    "created",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="created date"
+                    ),
+                ),
+                (
+                    "modified",
+                    models.DateTimeField(
+                        blank=True, editable=False, verbose_name="modified date"
+                    ),
+                ),
+                ("capacity", models.IntegerField(default=0, verbose_name="capacity")),
+                (
+                    "upgrade_article_ids",
+                    models.CharField(
+                        default="", max_length=255, verbose_name="upgrade_article_ids"
+                    ),
+                ),
+                (
+                    "upgrade_article_amounts",
+                    models.CharField(
+                        default="",
+                        max_length=255,
+                        verbose_name="upgrade_article_amounts",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Warehouse Level',
-                'verbose_name_plural': 'Warehouse Levels',
+                "verbose_name": "Warehouse Level",
+                "verbose_name_plural": "Warehouse Levels",
             },
         ),
         migrations.AddIndex(
-            model_name='tstrainupgrade',
-            index=models.Index(fields=['train_level', 'train_region', 'train_rarity'], name='servers_tst_train_l_9ed244_idx'),
+            model_name="tstrainupgrade",
+            index=models.Index(
+                fields=["train_level", "train_region", "train_rarity"],
+                name="servers_tst_train_l_9ed244_idx",
+            ),
         ),
         migrations.AddField(
-            model_name='tsproduct',
-            name='article',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tsarticle'),
+            model_name="tsproduct",
+            name="article",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tsarticle",
+            ),
         ),
         migrations.AddField(
-            model_name='tsproduct',
-            name='factory',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tsfactory'),
+            model_name="tsproduct",
+            name="factory",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tsfactory",
+            ),
         ),
         migrations.AddField(
-            model_name='tsmilestone',
-            name='job_location',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tsjoblocation'),
+            model_name="tsmilestone",
+            name="job_location",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tsjoblocation",
+            ),
         ),
         migrations.AddField(
-            model_name='tsjoblocation',
-            name='location',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tslocation'),
+            model_name="tsjoblocation",
+            name="location",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tslocation",
+            ),
         ),
         migrations.AddField(
-            model_name='tsjoblocation',
-            name='region',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tsregion'),
+            model_name="tsjoblocation",
+            name="region",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tsregion",
+            ),
         ),
         migrations.AddField(
-            model_name='tsdestination',
-            name='article',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tsarticle'),
+            model_name="tsdestination",
+            name="article",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tsarticle",
+            ),
         ),
         migrations.AddField(
-            model_name='tsdestination',
-            name='location',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tslocation'),
+            model_name="tsdestination",
+            name="location",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tslocation",
+            ),
         ),
         migrations.AddField(
-            model_name='tsdestination',
-            name='region',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tsregion'),
+            model_name="tsdestination",
+            name="region",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tsregion",
+            ),
         ),
         migrations.AddField(
-            model_name='runversion',
-            name='level',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to='servers.tsuserlevel'),
+            model_name="runversion",
+            name="level",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to="servers.tsuserlevel",
+            ),
         ),
         migrations.AddField(
-            model_name='runversion',
-            name='user',
-            field=models.ForeignKey(db_constraint=False, on_delete=django.db.models.deletion.DO_NOTHING, related_name='+', to=settings.AUTH_USER_MODEL),
+            model_name="runversion",
+            name="user",
+            field=models.ForeignKey(
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]
