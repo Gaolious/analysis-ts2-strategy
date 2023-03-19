@@ -356,6 +356,7 @@ class Strategy(object):
                     version=self.version,
                     with_warehouse_limit=True,
                     dispatcher_class=dispatcher_class,
+                    limit_progress=limit_progress,
                 )
                 self.dump_job_priority(
                     "out of resource.", temporary_train_job_amount_list

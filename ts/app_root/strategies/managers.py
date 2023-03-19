@@ -2210,7 +2210,7 @@ def competition_find_iter(
     start_dt = None
     end_dt = None
     cnt = 0
-
+    delta = timedelta(minutes=5)
     ret = []
 
     for competition in queryset.all():
@@ -2243,7 +2243,8 @@ def competition_find_iter(
             if end_dt is None or end_dt >= competition.expires_at:
                 end_dt = competition.expires_at
 
-        ret.append(competition)
+        if start_dt and end_dt and start_dt <= version.now <= end_dt - delta:
+            ret.append(competition)
 
     return ret
 
