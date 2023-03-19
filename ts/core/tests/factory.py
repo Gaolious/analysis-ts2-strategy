@@ -16,7 +16,7 @@ class AbstractFakeResp(object):
 
     @property
     def content(self) -> bytes:
-        return self.text.encode('utf-8')
+        return self.text.encode("utf-8")
 
     def json(self) -> dict:
         return json.loads(self.text)

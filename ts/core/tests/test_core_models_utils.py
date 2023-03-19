@@ -8,7 +8,7 @@ from core.models.utils import get_model_differs
 def test_model_differs_equal_model(multidb):
     model = get_user_model()
 
-    src = model.objects.create(username='src_name', email='a@gmail.com')
+    src = model.objects.create(username="src_name", email="a@gmail.com")
 
     dest = model.objects.filter(username=src.username).first()
 
@@ -21,12 +21,11 @@ def test_model_differs_equal_model(multidb):
 def test_model_differs_different_model(multidb):
     model = get_user_model()
 
-    src = model.objects.create(username='src_name', email='a@gmail.com')
+    src = model.objects.create(username="src_name", email="a@gmail.com")
 
     dest = model.objects.filter(username=src.username).first()
-    dest.username = 'test'
+    dest.username = "test"
 
     ret = get_model_differs(src, dest)
 
-    assert ret == {'username': ('src_name', 'test')}
-
+    assert ret == {"username": ("src_name", "test")}

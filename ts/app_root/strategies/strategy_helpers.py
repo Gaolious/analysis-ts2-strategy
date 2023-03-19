@@ -5,12 +5,16 @@ from typing import List
 
 from app_root.servers.models import RunVersion, TSFactory
 from app_root.strategies.data_types import ArticleSource, FactoryStrategy
-from app_root.strategies.managers import factory_find_need_create, get_number_of_working_dispatchers, \
-    warehouse_used_capacity, warehouse_max_capacity
+from app_root.strategies.managers import (
+    factory_find_need_create,
+    get_number_of_working_dispatchers,
+    warehouse_used_capacity,
+    warehouse_max_capacity,
+)
 
 
 class StrategyMixin:
-    TITLE = ''
+    TITLE = ""
     article_source: Dict[int, ArticleSource]
     factory_strategy: Dict[int, FactoryStrategy]
     version: RunVersion
@@ -27,15 +31,15 @@ class StrategyMixin:
 
     next_event_time: datetime
 
-    def __init__(self,
-                 version: RunVersion,
-                 article_source: Dict[int, ArticleSource],
-                 factory_strategy: Dict[int, FactoryStrategy]
+    def __init__(
+        self,
+        version: RunVersion,
+        article_source: Dict[int, ArticleSource],
+        factory_strategy: Dict[int, FactoryStrategy],
     ):
         self.version = version
         self.article_source = article_source
         self.factory_strategy = factory_strategy
-
 
     @property
     def max_normal_workers(self):
@@ -56,8 +60,14 @@ class StrategyMixin:
         self.after_used_warehouse = usage
 
     def setup(self):
-        self.before_used_dispatcher, self.before_union_dispatcher = get_number_of_working_dispatchers(version=self.version)
-        self.after_used_dispatcher, self.after_union_dispatcher = self.before_used_dispatcher, self.before_union_dispatcher
+        (
+            self.before_used_dispatcher,
+            self.before_union_dispatcher,
+        ) = get_number_of_working_dispatchers(version=self.version)
+        self.after_used_dispatcher, self.after_union_dispatcher = (
+            self.before_used_dispatcher,
+            self.before_union_dispatcher,
+        )
 
         self.next_event_time = self.version.now + timedelta(hours=100)
 
@@ -76,7 +86,7 @@ class StrategyMixin:
 
 
 class CheckFactoryAcquire(StrategyMixin):
-    TITLE = '공장 생성 - 레벨 업에 따른 새로운 공장이 생성 되었는가?'
+    TITLE = "공장 생성 - 레벨 업에 따른 새로운 공장이 생성 되었는가?"
     factory_list: List[TSFactory] = []
 
     def setup(self):
@@ -88,7 +98,7 @@ class CheckFactoryAcquire(StrategyMixin):
 
 
 class CheckDailyReward(StrategyMixin):
-    TITLE = '일일 보상 - 5일간 연속 로그인시 보상'
+    TITLE = "일일 보상 - 5일간 연속 로그인시 보상"
 
     def setup(self):
         super(CheckDailyReward, self).setup()

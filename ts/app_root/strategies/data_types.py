@@ -1,6 +1,12 @@
 from typing import List, Dict, Type, Optional, Tuple
 
-from app_root.players.models import PlayerJob, PlayerTrain, PlayerFactory, PlayerContract, PlayerFactoryProductOrder
+from app_root.players.models import (
+    PlayerJob,
+    PlayerTrain,
+    PlayerFactory,
+    PlayerContract,
+    PlayerFactoryProductOrder,
+)
 from app_root.servers.models import TSDestination, TSArticle, TSProduct
 
 
@@ -51,9 +57,7 @@ class Material:
 
     def add(self, article_id: int, amount: int):
         if article_id not in self.required_articles:
-            self.required_articles.update({
-                article_id: 0
-            })
+            self.required_articles.update({article_id: 0})
         self.required_articles[article_id] += amount
 
     def add_dict(self, article_amount_dict: Dict[int, int]):
@@ -77,7 +81,12 @@ class FactoryStrategy:
     processing_article_count: Dict[int, int]
     completed_article_count: Dict[int, int]
 
-    def __init__(self, player_factory: PlayerFactory, factory_only_products: List[TSProduct], destination_products: List[TSProduct]):
+    def __init__(
+        self,
+        player_factory: PlayerFactory,
+        factory_only_products: List[TSProduct],
+        destination_products: List[TSProduct],
+    ):
         self.player_factory = player_factory
         self.factory_only_products = factory_only_products
         self.destination_products = destination_products
@@ -87,7 +96,12 @@ class FactoryStrategy:
         self.processing_article_count = {}
         self.completed_article_count = {}
 
-    def update(self, completed: List[PlayerFactoryProductOrder], processing: List[PlayerFactoryProductOrder], waiting: List[PlayerFactoryProductOrder]):
+    def update(
+        self,
+        completed: List[PlayerFactoryProductOrder],
+        processing: List[PlayerFactoryProductOrder],
+        waiting: List[PlayerFactoryProductOrder],
+    ):
         self.waiting_article_count = {}
         self.processing_article_count = {}
         self.completed_article_count = {}
@@ -196,7 +210,7 @@ class MaterialStrategy:
             self.factory_collectable.update({factory_id: []})
         self.factory_collectable[factory_id].append((product, amount))
 
-    def get_used_collectable_factory(self, product: TSProduct) -> int :
+    def get_used_collectable_factory(self, product: TSProduct) -> int:
         factory_id = int(product.factory_id)
         ret = 0
         for prod, amount in self.factory_collectable.get(factory_id, []):

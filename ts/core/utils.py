@@ -28,20 +28,22 @@ import zipfile
 import pytz
 from dateutil import parser
 
-trim_chars_pattern = re.compile(r'(\s*)')
-date_pattern = re.compile(r'\d{1,4}-\d{1,2}-\d{1,2}')
-number_pattern = re.compile(r'[^0-9\-\.]')
+trim_chars_pattern = re.compile(r"(\s*)")
+date_pattern = re.compile(r"\d{1,4}-\d{1,2}-\d{1,2}")
+number_pattern = re.compile(r"[^0-9\-\.]")
 
-_logger = logging.getLogger('default')
+_logger = logging.getLogger("default")
+
 
 class Logger(object):
-
     @classmethod
     def make_message(cls, menu, action, **kwargs):
-        kwargs.update({
-            'menu': str(menu or ''),
-            'action': str(action or ''),
-        })
+        kwargs.update(
+            {
+                "menu": str(menu or ""),
+                "action": str(action or ""),
+            }
+        )
         return json.dumps(kwargs)
 
     @classmethod
@@ -73,7 +75,6 @@ class Logger(object):
         msg = cls.make_message(menu, action, **kwargs)
         if msg:
             _logger.log(logging.CRITICAL, msg)
-
 
 
 def retry(times: int, delay: float, exceptions: Type[Exception]):
@@ -130,9 +131,9 @@ def hash10(text):
     """
     MAX_INT = 9223372036854775808  # 2^63
     if not isinstance(text, str):
-        text = ''
+        text = ""
     try:
-        text = bytes(text, 'utf-8')
+        text = bytes(text, "utf-8")
         m = hashlib.md5(text)
         # max 2**64 and modular with 2**63
         return int(m.hexdigest(), 16) % MAX_INT
@@ -146,7 +147,8 @@ class FailedDownloadFile(Exception):
     """
     file download 실패 exception
     """
-    message = ''
+
+    message = ""
 
     def __init__(self, url, ret_status):
         self.message = f'Failed to download "{url}" with status_code={ret_status}'
@@ -178,7 +180,7 @@ def download_file(url: str, download_filename: Path):
         resp = session.get(url, stream=True)
 
         if resp.status_code == 200:
-            with open(download_filename, 'wb') as f:
+            with open(download_filename, "wb") as f:
                 for data in resp.iter_content(chunk):
                     f.write(data)
                 file_size = f.tell()
@@ -192,7 +194,9 @@ def download_file(url: str, download_filename: Path):
 
 
 @retry(times=3, delay=0.1, exceptions=FailedDownloadFile)
-def download_file_with_post_data(*, url: str, headers, payload, params, cookies, timeout, download_filename: Path):
+def download_file_with_post_data(
+    *, url: str, headers, payload, params, cookies, timeout, download_filename: Path
+):
     """
     url을 download_to 에 다운로드
 
@@ -224,7 +228,7 @@ def download_file_with_post_data(*, url: str, headers, payload, params, cookies,
             verify=False,
         )
         if resp.status_code == 200:
-            with open(download_filename, 'wb') as f:
+            with open(download_filename, "wb") as f:
                 for data in resp.iter_content(chunk):
                     f.write(data)
                 file_size = f.tell()
@@ -238,7 +242,9 @@ def download_file_with_post_data(*, url: str, headers, payload, params, cookies,
 
 
 @retry(times=3, delay=0.1, exceptions=FailedDownloadFile)
-def download_file_with_get_param(*, url: str, headers, payload, params, cookies, timeout, download_filename: Path):
+def download_file_with_get_param(
+    *, url: str, headers, payload, params, cookies, timeout, download_filename: Path
+):
     """
     url을 download_to 에 다운로드
 
@@ -270,7 +276,7 @@ def download_file_with_get_param(*, url: str, headers, payload, params, cookies,
             verify=False,
         )
         if resp.status_code == 200:
-            with open(download_filename, 'wb') as f:
+            with open(download_filename, "wb") as f:
                 for data in resp.iter_content(chunk):
                     f.write(data)
                 file_size = f.tell()
@@ -327,13 +333,15 @@ def download_file_with_get_param(*, url: str, headers, payload, params, cookies,
 
 class YearMonthHelper(object):
     """
-        Year Month Helper
+    Year Month Helper
     """
 
     @classmethod
     def first_day(cls, year, month):
-        now = timezone.now().astimezone(settings.KST).replace(
-            year=year, month=month, day=1
+        now = (
+            timezone.now()
+            .astimezone(settings.KST)
+            .replace(year=year, month=month, day=1)
         )
         return now.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -348,7 +356,6 @@ class YearMonthHelper(object):
 
     @classmethod
     def add_month_firstday(cls, year, month, delta_month):
-
         if delta_month != 0:
             m = month + delta_month - 1
             delta_year = m // 12
@@ -365,7 +372,6 @@ class YearMonthHelper(object):
 
     @classmethod
     def add_month_lastday(cls, year, month, delta_month):
-
         if delta_month != 0:
             m = month + delta_month - 1
             delta_year = m // 12
@@ -378,8 +384,8 @@ class YearMonthHelper(object):
 
 
 def extract_hangul(s: str):
-    ret = re.compile('[가-힣|ㄱ-ㅎ|ㅏ-ㅣ]+').findall(s)
-    return ''.join(ret)
+    ret = re.compile("[가-힣|ㄱ-ㅎ|ㅏ-ㅣ]+").findall(s)
+    return "".join(ret)
 
 
 def convert_trim(text: str, default=None):
@@ -413,13 +419,13 @@ def convert_trim(text: str, default=None):
 
     """
     try:
-        pattern = '\n\r\t\b\ \u200b'
+        pattern = "\n\r\t\b\ \u200b"
 
         if not isinstance(text, str):
             text = str(text)
 
         for p in pattern:
-            text = text.replace(p, '')
+            text = text.replace(p, "")
         return text
     except:
         pass
@@ -458,12 +464,12 @@ def convert_date(text: str, default=None) -> datetime.date:
 
     """
     try:
-        text = trim_chars_pattern.sub('', text)
+        text = trim_chars_pattern.sub("", text)
         text = convert_trim(text, default)
-        text = text.replace('.', '-').replace('\xa0', '')
+        text = text.replace(".", "-").replace("\xa0", "")
         try:
-            if '-' not in text and len(text) == 8 and str(int(text)) == text:
-                text = f'{text[:4]}-{text[4:6]}-{text[6:8]}'
+            if "-" not in text and len(text) == 8 and str(int(text)) == text:
+                text = f"{text[:4]}-{text[4:6]}-{text[6:8]}"
         except:
             pass
 
@@ -475,7 +481,7 @@ def convert_date(text: str, default=None) -> datetime.date:
         if not group:
             return default
 
-        year, month, day = tuple(map(int, group.split('-')))
+        year, month, day = tuple(map(int, group.split("-")))
 
         return settings.KST.localize(
             datetime(
@@ -517,10 +523,10 @@ def convert_time(text: str, default=None) -> int:
     """
 
     try:
-        text = trim_chars_pattern.sub('', text)
+        text = trim_chars_pattern.sub("", text)
         text = convert_trim(text, default)
 
-        ret = text.split(':')
+        ret = text.split(":")
         h, m, s = tuple(map(int, ret))
         return ((h * 60) + m) * 60 + s
 
@@ -541,15 +547,15 @@ def convert_number_as_string(text: str, default=None):
 
     """
     try:
-        text = number_pattern.sub('', text)
+        text = number_pattern.sub("", text)
         text = convert_trim(text, default)
-        sign = ''
-        if text.startswith('-'):
-            sign = '-'
-        text = text.replace('.', '').replace('-', '').replace(',', '')
+        sign = ""
+        if text.startswith("-"):
+            sign = "-"
+        text = text.replace(".", "").replace("-", "").replace(",", "")
 
         if text:
-            return f'{sign}{text}'
+            return f"{sign}{text}"
 
     except Exception:
         pass
@@ -597,8 +603,8 @@ def convert_bool(text: str, default=None):
     Returns:
 
     """
-    T = {'1', 'T', 'TRUE', 'Y'}
-    F = {'0', 'F', 'FALSE', 'N'}
+    T = {"1", "T", "TRUE", "Y"}
+    F = {"0", "F", "FALSE", "N"}
     try:
         ut = str(text).upper()
         if ut in T:
@@ -623,10 +629,10 @@ def convert_money(text: str, unit: int = 1, default=None):
 
     """
     try:
-        val = convert_trim(text, default).split('.')
+        val = convert_trim(text, default).split(".")
 
         if len(val) <= 2:
-            val[0] = val[0].replace(',', '')
+            val[0] = val[0].replace(",", "")
             return int(val[0]) * unit
 
     except Exception:
@@ -655,6 +661,7 @@ def create_datetime(y=0, m=0, d=0, h=0, i=0, s=0, us=0):
     ret = datetime(year=y, month=m, day=d, hour=h, minute=i, second=s, microsecond=us)
     return settings.KST.localize(ret)
 
+
 #
 # def human_filesize(num, suffix="B"):
 #     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
@@ -663,63 +670,72 @@ def create_datetime(y=0, m=0, d=0, h=0, i=0, s=0, us=0):
 #         num /= 1024.0
 #     return f"{num:.1f} Yi{suffix}"
 
+
 def short_name(msg, msg_len):
-    msg = str(msg) if msg else ''
+    msg = str(msg) if msg else ""
     if len(msg) > msg_len:
         if msg_len > 3:
-            msg = msg[:msg_len-3] + '...'
+            msg = msg[: msg_len - 3] + "..."
         else:
             msg = msg[:msg_len]
-    format = '{' + ':' + str(msg_len) + 's}'
+    format = "{" + ":" + str(msg_len) + "s}"
     return format.format(msg)
+
 
 def human_days(seconds):
     if seconds <= 0:
-        future = '전'
+        future = "전"
         seconds = -seconds
     else:
-        future = '후'
+        future = "후"
 
     unit = [1, 60, 60, 24, 30, 12]
-    suffix = ['초', '분', '시간', '일', '개월', '년']
+    suffix = ["초", "분", "시간", "일", "개월", "년"]
 
-    ret = ''
+    ret = ""
     for u, s in zip(unit, suffix):
         if seconds >= u:
             seconds /= u
-            ret = '{0}{1} {2}'.format(int(seconds), s, future)
+            ret = "{0}{1} {2}".format(int(seconds), s, future)
         else:
             break
 
     return ret
 
 
-if settings.DEBUG and 'conf.settings.local' in settings.SETTINGS_MODULE and "pytest" not in sys.modules:
+if (
+    settings.DEBUG
+    and "conf.settings.local" in settings.SETTINGS_MODULE
+    and "pytest" not in sys.modules
+):
+
     def disk_cache(prefix, smt):
         def decorator(func):
             def caller(*args, **kwargs):
                 # return func(*args, **kwargs)
                 name = smt.format(**kwargs)
 
-                path = settings.SITE_PATH / 'disk_cache' / prefix
+                path = settings.SITE_PATH / "disk_cache" / prefix
                 if not path.exists():
                     path.mkdir(0o755, True, True)
 
-                name = unicodedata.normalize('NFKC', name)
+                name = unicodedata.normalize("NFKC", name)
                 filepath = path / name
 
                 if not filepath.exists():
                     ret = func(*args, **kwargs)
                     if ret:
-                        filepath.write_text(ret, encoding='utf-8')
+                        filepath.write_text(ret, encoding="utf-8")
                     else:
                         return ret
-                return filepath.read_text(encoding='utf-8')
+                return filepath.read_text(encoding="utf-8")
 
             return caller
 
         return decorator
+
 else:
+
     def disk_cache(*args, **kwargs):
         def decorator(func):
             def caller(*args, **kwargs):
@@ -728,4 +744,3 @@ else:
             return caller
 
         return decorator
-
