@@ -17,7 +17,7 @@ from app_root.strategies.managers import daily_reward_get_reward, warehouse_can_
     daily_reward_get_next_event_time, daily_offer_get_slots, daily_offer_get_next_event_time, trains_find, \
     warehouse_can_add, trains_get_next_unload_event_time, container_offer_find_iter, update_next_event_time, jobs_find, \
     find_xp, trains_get_upgrade_material, warehouse_get_amount, whistle_get_collectable_list, \
-    whistle_get_next_event_time
+    whistle_get_next_event_time, competition_union_group
 from app_root.strategies.strategy_materials import expand_material_strategy
 from app_root.utils import get_curr_server_str_datetime_s, get_remain_time
 
@@ -127,40 +127,9 @@ def collect_whistle(version: RunVersion) -> datetime:
 def collect_gift(version: RunVersion):
     print(f"# [Strategy Process] - Collect gift")
 
-    queryset = PlayerCompetition.objects.filter(
-        version_id=version.id, content_category=3, type='union', level_from__lte=version.level_id,
-        scope__in=['global', 'group']
-    )
-    start_dt = None
-    end_dt = None
-    delta = timedelta(minutes=5)
-    cnt = 0
+    competition_list = competition_union_group(version=version)
 
-    for competition in queryset.all():
-        cnt += 1
-        starts_at = get_remain_time(version=version, finish_at=competition.starts_at)
-        enrolment_available_to = get_remain_time(version=version, finish_at=competition.enrolment_available_to)
-        finishes_at = get_remain_time(version=version, finish_at=competition.finishes_at)
-        expires_at = get_remain_time(version=version, finish_at=competition.expires_at)
-        print(f"  - Competitions: starts_at={starts_at}, enrolment_available_to={enrolment_available_to}, finishes_at={finishes_at}, expires_at={expires_at}")
-
-        if competition.starts_at:
-            if start_dt is None or start_dt < competition.starts_at:
-                start_dt = competition.starts_at
-
-        if competition.enrolment_available_to:
-            if end_dt is None or end_dt >= competition.enrolment_available_to:
-                end_dt = competition.enrolment_available_to
-
-        if competition.finishes_at:
-            if end_dt is None or end_dt >= competition.finishes_at:
-                end_dt = competition.finishes_at
-
-        if competition.expires_at:
-            if end_dt is None or end_dt >= competition.expires_at:
-                end_dt = competition.expires_at
-
-    if cnt == 2 and start_dt and end_dt and start_dt <= version.now <= end_dt - delta:
+    if len(competition_list) > 0:
         print(f"  - Now Collectible Gift")
         for gift in PlayerGift.objects.filter(version_id=version.id).all():
             cmd = CollectGiftCommand(version=version, gift=gift)

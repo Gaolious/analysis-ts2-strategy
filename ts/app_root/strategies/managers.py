@@ -8,7 +8,7 @@ from django.conf import settings
 from app_root.players.models import PlayerJob, PlayerTrain, PlayerVisitedRegion, PlayerContract, PlayerContractList, \
     PlayerWarehouse, PlayerDailyReward, PlayerWhistle, PlayerDestination, PlayerDailyOfferContainer, PlayerDailyOffer, \
     PlayerDailyOfferItem, PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder, PlayerQuest, PlayerAchievement, \
-    PlayerMap, PlayerGift, PlayerBuilding, PlayerWhistleItem
+    PlayerMap, PlayerGift, PlayerBuilding, PlayerWhistleItem, PlayerCompetition
 from app_root.servers.models import RunVersion, TSProduct, TSDestination, TSWarehouseLevel, TSArticle, TSMilestone, \
     TSTrainUpgrade, TSFactory
 from app_root.strategies.data_types import JobPriority
@@ -922,7 +922,7 @@ class WAREHOUSE:
         self.article_amount = amount
 
 
-class JobDisptchingHelper:
+class JobDisptchingMixin:
     number_of_dispatchers: int
     trains: Dict[int, TRAIN]
     jobs: Dict[int, JOB]
@@ -970,45 +970,6 @@ class JobDisptchingHelper:
     train_id_list: List[int] = []
     assigned_job_amount: Dict[int, int] = {}
     assign: List[Tuple[int, int, int]] = []
-
-    def get_score(self, used_dispatcher: int) -> Tuple[int, float, int]:
-        ret = 0
-
-        count = {}
-        required_articles = {}
-        INFINITY_HOUR = 1000000
-
-        for job_id, amount in self.assigned_job_amount.items():
-            count.update({job_id: 0})
-
-            total = self.jobs[job_id].total_count
-            curr = min(total, self.jobs[job_id].curr_count)
-            required_articles.update({
-                self.jobs[job_id].article_id: True
-            })
-
-            remain = total - curr
-            if remain < 1:
-                continue
-            if self.assigned_job_amount[job_id] < 1:
-                count.update({
-                    job_id: INFINITY_HOUR
-                })
-            else:
-                count.update({
-                    job_id: math.ceil(remain / self.assigned_job_amount[job_id])
-                })
-
-        for job_id, amount in self.assigned_job_amount.items():
-            remain = max(0, self.jobs[job_id].total_count - self.jobs[job_id].curr_count)
-            if remain > 0:
-                ret += self.jobs[job_id].sp / remain * self.assigned_job_amount[job_id]
-                # ret += self.assigned_job_amount[job_id] / remain
-
-        hours = min(count.values())
-
-        # return len(required_articles), ret, -hours
-        return 0, ret, -hours
 
     def recur(self, idx: int, used_dispatcher: int, with_warehouse_limit: bool, depth=0):
         if used_dispatcher > 0:
@@ -1083,7 +1044,90 @@ class JobDisptchingHelper:
         return self.best_assign
 
 
-def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
+class JobDisptchingMaxProfit(JobDisptchingMixin):
+
+    def get_score(self, used_dispatcher: int) -> Tuple[int, float, int]:
+        ret = 0
+
+        count = {}
+        required_articles = {}
+        INFINITY_HOUR = 1000000
+
+        for job_id, amount in self.assigned_job_amount.items():
+            count.update({job_id: 0})
+
+            total = self.jobs[job_id].total_count
+            curr = min(total, self.jobs[job_id].curr_count)
+            required_articles.update({
+                self.jobs[job_id].article_id: True
+            })
+
+            remain = total - curr
+            if remain < 1:
+                continue
+            if self.assigned_job_amount[job_id] < 1:
+                count.update({
+                    job_id: INFINITY_HOUR
+                })
+            else:
+                count.update({
+                    job_id: math.ceil(remain / self.assigned_job_amount[job_id])
+                })
+
+        for job_id, amount in self.assigned_job_amount.items():
+            remain = max(0, self.jobs[job_id].total_count - self.jobs[job_id].curr_count)
+            if remain > 0:
+                ret += self.jobs[job_id].sp / remain * self.assigned_job_amount[job_id]
+                # ret += self.assigned_job_amount[job_id] / remain
+
+        hours = min(count.values())
+
+        # return len(required_articles), ret, -hours
+        return 0, ret, -hours
+
+
+class JobDisptchingPrepareBeforeCompetiton(JobDisptchingMixin):
+
+    def get_score(self, used_dispatcher: int) -> Tuple[int, float, int]:
+        ret = 0
+
+        count = {}
+        required_articles = {}
+        INFINITY_HOUR = 1000000
+
+        for job_id, amount in self.assigned_job_amount.items():
+            count.update({job_id: 0})
+
+            total = self.jobs[job_id].total_count
+            curr = min(total, self.jobs[job_id].curr_count)
+            required_articles.update({
+                self.jobs[job_id].article_id: True
+            })
+
+            remain = total - curr
+            if remain < 1:
+                continue
+            if self.assigned_job_amount[job_id] < 1:
+                count.update({
+                    job_id: INFINITY_HOUR
+                })
+            else:
+                count.update({
+                    job_id: math.ceil(remain / self.assigned_job_amount[job_id])
+                })
+
+        for job_id, amount in self.assigned_job_amount.items():
+            remain = max(0, self.jobs[job_id].total_count - self.jobs[job_id].curr_count)
+            if remain > 0:
+                ret += self.jobs[job_id].sp / remain * self.assigned_job_amount[job_id]
+                # ret += self.assigned_job_amount[job_id] / remain
+
+        hours = min(count.values())
+
+        return len(required_articles), ret, -hours
+
+
+def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool, dispatcher_class = None) -> List[JobPriority]:
     """
 
     :param version:
@@ -1096,9 +1140,12 @@ def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) ->
 
     # 재료 수집에 걸리는 시간
     #
+    if dispatcher_class is None:
+        dispatcher_class = JobDisptchingMaxProfit
+
     ret = []
     if version.has_union:
-        finder = JobDisptchingHelper(dispatcher=version.guild_dispatchers + 2)
+        finder = dispatcher_class(dispatcher=version.guild_dispatchers + 2)
         all_jobs = {job.id: job for job in jobs_find(version, union_jobs=True, expired_jobs=False)}
 
         all_trains = {train.id: train for train in trains_find(version=version)}
@@ -1132,7 +1179,7 @@ def jobs_find_union_priority(version: RunVersion, with_warehouse_limit: bool) ->
     return ret
 
 
-def jobs_find_event_priority(version: RunVersion, with_warehouse_limit: bool) -> List[JobPriority]:
+def jobs_find_event_priority(version: RunVersion, with_warehouse_limit: bool, dispatcher_class = None) -> List[JobPriority]:
     """
 
     :param version:
@@ -1145,9 +1192,13 @@ def jobs_find_event_priority(version: RunVersion, with_warehouse_limit: bool) ->
 
     # 재료 수집에 걸리는 시간
     #
+    #
+    if dispatcher_class is None:
+        dispatcher_class = JobDisptchingMaxProfit
+
     ret = []
     if version.has_union:
-        finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
+        finder = dispatcher_class(dispatcher=version.dispatchers + 2)
         all_jobs = {job.id: job for job in jobs_find(version, story_jobs=True, expired_jobs=False, completed_jobs=False) if job.job_type == 12}
 
         all_trains = {train.id: train for train in trains_find(version=version)}
@@ -1181,7 +1232,7 @@ def jobs_find_event_priority(version: RunVersion, with_warehouse_limit: bool) ->
     return ret
 
 
-def jobs_find_priority(version: RunVersion, locked_job_location_id: Set[int], with_warehouse_limit: bool) -> List[JobPriority]:
+def jobs_find_priority(version: RunVersion, locked_job_location_id: Set[int], with_warehouse_limit: bool, dispatcher_class = None) -> List[JobPriority]:
     """
 
     :param version:
@@ -1194,6 +1245,8 @@ def jobs_find_priority(version: RunVersion, locked_job_location_id: Set[int], wi
 
     # 재료 수집에 걸리는 시간
     #
+    if dispatcher_class is None:
+        dispatcher_class = JobDisptchingMaxProfit
     ret = []
 
     if not version.has_union and version.level_id < 26:
@@ -1203,7 +1256,7 @@ def jobs_find_priority(version: RunVersion, locked_job_location_id: Set[int], wi
 
         if all_jobs:
             possible = False
-            finder = JobDisptchingHelper(dispatcher=version.dispatchers + 2)
+            finder = dispatcher_class(dispatcher=version.dispatchers + 2)
 
             for _ in range(2):
 
@@ -1811,3 +1864,71 @@ def cityloop_building_set_upgrade(version: RunVersion, building: PlayerBuilding)
                 article_id=article_id,
                 amount=-amount,
             )
+
+###########################################################################
+# competition
+###########################################################################
+def competition_find_iter(
+        version: RunVersion,
+        content_category: List[int],
+        competition_type: List[str],
+        scope: List[str]
+) -> List[PlayerCompetition]:
+    queryset = PlayerCompetition.objects.filter(
+        version_id=version.id,
+        content_category__in=content_category,
+        type__in=competition_type,
+        level_from__lte=version.level_id,
+        scope__in=scope
+    )
+    start_dt = None
+    end_dt = None
+    cnt = 0
+
+    ret = []
+
+    for competition in queryset.all():
+        cnt += 1
+        starts_at = get_remain_time(version=version, finish_at=competition.starts_at)
+        enrolment_available_to = get_remain_time(version=version, finish_at=competition.enrolment_available_to)
+        finishes_at = get_remain_time(version=version, finish_at=competition.finishes_at)
+        expires_at = get_remain_time(version=version, finish_at=competition.expires_at)
+        print(f"  - Competitions: starts_at={starts_at}, enrolment_available_to={enrolment_available_to}, finishes_at={finishes_at}, expires_at={expires_at}")
+
+        if competition.starts_at:
+            if start_dt is None or start_dt < competition.starts_at:
+                start_dt = competition.starts_at
+
+        if competition.enrolment_available_to:
+            if end_dt is None or end_dt >= competition.enrolment_available_to:
+                end_dt = competition.enrolment_available_to
+
+        if competition.finishes_at:
+            if end_dt is None or end_dt >= competition.finishes_at:
+                end_dt = competition.finishes_at
+
+        if competition.expires_at:
+            if end_dt is None or end_dt >= competition.expires_at:
+                end_dt = competition.expires_at
+
+        ret.append(competition)
+
+    return ret
+
+
+def competition_union_global(version: RunVersion) -> List[PlayerCompetition]:
+    return competition_find_iter(
+        version=version,
+        content_category=[3],
+        competition_type=['union'],
+        scope=['global']
+    )
+
+
+def competition_union_group(version: RunVersion) -> List[PlayerCompetition]:
+    return competition_find_iter(
+        version=version,
+        content_category=[3],
+        competition_type=['union'],
+        scope=['group']
+    )
