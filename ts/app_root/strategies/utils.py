@@ -327,11 +327,13 @@ class Strategy(object):
             competition = len(competition_union_group(version=self.version))
 
             limit_progress = None
+            limit_count = None
             dispatcher_class = None
 
             if competition < 1:
                 dispatcher_class = JobDisptchingPrepareBeforeCompetiton
                 limit_progress = 0.7
+                limit_count = 2000
 
             # union quest item
             self.union_job_dispatching_priority = jobs_find_union_priority(
@@ -339,6 +341,7 @@ class Strategy(object):
                 with_warehouse_limit=False,
                 dispatcher_class=dispatcher_class,
                 limit_progress=limit_progress,
+                limit_count=limit_count,
             )
             self.dump_job_priority(
                 "Without resource", self.union_job_dispatching_priority
@@ -357,6 +360,7 @@ class Strategy(object):
                     with_warehouse_limit=True,
                     dispatcher_class=dispatcher_class,
                     limit_progress=limit_progress,
+                    limit_count=limit_count,
                 )
                 self.dump_job_priority(
                     "out of resource.", temporary_train_job_amount_list

@@ -1311,6 +1311,7 @@ def jobs_find_union_priority(
     with_warehouse_limit: bool,
     dispatcher_class=None,
     limit_progress=None,
+    limit_count=None,
 ) -> List[JobPriority]:
     """
 
@@ -1339,13 +1340,24 @@ def jobs_find_union_priority(
         for job in jobs_find(version, union_jobs=True, expired_jobs=False):
             if (
                 limit_progress is not None
-                and job.required_amount * limit_progress > job.current_progress
+                and job.required_amount * limit_progress <= job.current_progress
             ):
-                all_jobs.update({job.id: job})
-            else:
                 print(
                     f"{job} is Ignored. {job.required_amount} * {limit_progress} <= {job.current_progress}"
                 )
+                continue
+
+            if (
+                limit_count is not None
+                and job.required_amount - job.current_progress <= limit_count
+            ):
+                print(
+                    f"{job} is Ignored. {job.required_amount} - {job.current_progress} <= {limit_count}"
+                )
+
+                continue
+
+            all_jobs.update({job.id: job})
 
         all_trains = {train.id: train for train in trains_find(version=version)}
 
