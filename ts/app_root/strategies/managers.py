@@ -1339,7 +1339,7 @@ def jobs_find_union_priority(
 
         for job in jobs_find(version, union_jobs=True, expired_jobs=False):
             if (
-                limit_progress is not None
+                limit_progress
                 and job.required_amount * limit_progress <= job.current_progress
             ):
                 print(
@@ -1348,13 +1348,12 @@ def jobs_find_union_priority(
                 continue
 
             if (
-                limit_count is not None
+                limit_count
                 and job.required_amount - job.current_progress <= limit_count
             ):
                 print(
                     f"{job} is Ignored. {job.required_amount} - {job.current_progress} <= {limit_count}"
                 )
-
                 continue
 
             all_jobs.update({job.id: job})
