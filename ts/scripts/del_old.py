@@ -73,5 +73,6 @@ def run(*args, **kwargs):
     ]
     for version_id in version_id_list:
         for model in MODEL_LIST:
+            print(f"{version_id} - {model}")
             model.objects.filter(version_id=version_id).delete()
         RunVersion.objects.filter(id=version_id).delete()
