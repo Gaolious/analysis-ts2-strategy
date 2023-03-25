@@ -93,6 +93,7 @@ def read_fireston_json(version: RunVersion):
                     exists.completed_at = instance.completed_at
                     exists.collectable_from = instance.collectable_from
                     exists.save()
+                    version.set_completed(save=True, update_fields=[])
                 continue
 
             instance: PlayerJob
