@@ -620,6 +620,11 @@ class PlayerJobMixin(BaseVersionMixin):
                 if closed_at:
                     continue
 
+                if not collectable_from:
+                    collectable_from = job.pop("CompletableFrom", None)
+                if not completed_at:
+                    completed_at = job.pop("FinishedAt", None)
+
                 ret.append(
                     cls(
                         version_id=version_id,
