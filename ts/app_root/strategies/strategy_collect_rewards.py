@@ -375,20 +375,18 @@ def check_union_job_complete(version: RunVersion):
         for job in job_list:
             job: PlayerJob
 
-            print(f"""    - {job} | is not completed: Now[{version.now}]""")
+            if not job.is_completed(version.now):
+                print(f"""    - {job} | is not completed: Now[{version.now}]""")
+                continue
+            if not job.is_collectable(version.now):
+                print(f"""    - {job} | is not collectable: Now[{version.now}]""")
+                continue
 
-            # if not job.is_completed(version.now):
-            #     print(f"""    - {job} | is not completed: Now[{version.now}]""")
-            #     continue
-            # if not job.is_collectable(version.now):
-            #     print(f"""    - {job} | is not collectable: Now[{version.now}]""")
-            #     continue
-
-            # try:
-            #     cmd = GuildJobCompleteCommand(version=version, job=job)
-            #     send_commands(cmd)
-            # except Exception as e:
-            #     print(str(e))
+            try:
+                cmd = GuildJobCompleteCommand(version=version, job=job)
+                send_commands(cmd)
+            except Exception as e:
+                print(str(e))
 
 
 def check_levelup(version: RunVersion):
