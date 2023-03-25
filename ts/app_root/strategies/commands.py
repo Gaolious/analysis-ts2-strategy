@@ -804,14 +804,6 @@ Accept-Encoding: gzip, deflate
 
 
 class GuildJobCompleteCommand(BaseCommand):
-    """
-     {
-        "Command":"Shop:DailyOffer:PurchaseItem",
-        "Time":"2023-02-08T08:54:01Z",
-        "Parameters":{"Slot":11,"Amount":1}
-    }
-    """
-
     COMMAND = "Guild:Job:Complete"
     job: PlayerJob
     SLEEP_RANGE = (0.5, 1)
