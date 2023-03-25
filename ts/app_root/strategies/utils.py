@@ -51,6 +51,7 @@ from app_root.strategies.strategy_collect_rewards import (
     check_upgrade_train,
     check_factory,
     check_building,
+    check_union_job_complete,
 )
 from app_root.strategies.strategy_materials import (
     get_ship_materials,
@@ -528,6 +529,9 @@ class Strategy(object):
             command_material_strategy(version=self.version, strategy=strategy)
 
         next_dt = collect_job_complete(version=self.version)
+        ret = update_next_event_time(previous=ret, event_time=next_dt)
+
+        next_dt = check_union_job_complete(version=self.version)
         ret = update_next_event_time(previous=ret, event_time=next_dt)
 
         next_dt = check_upgrade_train(version=self.version)

@@ -356,99 +356,6 @@ class TrainSendToGoldDestinationCommand(BaseCommand):
 
 
 class TrainDispatchToJobCommand(BaseCommand):
-    """
-    [LeaderBoard]
-    {"Success":true,"RequestId":"37549e03-92c2-4850-9f32-efcd381e3282","Time":"2023-02-06T05:04:09Z","Data":{
-        "LeaderboardId":"329a0e3a-038d-4bd4-a99d-b19ed9dcde20",
-        "LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352",
-        "Bracket":"1",
-        "Progresses":[
-            {"PlayerId":20873082,"AvatarId":59,"FirebaseUid":"prod_20873082","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"DJ.GRooWER Hun","Progress":142,"LastUpdate":"2023-02-06T04:18:58Z","RewardClaimed":false},
-            {"PlayerId":36725548,"AvatarId":70,"FirebaseUid":"prod_36725548","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"Offiget","Progress":98,"LastUpdate":"2023-02-05T21:21:05Z","RewardClaimed":false},
-            {"PlayerId":42991064,"AvatarId":59,"FirebaseUid":"prod_42991064","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"John co","Progress":20,"LastUpdate":"2023-02-05T16:06:51Z","RewardClaimed":false},
-            {"PlayerId":43023388,"AvatarId":70,"FirebaseUid":"prod_43023388","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"JarHead0352","Progress":72,"LastUpdate":"2023-02-05T23:42:06Z","RewardClaimed":false},
-            {"PlayerId":51701244,"AvatarId":59,"FirebaseUid":"prod_51701244","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"Squidworth","Progress":50,"LastUpdate":"2023-02-05T21:44:11Z","RewardClaimed":false},
-            {"PlayerId":52529982,"AvatarId":8,"FirebaseUid":"prod_52529982","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"Jessen","Progress":0,"LastUpdate":"2023-02-03T12:08:09Z","RewardClaimed":false},
-            {"PlayerId":53255036,"AvatarId":71,"FirebaseUid":"prod_53255036","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"ShadowV1965","Progress":0,"LastUpdate":"2023-02-03T12:08:14Z","RewardClaimed":false},
-            {"PlayerId":55570560,"AvatarId":123,"FirebaseUid":"prod_55570560","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"Spider","Progress":35,"LastUpdate":"2023-02-05T19:33:59Z","RewardClaimed":false},
-            {"PlayerId":61561146,"AvatarId":58,"FirebaseUid":"prod_61561146","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"SRand","Progress":0,"LastUpdate":"2023-02-03T12:08:28Z","RewardClaimed":false},
-            {"PlayerId":61656034,"AvatarId":121,"FirebaseUid":"prod_61656034","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"Cootabang","Progress":0,"LastUpdate":"2023-02-03T12:08:31Z","RewardClaimed":false},
-            {"PlayerId":63527822,"AvatarId":120,"FirebaseUid":"prod_63527822","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"Adnan","Progress":80,"LastUpdate":"2023-02-05T21:21:39Z","RewardClaimed":false},
-            {"PlayerId":65333042,"AvatarId":1,"FirebaseUid":"prod_65333042","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"flobuiss ","Progress":91,"LastUpdate":"2023-02-06T04:35:59Z","RewardClaimed":false},
-            {"PlayerId":65958250,"AvatarId":1,"FirebaseUid":"prod_65958250","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"Choo Choo Charlie","Progress":182,"LastUpdate":"2023-02-06T04:33:54Z","RewardClaimed":false},
-            {"PlayerId":66288442,"AvatarId":14,"FirebaseUid":"prod_66288442","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"AMJ Railroad ","Progress":11,"LastUpdate":"2023-02-03T17:01:03Z","RewardClaimed":false},
-            {"PlayerId":66674602,"AvatarId":70,"FirebaseUid":"prod_66674602","LeaderBoardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","LeaderboardGroupId":"e391e702-32fd-41fe-8866-639e50e39352","PlayerName":"Claudemir ","Progress":60,"LastUpdate":"2023-02-05T22:22:41Z","RewardClaimed":false}
-        ],
-        "Rewards":[
-            {"Items":[{"Id":8,"Value":8,"Amount":176}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":150}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":110}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":64}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":40}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":33}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":31}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":22}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":20}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":18}]},
-            {"Items":[{"Id":8,"Value":8,"Amount":11}]},{"Items":[{"Id":8,"Value":8,"Amount":9}]},{"Items":[{"Id":8,"Value":8,"Amount":7}]},{"Items":[{"Id":8,"Value":8,"Amount":5}]},{"Items":[{"Id":8,"Value":8,"Amount":3}]}]}}
-    {"Success":true,"RequestId":"984210f6-0180-4ee7-81ef-d3b340dc7278","Time":"2023-02-06T05:04:33Z","Data":{
-        "LeaderboardId":"563b3067-a1a7-4a8b-9986-4ab8b0048e26",
-        "LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b",
-        "Bracket":"1","Progresses":[
-        {"PlayerId":61561146,"AvatarId":58,"FirebaseUid":"prod_61561146","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"SRand","Progress":240,"Position":1,"LastUpdatedAt":"2023-02-06T05:04:30Z","RewardClaimed":false},
-        {"PlayerId":45329266,"AvatarId":11,"FirebaseUid":"prod_45329266","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"shine1219","Progress":60,"Position":2,"LastUpdatedAt":"2023-02-05T14:32:42Z","RewardClaimed":false}
-        ,{"PlayerId":45387522,"AvatarId":1,"FirebaseUid":"prod_45387522","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Kr.Wanja","Progress":53,"Position":3,"LastUpdatedAt":"2023-02-06T03:34:30Z","RewardClaimed":false},
-        {"PlayerId":37482414,"AvatarId":24,"FirebaseUid":"prod_37482414","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"DARKCHOCO","Progress":40,"Position":4,"LastUpdatedAt":"2023-02-05T18:35:13Z","RewardClaimed":false},
-        {"PlayerId":26401848,"AvatarId":24,"FirebaseUid":"prod_26401848","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Clutch","Progress":38,"Position":5,"LastUpdatedAt":"2023-02-05T15:05:41Z","RewardClaimed":false},
-        {"PlayerId":2147982,"AvatarId":109,"FirebaseUid":"prod_2147982","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Ghind","Progress":33,"Position":6,"LastUpdatedAt":"2023-02-05T16:42:00Z","RewardClaimed":false},
-        {"PlayerId":31423644,"AvatarId":89,"FirebaseUid":"prod_31423644","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Cindy","Progress":30,"Position":7,"LastUpdatedAt":"2023-02-06T00:21:59Z","RewardClaimed":false},
-        {"PlayerId":51063284,"AvatarId":71,"FirebaseUid":"prod_51063284","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Greenday","Progress":30,"Position":8,"LastUpdatedAt":"2023-02-06T00:52:57Z","RewardClaimed":false},
-        {"PlayerId":27674098,"AvatarId":25,"FirebaseUid":"prod_27674098","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"KTKSRTK","Progress":15,"Position":9,"LastUpdatedAt":"2023-02-06T01:51:12Z","RewardClaimed":false}
-        ],"Rewards":[{"Items":[{"Id":8,"Value":100000,"Amount":69},{"Id":8,"Value":100003,"Amount":52}]},{"Items":[{"Id":8,"Value":100000,"Amount":17},{"Id":8,"Value":100003,"Amount":13}]},{"Items":[{"Id":8,"Value":100000,"Amount":15},{"Id":8,"Value":100003,"Amount":11}]},{"Items":[{"Id":8,"Value":100000,"Amount":11},{"Id":8,"Value":100003,"Amount":8}]},{"Items":[{"Id":8,"Value":100000,"Amount":11},{"Id":8,"Value":100003,"Amount":8}]},{"Items":[{"Id":8,"Value":100000,"Amount":9},{"Id":8,"Value":100003,"Amount":7}]},{"Items":[{"Id":8,"Value":100000,"Amount":8},{"Id":8,"Value":100003,"Amount":6}]},{"Items":[{"Id":8,"Value":100000,"Amount":8},{"Id":8,"Value":100003,"Amount":6}]},{"Items":[{"Id":8,"Value":100000,"Amount":4},{"Id":8,"Value":100003,"Amount":3}]}]}}
-    {"Success":true,"RequestId":"90098378-fcf7-4c3d-ac80-3e0039888e36","Time":"2023-02-06T05:04:36Z","Data":{
-        "LeaderboardId":"563b3067-a1a7-4a8b-9986-4ab8b0048e26","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","Bracket":"1",
-        "Progresses":[
-        {"PlayerId":61561146,"AvatarId":58,"FirebaseUid":"prod_61561146","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"SRand","Progress":270,"Position":1,"LastUpdatedAt":"2023-02-06T05:04:33Z","RewardClaimed":false},
-        {"PlayerId":45329266,"AvatarId":11,"FirebaseUid":"prod_45329266","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"shine1219","Progress":60,"Position":2,"LastUpdatedAt":"2023-02-05T14:32:42Z","RewardClaimed":false},
-        {"PlayerId":45387522,"AvatarId":1,"FirebaseUid":"prod_45387522","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Kr.Wanja","Progress":53,"Position":3,"LastUpdatedAt":"2023-02-06T03:34:30Z","RewardClaimed":false},
-        {"PlayerId":37482414,"AvatarId":24,"FirebaseUid":"prod_37482414","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"DARKCHOCO","Progress":40,"Position":4,"LastUpdatedAt":"2023-02-05T18:35:13Z","RewardClaimed":false},
-        {"PlayerId":26401848,"AvatarId":24,"FirebaseUid":"prod_26401848","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Clutch","Progress":38,"Position":5,"LastUpdatedAt":"2023-02-05T15:05:41Z","RewardClaimed":false},
-        {"PlayerId":2147982,"AvatarId":109,"FirebaseUid":"prod_2147982","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Ghind","Progress":33,"Position":6,"LastUpdatedAt":"2023-02-05T16:42:00Z","RewardClaimed":false},
-        {"PlayerId":31423644,"AvatarId":89,"FirebaseUid":"prod_31423644","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Cindy","Progress":30,"Position":7,"LastUpdatedAt":"2023-02-06T00:21:59Z","RewardClaimed":false}
-        ,{"PlayerId":51063284,"AvatarId":71,"FirebaseUid":"prod_51063284","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"Greenday","Progress":30,"Position":8,"LastUpdatedAt":"2023-02-06T00:52:57Z","RewardClaimed":false},
-        {"PlayerId":27674098,"AvatarId":25,"FirebaseUid":"prod_27674098","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"KTKSRTK","Progress":15,"Position":9,"LastUpdatedAt":"2023-02-06T01:51:12Z","RewardClaimed":false}
-        ],"Rewards":[{"Items":[{"Id":8,"Value":100000,"Amount":78},{"Id":8,"Value":100003,"Amount":58}]},{"Items":[{"Id":8,"Value":100000,"Amount":17},{"Id":8,"Value":100003,"Amount":13}]},
-        {"Items":[{"Id":8,"Value":100000,"Amount":15},{"Id":8,"Value":100003,"Amount":11}]},{"Items":[{"Id":8,"Value":100000,"Amount":11},{"Id":8,"Value":100003,"Amount":8}]},
-        {"Items":[{"Id":8,"Value":100000,"Amount":11},{"Id":8,"Value":100003,"Amount":8}]},{"Items":[{"Id":8,"Value":100000,"Amount":9},{"Id":8,"Value":100003,"Amount":7}]},
-        {"Items":[{"Id":8,"Value":100000,"Amount":8},{"Id":8,"Value":100003,"Amount":6}]},{"Items":[{"Id":8,"Value":100000,"Amount":8},{"Id":8,"Value":100003,"Amount":6}]},
-        {"Items":[{"Id":8,"Value":100000,"Amount":4},{"Id":8,"Value":100003,"Amount":3}]}]}}
-    {"Success":true,"RequestId":"a6656868-aa7b-4b10-b094-aaea7b34307d","Time":"2023-02-06T05:04:45Z","Data":{"LeaderboardId":"5f446bee-6f0a-44db-8520-22c7c6c7e542","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","Bracket":"1","Progresses":[{"PlayerId":61561146,"AvatarId":58,"FirebaseUid":"prod_61561146","LeaderboardGroupId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","PlayerName":"SRand","Progress":60,"Position":1,"LastUpdatedAt":"2023-02-06T05:04:43Z","RewardClaimed":false}],"Rewards":[{"Items":[{"Id":8,"Value":100000,"Amount":52},{"Id":8,"Value":100003,"Amount":35}]}]}}
-
-    [Jobs]
-            {"Id": "723b7b26-2101-422e-a75c-136b299fc329","JobLocationId": 166,"JobLevel": 1,"JobType": 1,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 105,"Amount": 80},"CurrentArticleAmount": 70,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 6},{"Id": 8,"Value": 1,"Amount": 140}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 1},{"Type": "rarity","Value": 2},{"Type": "power","Value": 30}],"UnlocksAt": "2022-08-13T02:22:19Z"},
-            {"Id": "3d532945-b633-4f3c-ac24-ad2db86bdfb4","JobLocationId": 167,"JobLevel": 1,"JobType": 1,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 106,"Amount": 80},"CurrentArticleAmount": 48,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 6},{"Id": 8,"Value": 1,"Amount": 151}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 1},{"Type": "rarity","Value": 3},{"Type": "power","Value": 40}],"UnlocksAt": "2022-08-14T10:40:01Z"},
-            {"Id": "b40c155dd-2b20-4a4d-98b5-1dd0595abd17","JobLocationId": 168,"JobLevel": 1,"JobType": 1,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 108,"Amount": 150},"CurrentArticleAmount": 0,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 7},{"Id": 8,"Value": 1,"Amount": 251}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 1},{"Type": "rarity","Value": 3},{"Type": "power","Value": 45}],"UnlocksAt": "2022-09-06T15:34:55Z"},
-            {"Id": "8d7508c7-c0de-43f3-8f94-0937511ca8f2","JobLocationId": 253,"JobLevel": 1,"JobType": 1,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 116,"Amount": 160},"CurrentArticleAmount": 61,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 7},{"Id": 8,"Value": 1,"Amount": 568}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 2},{"Type": "rarity","Value": 4}]},
-            {"Id": "5cae482c-f2de-4228-8080-88c33c5ac5ff","JobLocationId": 350,"JobLevel": 1,"JobType": 2,"Duration": 1800,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 111,"Amount": 150},"CurrentArticleAmount": 0,"Reward": {"Items": [{"Id": 8,"Value": 30,"Amount": 2},{"Id": 8,"Value": 1,"Amount": 1387}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 3},{"Type": "rarity","Value": 1}],"ExpiresAt": "2023-02-07T00:00:00Z"},
-            {"Id": "87e8fe6f-bc4e-48d5-bd02-c5b3c6b9e24f","JobLocationId": 351,"JobLevel": 1,"JobType": 1,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 118,"Amount": 70},"CurrentArticleAmount": 0,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 18},{"Id": 8,"Value": 1,"Amount": 1872}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 3},{"Type": "rarity","Value": 1}],"UnlocksAt": "2022-11-08T06:24:34Z"},
-            {"Id": "bab81faa-b26d-4441-9bb7-fee9c0cb6a15","JobLocationId": 411,"JobLevel": 2,"Sequence": 0,"JobType": 5,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 224,"Amount": 90},"CurrentArticleAmount": 0,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 21},{"Id": 8,"Value": 1,"Amount": 5615}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "rarity","Value": 1}],"UnlocksAt": "2022-12-08T10:45:32Z"},
-            {"Id": "afe8f8a4-ca8a-4a3e-8e3f-85b7ca694d62","JobLocationId": 412,"JobLevel": 1,"JobType": 2,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 104,"Amount": 150},"CurrentArticleAmount": 0,"Reward": {"Items": [{"Id": 8,"Value": 30,"Amount": 7},{"Id": 8,"Value": 1,"Amount": 4225}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "rarity","Value": 3}],"ExpiresAt": "2023-02-07T00:00:00Z"},
-            {"Id": "d15e01ce-8d3d-425a-b7c2-cec4ad8e8c67","JobLocationId": 418,"JobLevel": 11,"Sequence": 0,"JobType": 8,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 124,"Amount": 80},"CurrentArticleAmount": 55,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 17},{"Id": 8,"Value": 1,"Amount": 5050},{"Id": 8,"Value": 3,"Amount": 125}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "era","Value": 1}],"UnlocksAt": "2022-11-15T12:10:15Z"},
-            {"Id": "4a173e10-541c-4e4f-9442-5c3e49b38036","JobLocationId": 419,"JobLevel": 12,"Sequence": 0,"JobType": 8,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 111,"Amount": 80},"CurrentArticleAmount": 26,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 24},{"Id": 8,"Value": 1,"Amount": 5345}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "rarity","Value": 2}],"UnlocksAt": "2022-11-15T11:09:37Z"},
-            {"Id": "e4fe741c-c484-4f52-bbf7-2449fa395b26","JobLocationId": 421,"JobLevel": 8,"Sequence": 0,"JobType": 8,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 112,"Amount": 100},"CurrentArticleAmount": 26,"Reward": {"Items": [{"Id": 8,"Value": 4,"Amount": 22},{"Id": 8,"Value": 1,"Amount": 5105},{"Id": 8,"Value": 3,"Amount": 125}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "rarity","Value": 1}],"UnlocksAt": "2022-11-15T12:10:07Z"},
-            {"Id": "121e177c-01f2-49fb-917a-e8f869599aa1","JobLocationId": 39000,"JobLevel": 1,"Sequence": 0,"JobType": 10,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 105,"Amount": 150},"CurrentArticleAmount": 0,"Reward": {"Items": [{"Id": 8,"Value": 39000,"Amount": 100}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "rarity","Value": 3}],"UnlocksAt": "2023-02-03T12:00:00Z","ExpiresAt": "2023-02-06T23:59:59Z"},
-            {"Id": "dfab2318-b542-46b8-be2e-1899bc0f3ea9","JobLocationId": 100002,"JobLevel": 7,"JobType": 45,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 100005,"Amount": 12800},"CurrentArticleAmount": 3250,"Reward": {"Items": [{"Id": 8,"Value": 100000,"Amount": 3350},{"Id": 8,"Value": 100003,"Amount": 2250}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "rarity","Value": 3},{"Type": "era","Value": 1}],"UnlocksAt": "2022-12-05T12:00:00Z","ExpiresAt": "2023-03-03T12:00:00Z"},
-            {"Id": "563b3067-a1a7-4a8b-9986-4ab8b0048e26","JobLocationId": 100005,"JobLevel": 7,"JobType": 45,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 100010,"Amount": 11500},"CurrentArticleAmount": 120,"Reward": {"Items": [{"Id": 8,"Value": 100000,"Amount": 3350},{"Id": 8,"Value": 100003,"Amount": 2500}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "content_category","Value": 3}],"UnlocksAt": "2022-12-05T12:00:00Z","ExpiresAt": "2023-03-03T12:00:00Z"},
-            {"Id": "e6d6466-732d-448a-869d-9a25e3cec41b","JobLocationId": 100007,"JobLevel": 17,"JobType": 45,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 100010,"Amount": 10300},"CurrentArticleAmount": 7187,"Reward": {"Items": [{"Id": 8,"Value": 100000,"Amount": 3350},{"Id": 8,"Value": 100003,"Amount": 2250}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 4},{"Type": "content_category","Value": 3}],"UnlocksAt": "2022-12-05T12:00:00Z","ExpiresAt": "2023-03-03T12:00:00Z"},
-            {"Id": "7a3e7c99-c24d-4192-9af3-424e921f516c","JobLocationId": 100010,"JobLevel": 18,"JobType": 45,"Duration": 3600,"ConditionMultiplier": 1,"RewardMultiplier": 1,"RequiredArticle": {"Id": 100010,"Amount": 12800},"CurrentArticleAmount": 900,"Reward": {"Items": [{"Id": 8,"Value": 100000,"Amount": 3350},{"Id": 8,"Value": 100003,"Amount": 2250}]},"Bonus": {"Reward": {"Items": []}},"Requirements": [{"Type": "region","Value": 3},{"Type": "rarity","Value": 3},{"Type": "era","Value": 2}],"UnlocksAt": "2022-12-05T12:00:00Z","ExpiresAt": "2023-03-03T12:00:00Z"}
-
-    {"Id":4,"Time":"2023-02-06T05:04:41Z","Commands":[{"Command":"Train:DispatchToJob","Time":"2023-02-06T05:04:41Z","Parameters":{"UniqueId":"5f446bee-6f0a-44db-8520-22c7c6c7e542","TrainId":134,"JobLocationId":100007,"Load":{"Id":100010,"Amount":20}}}],"Transactional":false}
-    {"Id":5,"Time":"2023-02-06T05:04:44Z","Commands":[{"Command":"Train:DispatchToJob","Time":"2023-02-06T05:04:42Z","Parameters":{"UniqueId":"5f446bee-6f0a-44db-8520-22c7c6c7e542","TrainId":135,"JobLocationId":100007,"Load":{"Id":100010,"Amount":20}}},{"Command":"Train:DispatchToJob","Time":"2023-02-06T05:04:43Z","Parameters":{"UniqueId":"5f446bee-6f0a-44db-8520-22c7c6c7e542","TrainId":137,"JobLocationId":100007,"Load":{"Id":100010,"Amount":20}}}],"Transactional":false}
-    {"Id":6,"Time":"2023-02-06T05:04:50Z","Commands":[{"Command":"Train:DispatchToJob","Time":"2023-02-06T05:04:50Z","Parameters":{"UniqueId":"7a3e7c99-c24d-4192-9af3-424e921f516c","TrainId":71,"JobLocationId":100010,"Load":{"Id":100010,"Amount":45}}}],"Transactional":false}
-
-
-    """
-
     COMMAND = "Train:DispatchToJob"
     train: PlayerTrain
     job: PlayerJob
@@ -757,32 +664,6 @@ class CollectAchievementCommand(BaseCommand):
 # Whistle
 ###################################################################
 class CollectWhistle(BaseCommand):
-    """
-    {'buffer': 'POST /api/v2/command-processing/run-collection HTTP/1.1\r\nPXFD-Request-Id: 06ec734c-466b-4c2b-a1c1-37352444b819\r\nPXFD-Retry-No: 0\r\nPXFD-Sent-At: 2023-01-12T02:14:44.124Z\r\nPXFD-Client-Information: {"Store":"google_play","Version":"2.6.3.4068","Language":"ko"}\r\nPXFD-Client-Version: 2.6.3.4068\r\nPXFD-Device-Token: 662461905988ab8a7fade82221cce64b\r\nPXFD-Game-Access-Token: 80e1e3c6-28f8-5d50-8047-a9284469d1ef\r\nPXFD-Player-Id: 61561146\r\nContent-Type: application/json\r\nContent-Length: 175\r\nHost: game.trainstation2.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n'}
-
-    {'buffer': '{"Id":10,"Time":"2023-01-12T02:14:44Z","Commands":[{"Command":"Whistle:Collect","Time":"2023-01-12T02:14:43Z","Parameters":{"Category":1,"Position":1}}],"Transactional":false}'}
-
-    {"Success":true,"RequestId":"06ec734c-466b-4c2b-a1c1-37352444b819","Time":"2023-01-12T02:14:44Z",
-    "Data":{
-        "CollectionId":10,
-        "Commands":[
-            {
-                "Command":"Whistle:Spawn",
-                "Data":{
-                    "Whistle":{
-                    "Category":1,"Position":1,"SpawnTime":"2023-01-12T02:20:43Z","CollectableFrom":"2023-01-12T02:20:43Z",
-                        "Reward":{
-                        "Items":[
-                            {"Id":8,"Value":103,"Amount":4}
-                        ]
-                    },
-                    "IsForVideoReward":false
-                }
-            }
-        },
-        {"Command":"Achievement:Change","Data":{"Achievement":{"AchievementId":"whistle_tap","Level":5,"Progress":16413}}}]}}
-    """
-
     COMMAND = "Whistle:Collect"
     whistle: PlayerWhistle
     SLEEP_RANGE = (0.5, 1)
@@ -916,9 +797,40 @@ Host: game.trainstation2.com
 Accept-Encoding: gzip, deflate
 
 
-06 13:57:34 | T: 3397 | I | SSL_AsyncWrite  | {"Command":"Guild:Job:Complete","Time":"2023-02-06T04:57:27Z","Parameters":{"GuildId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","JobId":"e6d646b6-732d-448a-869d-9a25e3cec41b"}}
+06 13:57:34 | T: 3397 | I | SSL_AsyncWrite  | {"Command":"Guild:Job:Complete","Time":"2023-02-06T04:57:27Z","Parameters":{
+"GuildId":"3a3dfa63-2e0f-4a40-b36c-08d252db9c2b","JobId":"e6d646b6-732d-448a-869d-9a25e3cec41b"}}
 06 13:57:34 | T: 3635 | I | IO.Mem.Write    | {"Success":true,"RequestId":"f3c6c29d-7c8f-40d3-9e15-19e0c627ff5c","Time":"2023-02-06T04:57:34Z","Data":{"CommandName":"Guild:Job:Complete","Commands":[]}}
 """
+
+
+class GuildJobCompleteCommand(BaseCommand):
+    """
+     {
+        "Command":"Shop:DailyOffer:PurchaseItem",
+        "Time":"2023-02-08T08:54:01Z",
+        "Parameters":{"Slot":11,"Amount":1}
+    }
+    """
+
+    COMMAND = "Guild:Job:Complete"
+    job: PlayerJob
+    SLEEP_RANGE = (0.5, 1)
+
+    def __init__(self, *, job: PlayerJob, **kwargs):
+        super(GuildJobCompleteCommand, self).__init__(**kwargs)
+        self.job = job
+
+    def get_parameters(self) -> dict:
+        """
+        :return:
+        """
+        return {
+            "GuildId": self.version.guild_id,
+            "JobId": self.job.job_id,
+        }
+
+    def post_processing(self, server_data: Dict):
+        pass
 
 
 ###################################################################
