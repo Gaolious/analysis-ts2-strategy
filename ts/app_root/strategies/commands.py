@@ -822,7 +822,7 @@ class GuildJobCompleteCommand(BaseCommand):
         }
 
     def post_processing(self, server_data: Dict):
-        pass
+        self.job.delete()
 
 
 ###################################################################
