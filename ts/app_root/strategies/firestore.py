@@ -85,7 +85,7 @@ def read_fireston_json(version: RunVersion):
 
         for instance in bulk_list:
             exists = PlayerJob.objects.filter(
-                version_id=version.id, job_id=instance.job_id
+                version_id=version.id, job_location_id=instance.job_location_id
             ).first()
             if exists:
                 continue

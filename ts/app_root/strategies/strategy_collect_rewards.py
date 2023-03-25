@@ -51,6 +51,7 @@ from app_root.strategies.commands import (
     CityLoopBuildingReplaceCommand,
     CityLoopBuildingReplaceInstantlyCommand,
     CollectWhistle,
+    GuildJobCompleteCommand,
 )
 from app_root.strategies.data_types import Material, MaterialStrategy
 from app_root.strategies.managers import (
@@ -363,6 +364,31 @@ def collect_job_complete(version: RunVersion):
             ):
                 cmd = RegionQuestCommand(version=version, job=job)
                 send_commands(cmd)
+
+
+def check_union_job_complete(version: RunVersion):
+    print(f"# [Strategy Process] - Collect Union Job Complete")
+    job_collections = [
+        jobs_find(version=version, union_jobs=True, completed_jobs=True),
+    ]
+    for job_list in job_collections:
+        for job in job_list:
+            job: PlayerJob
+
+            print(f"""    - {job} | is not completed: Now[{version.now}]""")
+
+            # if not job.is_completed(version.now):
+            #     print(f"""    - {job} | is not completed: Now[{version.now}]""")
+            #     continue
+            # if not job.is_collectable(version.now):
+            #     print(f"""    - {job} | is not collectable: Now[{version.now}]""")
+            #     continue
+
+            # try:
+            #     cmd = GuildJobCompleteCommand(version=version, job=job)
+            #     send_commands(cmd)
+            # except Exception as e:
+            #     print(str(e))
 
 
 def check_levelup(version: RunVersion):

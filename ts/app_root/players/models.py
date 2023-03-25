@@ -96,7 +96,7 @@ class PlayerJob(PlayerJobMixin, BaseModelMixin, TimeStampedMixin):
 
     def __str__(self):
         ret = []
-        ret.append(f"#{self.job_location_id}")
+        ret.append(f"#({self.id}/{self.job_location_id})")
         if self.is_story_job:
             ret.append("StoryJob")
         if self.is_side_job:
