@@ -616,6 +616,9 @@ class PlayerJobMixin(BaseVersionMixin):
                 expires_at = job.pop("ExpiresAt", None)
                 collectable_from = job.pop("CollectableFrom", None)
                 completed_at = job.pop("CompletedAt", None)
+                closed_at = job.pop("ClosedAt", None)
+                if closed_at:
+                    continue
 
                 ret.append(
                     cls(
