@@ -155,7 +155,7 @@ class RunVersion(BaseModelMixin, TimeStampedMixin, TaskModelMixin):
 
     @property
     def do_story_quest(self):
-        if self.level_id < 9:
+        if self.level_id <= 9:
             return True
         return False
 

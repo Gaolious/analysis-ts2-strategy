@@ -1482,6 +1482,19 @@ def jobs_find_priority(
         dispatcher_class = JobDisptchingMaxProfit
     ret = []
 
+    job_location_region1 = {
+        150,
+        159,
+        160,
+        161,
+        162,
+        152,
+        163,
+        158,
+        164,
+        165,
+        153,
+    }
     if not version.has_union and version.level_id < 26:
         all_jobs = {}
         all_jobs.update(
@@ -1501,8 +1514,18 @@ def jobs_find_priority(
             for _ in range(2):
                 for job_id, job in all_jobs.items():
                     job: PlayerJob
-                    if job.job_location_id in locked_job_location_id:
-                        continue
+                    if version.level_id <= 9:
+                        """
+                        0       1       2       3       4      5     6     7
+                                                161 ---------- 164 --------153
+                        150 --- 159 --- 160 --- 162 --- 163 ---      165
+                                                152     158
+                        """
+                        if job.job_location_id not in job_location_region1:
+                            continue
+                    else:
+                        if job.job_location_id in locked_job_location_id:
+                            continue
 
                     param = {
                         "version": version,
