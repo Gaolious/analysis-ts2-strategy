@@ -1,5 +1,6 @@
 import json
 import shutil
+from datetime import timedelta
 from pathlib import Path
 from typing import Union, List
 from unittest import mock
@@ -12,6 +13,7 @@ from app_root.players.models import (
     PlayerShipOffer,
     PlayerFactory,
     PlayerFactoryProductOrder,
+    PlayerJob,
 )
 from app_root.players.utils_import import InitdataHelper
 from app_root.servers.models import RunVersion, SQLDefinition, EndPoint, TSProduct
@@ -32,6 +34,8 @@ from app_root.users.models import User
 from app_root.utils import get_curr_server_str_datetime_s
 from core.tests.factory import AbstractFakeResp
 from core.utils import convert_datetime, hash10
+
+from core.utils import create_datetime as dt
 
 
 def prepare(initdata_filepath: Union[List[Path], Path]):
@@ -625,3 +629,54 @@ def test_factory_order_product(
             )
             print("[After add]")
             print("\n".join(after2))
+
+
+@pytest.mark.django_db
+def test_create_player_job():
+    json_data = [
+        {
+            "JobLocationId": 200013,
+            "CurrentArticleAmount": 2300,
+            "Sequence": 0,
+            "JobLevel": 1,
+            "RequiredArticle": {"Amount": 2300, "Id": 200006},
+            "ExpiresAt": "2023-06-02T12:00:00Z",
+            "Duration": 3600,
+            "CompletableFrom": "2023-03-25T15:48:48Z",
+            "JobType": 49,
+            "Reward": {
+                "Items": [
+                    {"Amount": 850, "Id": 8, "Value": 100000},
+                    {"Id": 8, "Value": 100003, "Amount": 500},
+                ]
+            },
+            "FinishedAt": "2023-03-25T14:48:48Z",
+            "Id": "e75bbb80-5934-4c84-9d21-beb0bcc35171",
+            "Requirements": [
+                {"Value": 0, "Type": "relative_region"},
+                {"Type": "content_category", "Value": 3},
+                {"Value": 1, "Type": "era"},
+            ],
+        }
+    ]
+
+    a, b = PlayerJob.create_instance(data=json_data, version_id=1)
+
+    CompletableFrom = dt(2023, 3, 26, 0, 48, 48)
+    FinishedAt = dt(2023, 3, 25, 23, 48, 48)
+
+    assert a
+    assert a[0]
+    job: PlayerJob = a[0]
+
+    now = FinishedAt - timedelta(minutes=1)
+    assert not job.is_completed(now)
+    assert not job.is_collectable(now)
+
+    now = CompletableFrom - timedelta(minutes=1)
+    assert job.is_completed(now)
+    assert not job.is_collectable(now)
+
+    now = CompletableFrom + timedelta(minutes=1)
+    assert job.is_completed(now)
+    assert job.is_collectable(now)
