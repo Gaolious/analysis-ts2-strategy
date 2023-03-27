@@ -27,7 +27,6 @@ const args = getArgs();
 
     console.log(`# 3. await getJobs(token, guildId, firebaseConfig)`)
     let output = await getJobs(token, guildId, firebaseConfig);
-    console.log(output);
 
     console.log(`# 4. write file.`)
     fs.writeFileSync(outFilename, output, {encoding: 'utf8', flag:'w'});

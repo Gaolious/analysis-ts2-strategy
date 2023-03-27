@@ -23,10 +23,7 @@ export async function getJobs(token: string, guildId: string, firebaseConfig: { 
     console.log(`# 6. data = await getDocs(q);`)
     const querySnapshot = await getDocsFromServer(q)
     const newData = querySnapshot.docs.map(doc => ({...doc.data()}))
-    const ret = JSON.stringify(newData);
-    console.log(ret)
-
-    return ret
+    return JSON.stringify(newData);
 }
 
 
