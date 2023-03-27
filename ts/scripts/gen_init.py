@@ -7,6 +7,7 @@ def run():
         {"username": "gaolious1", "android_id": "fdc47e06bac1ab54"},
         {"username": "gaolious2", "android_id": "c01764740b8f2f49"},
         {"username": "gaolious", "android_id": "346c03d6d4042d74"},
+        {"username": "gaolious3", "android_id": "6928883ca631d20b"},
     ]
 
     for row in init_data:
