@@ -1027,10 +1027,15 @@ class LeaderboardHelper(ImportHelperMixin):
         assert job
 
         param = {
-            "LeaderBoardId": job.job_id,
-            "Type": "guild-job-contribution",
-            "Bracket": "1",
+            # "LeaderBoardId": job.job_id,
+            # "Type": "guild-job-contribution",
+            # "Bracket": "1",
         }
+        url = url.replace(":id:", job.job_id)
+        url = url.replace(":category:", "guild-job-contribution")
+        url = url.replace(":bracket:", "1")
+        # :id:&Type=:category:&Bracket=:bracket:
+
         return self.get(url=url, headers=headers, params=param)
 
     def parse_data(self, data, **kwargs) -> str:
