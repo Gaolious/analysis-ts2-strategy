@@ -228,8 +228,14 @@ WSGI_APPLICATION = "ts.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": DJANGO_PATH / "db.sqlite3",
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "myfranchise",
+        "OPTIONS": {
+            "read_default_file": "/etc/mysql/conf.d/ts/default.cnf",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+        "CHARSET": "utf8mb4",
+        "COLLATION": "utf8mb4_unicode_ci",
     },
 }
 
