@@ -1997,8 +1997,8 @@ class PlayerCompetitionMixin(BaseVersionMixin, ContentCategoryMixin):
     finishes_at = models.DateTimeField(_("FinishesAt"), null=True, blank=False)
     expires_at = models.DateTimeField(_("ExpiresAt"), null=True, blank=False)
     activated_at = models.DateTimeField(_("ActivatedAt"), null=True, blank=False)
-    progress = models.CharField(
-        _("Progress"), max_length=255, null=False, blank=False, default=""
+    progress = models.TextField(
+        _("Progress"), max_length=1000, null=False, blank=False, default=""
     )
     presentation_data_id = models.IntegerField(
         _("PresentationDataId"), null=True, blank=False
