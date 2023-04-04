@@ -368,7 +368,7 @@ class SQLDefinition(TaskModelMixin, BaseModelMixin, TimeStampedMixin):
 class TSUserLevel(BaseModelMixin, TimeStampedMixin):
     xp = models.IntegerField(_("XP"), null=False, blank=False, default=0)
     rewards = models.CharField(
-        _("rewards"), max_length=255, null=False, blank=False, default=""
+        _("rewards"), max_length=500, null=False, blank=False, default=""
     )
 
     class Meta:
@@ -1039,7 +1039,7 @@ class TSMilestone(BaseModelMixin, TimeStampedMixin):
         _("force_region_collect"), null=False, blank=False, default=False
     )
     rewards = models.CharField(
-        _("rewards"), max_length=255, null=False, blank=False, default=""
+        _("rewards"), max_length=500, null=False, blank=False, default=""
     )
 
     class Meta:

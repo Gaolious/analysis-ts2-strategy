@@ -508,7 +508,7 @@ class PlayerJobMixin(BaseVersionMixin):
     )
 
     reward = models.CharField(
-        _("reward"), max_length=255, null=False, blank=False, default=""
+        _("reward"), max_length=500, null=False, blank=False, default=""
     )
     bonus = models.CharField(
         _("bonus"), max_length=255, null=False, blank=False, default=""
@@ -876,7 +876,7 @@ class PlayerContractMixin(BaseVersionMixin):
         _("conditions"), max_length=255, null=False, blank=False, default=""
     )
     reward = models.CharField(
-        _("reward"), max_length=255, null=False, blank=False, default=""
+        _("reward"), max_length=500, null=False, blank=False, default=""
     )
 
     usable_from = models.DateTimeField(
@@ -987,7 +987,7 @@ class PlayerContractMixin(BaseVersionMixin):
 class PlayerGiftMixin(BaseVersionMixin):
     job_id = models.CharField(_("job id"), max_length=100, null=False, blank=False)
     reward = models.CharField(
-        _("reward"), max_length=255, null=False, blank=False, default=""
+        _("reward"), max_length=500, null=False, blank=False, default=""
     )
     gift_type = models.IntegerField(_("gift_type"), null=False, blank=False, default=0)
 
@@ -1138,7 +1138,7 @@ class PlayerLeaderBoardProgressMixin(BaseVersionMixin):
     )
 
     rewards = models.CharField(
-        _("rewards"), max_length=255, null=False, blank=False, default=""
+        _("rewards"), max_length=500, null=False, blank=False, default=""
     )
 
     """
@@ -1604,7 +1604,7 @@ class PlayerDailyRewardMixin(BaseVersionMixin):
     )
     expire_at = models.DateTimeField(_("ExpireAt"), null=True, blank=True, default=None)
     rewards = models.CharField(
-        _("Rewards"), max_length=255, null=False, blank=False, default=""
+        _("Rewards"), max_length=500, null=False, blank=False, default=""
     )
     pool_id = models.IntegerField(_("PoolId"), null=False, blank=False, default=0)
     day = models.IntegerField(_("Day"), null=False, blank=False, default=0)
@@ -1902,7 +1902,7 @@ class PlayerShipOfferMixin(BaseVersionMixin):
         _("Conditions"), max_length=255, null=False, blank=False, default=""
     )
     reward = models.CharField(
-        _("reward"), max_length=255, null=False, blank=False, default=""
+        _("reward"), max_length=500, null=False, blank=False, default=""
     )
     arrival_at = models.DateTimeField(_("ArrivalAt"), null=True, blank=False)
     expire_at = models.DateTimeField(_("ExpireAt"), null=True, blank=False)
@@ -1987,8 +1987,8 @@ class PlayerCompetitionMixin(BaseVersionMixin, ContentCategoryMixin):
     competition_id = models.CharField(
         _("CompetitionId"), max_length=50, null=False, blank=False, default=""
     )
-    rewards = models.CharField(
-        _("Rewards"), max_length=255, null=False, blank=False, default=""
+    rewards = models.TextField(
+        _("Rewards"), max_length=1000, null=False, blank=False, default=""
     )
     starts_at = models.DateTimeField(_("StartsAt"), null=True, blank=False)
     enrolment_available_to = models.DateTimeField(
@@ -2274,7 +2274,7 @@ class PlayerDailyOfferItemMixin(BaseVersionMixin):
         _("Price Amount"), null=False, blank=False, default=0
     )
     reward = models.CharField(
-        _("reward"), max_length=255, null=False, blank=False, default=""
+        _("reward"), max_length=500, null=False, blank=False, default=""
     )
     purchased = models.BooleanField(
         _("Purchased"), null=False, blank=False, default=False

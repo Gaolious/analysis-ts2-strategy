@@ -378,8 +378,8 @@ class TrainDispatchToJobCommand(BaseCommand):
         :return:
         """
         unique_id = self.job.job_id
-        if self.leaderboard:
-            unique_id = self.leaderboard.leader_board_group_id
+        # if self.leaderboard:
+        #     unique_id = self.leaderboard.leader_board_group_id
         return {
             "UniqueId": unique_id,
             "TrainId": self.train.instance_id,
