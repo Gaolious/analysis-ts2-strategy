@@ -229,7 +229,7 @@ WSGI_APPLICATION = "ts.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "myfranchise",
+        "NAME": "ts",
         "OPTIONS": {
             "read_default_file": "/etc/mysql/conf.d/ts/default.cnf",
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
