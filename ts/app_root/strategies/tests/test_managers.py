@@ -1,5 +1,6 @@
 import json
 import shutil
+from datetime import timedelta
 from pathlib import Path
 from typing import Union, List
 from unittest import mock
@@ -8,35 +9,49 @@ import pytest
 from django.conf import settings
 from django.utils import timezone
 
-from app_root.players.models import PlayerShipOffer, PlayerFactory, PlayerFactoryProductOrder
+from app_root.players.models import (
+    PlayerShipOffer,
+    PlayerFactory,
+    PlayerFactoryProductOrder,
+    PlayerJob,
+)
 from app_root.players.utils_import import InitdataHelper
 from app_root.servers.models import RunVersion, SQLDefinition, EndPoint, TSProduct
 from app_root.servers.utils_import import SQLDefinitionHelper
 from app_root.strategies.commands import ShopPurchaseItem
 from app_root.strategies.dumps import ts_dump, ts_dump_factory
-from app_root.strategies.managers import jobs_find, trains_find_match_with_job, trains_max_capacity, \
-    jobs_find_priority, daily_offer_get_slots, factory_order_product, factory_collect_product
+from app_root.strategies.managers import (
+    jobs_find,
+    trains_find_match_with_job,
+    trains_max_capacity,
+    jobs_find_union_priority,
+    daily_offer_get_slots,
+    factory_order_product,
+    factory_collect_product,
+)
 from app_root.strategies.utils import Strategy
 from app_root.users.models import User
 from app_root.utils import get_curr_server_str_datetime_s
 from core.tests.factory import AbstractFakeResp
 from core.utils import convert_datetime, hash10
 
+from core.utils import create_datetime as dt
+
 
 def prepare(initdata_filepath: Union[List[Path], Path]):
     user = User.objects.create_user(
-        username='test', android_id='test', game_access_token='1', player_id='1'
+        username="test", android_id="test", game_access_token="1", player_id="1"
     )
     version = RunVersion.objects.create(user_id=user.id, level_id=1)
 
     db_helper = SQLDefinitionHelper(version=version)
     instance = SQLDefinition.objects.create(
-        version='206.013',
-        checksum='077e2eff27bdd5cb079319c6d40f0916d9671b20',
+        version="206.013",
+        checksum="077e2eff27bdd5cb079319c6d40f0916d9671b20",
         # url='https://cdn.trainstation2.com/client-resources/client-data-206.013.sqlite',
         # download_path=settings.DJANGO_PATH / 'fixtures' / '206.013.sqlite'
-        url='https://cdn.trainstation2.com/client-resources/client-data-207.003.sqlite',
-        download_path=settings.DJANGO_PATH / 'fixtures' / '207.003.sqlite'
+        url="https://cdn.trainstation2.com/client-resources/client-data-207.003.sqlite",
+        download_path=settings.DJANGO_PATH / "fixtures" / "207.003.sqlite",
     )
     db_helper.read_sqlite(instance=instance)
 
@@ -45,28 +60,31 @@ def prepare(initdata_filepath: Union[List[Path], Path]):
         initdata_filepath = [initdata_filepath]
 
     for filepath in initdata_filepath:
-        init_helper.parse_data(
-            data=filepath.read_text(encoding='UTF-8')
-        )
+        init_helper.parse_data(data=filepath.read_text(encoding="UTF-8"))
 
-    EndPoint.objects.create(name=EndPoint.ENDPOINT_COMMAND_PROCESSING, name_hash=hash10(EndPoint.ENDPOINT_COMMAND_PROCESSING), url='a')
+    EndPoint.objects.create(
+        name=EndPoint.ENDPOINT_COMMAND_PROCESSING,
+        name_hash=hash10(EndPoint.ENDPOINT_COMMAND_PROCESSING),
+        url="a",
+    )
 
     return version
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filenames', [
+@pytest.mark.parametrize(
+    "init_filenames",
     [
-        'init_data/gaolious_2022.12.30-1.json',
-        'init_data/gaolious_2022.12.30-2.json',
-    ]
-])
+        [
+            "init_data/gaolious_2022.12.30-1.json",
+            "init_data/gaolious_2022.12.30-2.json",
+        ]
+    ],
+)
 def test_ship_offer(multidb, init_filenames):
     ###########################################################################
     # prepare
-    paths = [
-        settings.DJANGO_PATH / 'fixtures' / path for path in init_filenames
-    ]
+    paths = [settings.DJANGO_PATH / "fixtures" / path for path in init_filenames]
     version = prepare(initdata_filepath=paths)
 
     assert version
@@ -74,56 +92,61 @@ def test_ship_offer(multidb, init_filenames):
     assert PlayerShipOffer.objects.count() == 1
 
 
-
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filenames', [
+@pytest.mark.parametrize(
+    "init_filenames",
     [
-        'strategies/contract_check/2_2.json',
-        'strategies/contract_check/2_3.json',
-    ]
-])
+        [
+            "strategies/contract_check/2_2.json",
+            "strategies/contract_check/2_3.json",
+        ]
+    ],
+)
 def test_strategy(multidb, init_filenames):
     ###########################################################################
     # prepare
     class FakeResp(AbstractFakeResp):
         text = """{"Success":true,"RequestId":"0a645537-2b6d-4c99-81ef-d968877ca303","Time":"2023-01-23T12:43:06Z","Data":{"CollectionId":1,"Commands":[]}}"""
 
-    paths = [
-        settings.DJANGO_PATH / 'fixtures' / path for path in init_filenames
-    ]
+    paths = [settings.DJANGO_PATH / "fixtures" / path for path in init_filenames]
     version = prepare(initdata_filepath=paths)
 
-    txt = paths[-1].read_text(encoding='utf-8')
+    txt = paths[-1].read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
         ts_dump(version=version)
 
-        with mock.patch('app_root.mixins.CrawlingHelper.post') as post:
+        with mock.patch("app_root.mixins.CrawlingHelper.post") as post:
             post.side_effect = FakeResp
             strategy = Strategy(user_id=version.user_id)
             strategy.run()
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filename, event_count, union_count, story_count, side_count', [
-    ('strategies/6/6_0.json', 0,  0, 3, 0),
-    ('init_data/gaolious1_2022.12.29.json', 0,  0, 4, 0),
-    ('init_data/gaolious_2022.12.30-1.json', 3, 4, 6, 5),
-    ('init_data/gaolious_2023.01.09_contract.json', 0, 4, 4, 5),
-    ('init_data/gaolious_2023.01.09_gifts.json', 0, 3, 4, 5),
-    ('init_data/gaolious_2023.01.11_jobs.json', 3, 3, 4, 5),
-    ('init_data/gaolious_2023.01.14_fulltest.json', 3, 4, 4, 5),
-    ('init_data/gaolious_2023.01.14_idle_destinations.json', 3, 4, 4, 5),
-    ('init_data/gaolious_2023.01.14_results.json', 3, 4, 4, 5),
-    ('init_data/gaolious_2023.01.11_jobs.json', 3, 3, 4, 5),
-])
-def test_prepare_material(multidb, init_filename, event_count, union_count, story_count, side_count):
+@pytest.mark.parametrize(
+    "init_filename, event_count, union_count, story_count, side_count",
+    [
+        ("strategies/6/6_0.json", 0, 0, 3, 0),
+        ("init_data/gaolious1_2022.12.29.json", 0, 0, 4, 0),
+        ("init_data/gaolious_2022.12.30-1.json", 3, 4, 6, 5),
+        ("init_data/gaolious_2023.01.09_contract.json", 0, 4, 4, 5),
+        ("init_data/gaolious_2023.01.09_gifts.json", 0, 3, 4, 5),
+        ("init_data/gaolious_2023.01.11_jobs.json", 3, 3, 4, 5),
+        ("init_data/gaolious_2023.01.14_fulltest.json", 3, 4, 4, 5),
+        ("init_data/gaolious_2023.01.14_idle_destinations.json", 3, 4, 4, 5),
+        ("init_data/gaolious_2023.01.14_results.json", 3, 4, 4, 5),
+        ("init_data/gaolious_2023.01.11_jobs.json", 3, 3, 4, 5),
+    ],
+)
+def test_prepare_material(
+    multidb, init_filename, event_count, union_count, story_count, side_count
+):
     ###########################################################################
     # prepare
-    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
+    initdata_filepath = settings.DJANGO_PATH / "fixtures" / init_filename
 
     version = prepare(initdata_filepath=initdata_filepath)
 
@@ -153,30 +176,35 @@ def test_prepare_material(multidb, init_filename, event_count, union_count, stor
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filename, event_count, union_count, story_count, side_count', [
-    ('strategies/6/6_0.json', 0,  0, 3, 0),
-    ('init_data/gaolious1_2022.12.29.json', 0,  0, 4, 0),
-    ('init_data/gaolious_2022.12.30-1.json', 3, 4, 6, 5),
-    ('init_data/gaolious_2023.01.09_contract.json', 0, 4, 4, 5),
-    ('init_data/gaolious_2023.01.09_gifts.json', 0, 3, 4, 5),
-    ('init_data/gaolious_2023.01.11_jobs.json', 3, 3, 4, 5),
-    ('init_data/gaolious_2023.01.14_fulltest.json', 3, 4, 4, 5),
-    ('init_data/gaolious_2023.01.14_idle_destinations.json', 3, 4, 4, 5),
-    ('init_data/gaolious_2023.01.14_results.json', 3, 4, 4, 5),
-])
-def test_find_job_materials(multidb, init_filename, event_count, union_count, story_count, side_count):
+@pytest.mark.parametrize(
+    "init_filename, event_count, union_count, story_count, side_count",
+    [
+        ("strategies/6/6_0.json", 0, 0, 3, 0),
+        ("init_data/gaolious1_2022.12.29.json", 0, 0, 4, 0),
+        ("init_data/gaolious_2022.12.30-1.json", 3, 4, 6, 5),
+        ("init_data/gaolious_2023.01.09_contract.json", 0, 4, 4, 5),
+        ("init_data/gaolious_2023.01.09_gifts.json", 0, 3, 4, 5),
+        ("init_data/gaolious_2023.01.11_jobs.json", 3, 3, 4, 5),
+        ("init_data/gaolious_2023.01.14_fulltest.json", 3, 4, 4, 5),
+        ("init_data/gaolious_2023.01.14_idle_destinations.json", 3, 4, 4, 5),
+        ("init_data/gaolious_2023.01.14_results.json", 3, 4, 4, 5),
+    ],
+)
+def test_find_job_materials(
+    multidb, init_filename, event_count, union_count, story_count, side_count
+):
     ###########################################################################
     # prepare
 
-    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
+    initdata_filepath = settings.DJANGO_PATH / "fixtures" / init_filename
 
     version = prepare(initdata_filepath=initdata_filepath)
 
-    txt = initdata_filepath.read_text(encoding='utf-8')
+    txt = initdata_filepath.read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
 
         # for job in jobs_find(version=version):
@@ -186,58 +214,66 @@ def test_find_job_materials(multidb, init_filename, event_count, union_count, st
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filename, event_count, union_count, story_count, side_count', [
-    ('strategies/6/6_0.json', 0,  0, 3, 0),
-    ('init_data/gaolious1_2022.12.29.json', 0,  0, 4, 0),
-    ('init_data/gaolious_2022.12.30-1.json', 3, 4, 6, 5),
-    ('init_data/gaolious_2023.01.09_contract.json', 0, 4, 4, 5),
-    ('init_data/gaolious_2023.01.09_gifts.json', 0, 3, 4, 5),
-    ('init_data/gaolious_2023.01.11_jobs.json', 3, 3, 4, 5),
-    ('init_data/gaolious_2023.01.14_fulltest.json', 3, 4, 4, 5),
-    ('init_data/gaolious_2023.01.14_idle_destinations.json', 3, 4, 4, 5),
-    ('init_data/gaolious_2023.01.14_results.json', 3, 4, 4, 5),
-])
-def test_dump(multidb, init_filename, event_count, union_count, story_count, side_count):
+@pytest.mark.parametrize(
+    "init_filename, event_count, union_count, story_count, side_count",
+    [
+        ("strategies/6/6_0.json", 0, 0, 3, 0),
+        ("init_data/gaolious1_2022.12.29.json", 0, 0, 4, 0),
+        ("init_data/gaolious_2022.12.30-1.json", 3, 4, 6, 5),
+        ("init_data/gaolious_2023.01.09_contract.json", 0, 4, 4, 5),
+        ("init_data/gaolious_2023.01.09_gifts.json", 0, 3, 4, 5),
+        ("init_data/gaolious_2023.01.11_jobs.json", 3, 3, 4, 5),
+        ("init_data/gaolious_2023.01.14_fulltest.json", 3, 4, 4, 5),
+        ("init_data/gaolious_2023.01.14_idle_destinations.json", 3, 4, 4, 5),
+        ("init_data/gaolious_2023.01.14_results.json", 3, 4, 4, 5),
+    ],
+)
+def test_dump(
+    multidb, init_filename, event_count, union_count, story_count, side_count
+):
     ###########################################################################
     # prepare
-    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
+    initdata_filepath = settings.DJANGO_PATH / "fixtures" / init_filename
 
     version = prepare(initdata_filepath=initdata_filepath)
 
-    txt = initdata_filepath.read_text(encoding='utf-8')
+    txt = initdata_filepath.read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
 
         ts_dump(version=version)
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filename', [
-    'strategies/6/6_0.json',
-    'init_data/gaolious1_2022.12.29.json',
-    'init_data/gaolious_2022.12.30-1.json',
-    'init_data/gaolious_2023.01.09_contract.json',
-    'init_data/gaolious_2023.01.09_gifts.json',
-    'init_data/gaolious_2023.01.11_jobs.json',
-    'init_data/gaolious_2023.01.14_fulltest.json',
-    'init_data/gaolious_2023.01.14_idle_destinations.json',
-    'init_data/gaolious_2023.01.14_results.json',
-])
+@pytest.mark.parametrize(
+    "init_filename",
+    [
+        "strategies/6/6_0.json",
+        "init_data/gaolious1_2022.12.29.json",
+        "init_data/gaolious_2022.12.30-1.json",
+        "init_data/gaolious_2023.01.09_contract.json",
+        "init_data/gaolious_2023.01.09_gifts.json",
+        "init_data/gaolious_2023.01.11_jobs.json",
+        "init_data/gaolious_2023.01.14_fulltest.json",
+        "init_data/gaolious_2023.01.14_idle_destinations.json",
+        "init_data/gaolious_2023.01.14_results.json",
+    ],
+)
 def test_available_max_capacity(multidb, init_filename):
     ###########################################################################
     # prepare
-    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
+    initdata_filepath = settings.DJANGO_PATH / "fixtures" / init_filename
 
     version = prepare(initdata_filepath=initdata_filepath)
 
-    txt = initdata_filepath.read_text(encoding='utf-8')
+    txt = initdata_filepath.read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
 
         ret = trains_max_capacity(version=version, region=1)
@@ -245,31 +281,34 @@ def test_available_max_capacity(multidb, init_filename):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filename', [
-    # 'strategies/6/6_0.json',
-    'init_data/gaolious1_2022.12.29.json',
-    # 'init_data/gaolious_2022.12.30-1.json',
-    # 'init_data/gaolious_2023.01.09_contract.json',
-    # 'init_data/gaolious_2023.01.09_gifts.json',
-    # 'init_data/gaolious_2023.01.11_jobs.json',
-    # 'init_data/gaolious_2023.01.14_fulltest.json',
-    # 'init_data/gaolious_2023.01.14_idle_destinations.json',
-    # 'init_data/gaolious_2023.01.14_results.json',
-    # 'init_data/gaolious_2023.02.05.json',
-    # 'init_data/gaolious_2023.02.07.json',
-])
+@pytest.mark.parametrize(
+    "init_filename",
+    [
+        # 'strategies/6/6_0.json',
+        "init_data/gaolious1_2022.12.29.json",
+        # 'init_data/gaolious_2022.12.30-1.json',
+        # 'init_data/gaolious_2023.01.09_contract.json',
+        # 'init_data/gaolious_2023.01.09_gifts.json',
+        # 'init_data/gaolious_2023.01.11_jobs.json',
+        # 'init_data/gaolious_2023.01.14_fulltest.json',
+        # 'init_data/gaolious_2023.01.14_idle_destinations.json',
+        # 'init_data/gaolious_2023.01.14_results.json',
+        # 'init_data/gaolious_2023.02.05.json',
+        # 'init_data/gaolious_2023.02.07.json',
+    ],
+)
 def test_shop_purchase_item(multidb, init_filename, fixture_send_commands):
     ###########################################################################
     # prepare
-    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
+    initdata_filepath = settings.DJANGO_PATH / "fixtures" / init_filename
 
     version = prepare(initdata_filepath=initdata_filepath)
 
-    txt = initdata_filepath.read_text(encoding='utf-8')
+    txt = initdata_filepath.read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
         cnt1, cnt2 = 0, 0
         daily_offer_items = daily_offer_get_slots(
@@ -299,118 +338,146 @@ def test_shop_purchase_item(multidb, init_filename, fixture_send_commands):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('init_filename', [
-    # 'strategies/6/6_0.json',
-    # 'init_data/gaolious1_2022.12.29.json',
-    # 'init_data/gaolious_2022.12.30-1.json',
-    # 'init_data/gaolious_2023.01.09_contract.json',
-    # 'init_data/gaolious_2023.01.09_gifts.json',
-    # 'init_data/gaolious_2023.01.11_jobs.json',
-    # 'init_data/gaolious_2023.01.14_fulltest.json',
-    # 'init_data/gaolious_2023.01.14_idle_destinations.json',
-    # 'init_data/gaolious_2023.01.14_results.json',
-    # 'init_data/gaolious_2023.02.05.json',
-    'init_data/gaolious_2023.02.07.json',
-])
+@pytest.mark.parametrize(
+    "init_filename",
+    [
+        # 'strategies/6/6_0.json',
+        # 'init_data/gaolious1_2022.12.29.json',
+        # 'init_data/gaolious_2022.12.30-1.json',
+        # 'init_data/gaolious_2023.01.09_contract.json',
+        # 'init_data/gaolious_2023.01.09_gifts.json',
+        # 'init_data/gaolious_2023.01.11_jobs.json',
+        # 'init_data/gaolious_2023.01.14_fulltest.json',
+        # 'init_data/gaolious_2023.01.14_idle_destinations.json',
+        # 'init_data/gaolious_2023.01.14_results.json',
+        # 'init_data/gaolious_2023.02.05.json',
+        "init_data/gaolious_2023.02.07.json",
+    ],
+)
 def test_job_prioirty(multidb, init_filename):
     ###########################################################################
     # prepare
-    initdata_filepath = settings.DJANGO_PATH / 'fixtures' / init_filename
+    initdata_filepath = settings.DJANGO_PATH / "fixtures" / init_filename
 
     version = prepare(initdata_filepath=initdata_filepath)
 
-    txt = initdata_filepath.read_text(encoding='utf-8')
+    txt = initdata_filepath.read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
-        jobs_find_priority(version=version)
+        jobs_find_union_priority(version=version)
 
 
 def convert_text(txt: str):
     data = json.loads(txt, strict=False)
-    t = timezone.now().isoformat(sep='T', timespec='seconds').replace('+00:00', 'Z')
-    data.update({
-        'Time': t
-    })
+    t = timezone.now().isoformat(sep="T", timespec="seconds").replace("+00:00", "Z")
+    data.update({"Time": t})
 
-    return json.dumps(data, separators=(',', ':'))
+    return json.dumps(data, separators=(",", ":"))
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def fixture_endpoint():
-    with mock.patch('app_root.strategies.utils.EndpointHelper.get') as patch:
+    with mock.patch("app_root.strategies.utils.EndpointHelper.get") as patch:
         patch.return_value = convert_text(
-            (settings.DJANGO_PATH / 'fixtures' / 'endpoints' / 'gaolious1_2022.12.29.json').read_text('utf-8')
+            (
+                settings.DJANGO_PATH
+                / "fixtures"
+                / "endpoints"
+                / "gaolious1_2022.12.29.json"
+            ).read_text("utf-8")
         )
         yield patch
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def fixture_login():
-    with mock.patch('app_root.strategies.utils.LoginHelper.post') as patch:
+    with mock.patch("app_root.strategies.utils.LoginHelper.post") as patch:
         patch.return_value = convert_text(
-            (settings.DJANGO_PATH / 'fixtures' / 'login' / 'gaolious1_2022.12.29_with_device_id.json').read_text('utf-8')
+            (
+                settings.DJANGO_PATH
+                / "fixtures"
+                / "login"
+                / "gaolious1_2022.12.29_with_device_id.json"
+            ).read_text("utf-8")
         )
         yield patch
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def fixture_definition():
-
-    sqllite_filepath = settings.DJANGO_PATH / 'fixtures' / '207.004.sqlite'
+    sqllite_filepath = settings.DJANGO_PATH / "fixtures" / "207.004.sqlite"
 
     def FakeDownload(instance, *args, **kwargs):
         download_filename = Path(instance.download_path)
         shutil.copy(sqllite_filepath, download_filename)
         return 1_000_000
 
-    with mock.patch('app_root.strategies.utils.SQLDefinitionHelper.get') as patch:
+    with mock.patch("app_root.strategies.utils.SQLDefinitionHelper.get") as patch:
         patch.return_value = convert_text(
-            (settings.DJANGO_PATH / 'fixtures' / 'definition' / 'gaolious1_2022.12.29.json').read_text('utf-8')
+            (
+                settings.DJANGO_PATH
+                / "fixtures"
+                / "definition"
+                / "gaolious1_2022.12.29.json"
+            ).read_text("utf-8")
         )
 
-        with mock.patch('app_root.strategies.utils.SQLDefinitionHelper.download_data') as dn:
+        with mock.patch(
+            "app_root.strategies.utils.SQLDefinitionHelper.download_data"
+        ) as dn:
             dn.side_effect = FakeDownload
             yield dn
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def fixture_init_20230207():
-    filename = 'gaolious_2023.02.07.json'
-    with mock.patch('app_root.strategies.utils.InitdataHelper.get') as patch:
+    filename = "gaolious_2023.02.07.json"
+    with mock.patch("app_root.strategies.utils.InitdataHelper.get") as patch:
         patch.side_effect = [
-            convert_text((settings.DJANGO_PATH / 'fixtures' / 'init_data' / filename).read_text('utf-8')),
-            '{}',
+            convert_text(
+                (settings.DJANGO_PATH / "fixtures" / "init_data" / filename).read_text(
+                    "utf-8"
+                )
+            ),
+            "{}",
         ]
         yield patch
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def fixture_init_20230210():
-    filename = 'gaolious_2023.02.10.json'
-    with mock.patch('app_root.strategies.utils.InitdataHelper.get') as patch:
+    filename = "gaolious_2023.02.10.json"
+    with mock.patch("app_root.strategies.utils.InitdataHelper.get") as patch:
         patch.side_effect = [
-            convert_text((settings.DJANGO_PATH / 'fixtures' / 'init_data' / filename).read_text('utf-8')),
-            '{}',
+            convert_text(
+                (settings.DJANGO_PATH / "fixtures" / "init_data" / filename).read_text(
+                    "utf-8"
+                )
+            ),
+            "{}",
         ]
         yield patch
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def fixture_leader_board():
-    with mock.patch('app_root.strategies.utils.LeaderboardHelper.run') as patch:
+    with mock.patch("app_root.strategies.utils.LeaderboardHelper.run") as patch:
         yield patch
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def fixture_start_game():
-    with mock.patch('app_root.strategies.utils.StartGame.run') as patch:
+    with mock.patch("app_root.strategies.utils.StartGame.run") as patch:
         yield patch
 
 
 class FakeRunCommand(object):
     commands: List
     version: RunVersion
+
     def __init__(self, version, commands):
         self.commands = commands
         self.version = version
@@ -421,110 +488,127 @@ class FakeRunCommand(object):
             cmd.post_processing({})
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def fixture_send_commands():
-    with mock.patch('app_root.strategies.commands.RunCommand') as patch:
+    with mock.patch("app_root.strategies.commands.RunCommand") as patch:
         patch.side_effect = FakeRunCommand
         yield patch
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def fixture_sleep():
-    with mock.patch('app_root.strategies.commands.sleep') as patch:
+    with mock.patch("app_root.strategies.commands.sleep") as patch:
         yield patch
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def fixture_use_cache():
-    with mock.patch('app_root.strategies.utils.USE_CACHE', True) as patch:
+    with mock.patch("app_root.strategies.utils.USE_CACHE", True) as patch:
         yield patch
 
+
 @pytest.mark.django_db
-@pytest.mark.parametrize('user_name, run_version_id', [
-    ('gaolious', 13)
-])
+@pytest.mark.parametrize("user_name, run_version_id", [("gaolious", 13)])
 def test_materials_find_redundancy(
-        multidb,
-        user_name, run_version_id,
-        fixture_send_commands, fixture_sleep, fixture_use_cache,
+    multidb,
+    user_name,
+    run_version_id,
+    fixture_send_commands,
+    fixture_sleep,
+    fixture_use_cache,
 ):
     ###########################################################################
     # prepare
     user = User.objects.create_user(
-        username=user_name, android_id='test', game_access_token='1', player_id='1'
+        username=user_name, android_id="test", game_access_token="1", player_id="1"
     )
     version = RunVersion.objects.create(id=run_version_id, user_id=user.id, level_id=1)
-    initdata_filepath = version.get_account_path() / 'startgame_post.txt'
-    txt = initdata_filepath.read_text(encoding='utf-8')
+    initdata_filepath = version.get_account_path() / "startgame_post.txt"
+    txt = initdata_filepath.read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
         s = Strategy(user.id)
         s.run()
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('user_name, run_version_id', [
-    # ('gaolious1', 2),  # 약 1분정도 남은 상태.
-    ('gaolious', 15),  # 가능 상태
-])
+@pytest.mark.parametrize(
+    "user_name, run_version_id",
+    [
+        ("gaolious", 111),
+        # ('gaolious', 34),  # 가능 상태
+    ],
+)
 def test_prepare_contract(
-        multidb,
-        user_name, run_version_id,
-        fixture_send_commands, fixture_sleep, fixture_use_cache,
+    multidb,
+    user_name,
+    run_version_id,
+    fixture_send_commands,
+    fixture_sleep,
+    fixture_use_cache,
 ):
     ###########################################################################
     # prepare
     user = User.objects.create_user(
-        username=user_name, android_id='test', game_access_token='1', player_id='1'
+        username=user_name, android_id="test", game_access_token="1", player_id="1"
     )
     version = RunVersion.objects.create(id=run_version_id, user_id=user.id, level_id=1)
-    initdata_filepath = version.get_account_path() / 'startgame_post.txt'
-    txt = initdata_filepath.read_text(encoding='utf-8')
+    initdata_filepath = version.get_account_path() / "startgame_post.txt"
+    txt = initdata_filepath.read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
     version.now = now
     version.save()
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
         s = Strategy(user.id)
         s.run()
 
 
-
 @pytest.mark.django_db
-@pytest.mark.parametrize('user_name, run_version_id', [
-    ('gaolious1', 2),  # 약 1분정도 남은 상태.
-    # ('gaolious', 34),  # 가능 상태
-])
+@pytest.mark.parametrize(
+    "user_name, run_version_id",
+    [
+        ("gaolious1", 2),  # 약 1분정도 남은 상태.
+        # ('gaolious', 34),  # 가능 상태
+    ],
+)
 def test_factory_order_product(
-        multidb,
-        user_name, run_version_id,
-        fixture_send_commands, fixture_sleep, fixture_use_cache,
+    multidb,
+    user_name,
+    run_version_id,
+    fixture_send_commands,
+    fixture_sleep,
+    fixture_use_cache,
 ):
     ###########################################################################
     # prepare
     user = User.objects.create_user(
-        username=user_name, android_id='test', game_access_token='1', player_id='1'
+        username=user_name, android_id="test", game_access_token="1", player_id="1"
     )
     version = RunVersion.objects.create(id=run_version_id, user_id=user.id, level_id=1)
-    initdata_filepath = version.get_account_path() / 'startgame_post.txt'
-    txt = initdata_filepath.read_text(encoding='utf-8')
+    initdata_filepath = version.get_account_path() / "startgame_post.txt"
+    txt = initdata_filepath.read_text(encoding="utf-8")
     json_data = json.loads(txt, strict=False)
-    now = convert_datetime(json_data['Time'])
+    now = convert_datetime(json_data["Time"])
     version.now = now
     version.save()
 
-    with mock.patch('django.utils.timezone.now') as p:
+    with mock.patch("django.utils.timezone.now") as p:
         p.return_value = now
         s = Strategy(user.id)
         s.run()
         prod = TSProduct.objects.filter(article_id=224).first()
         order_list = list(
-            PlayerFactoryProductOrder.objects.filter(player_factory__factory_id=prod.factory_id).order_by('index').all()
+            PlayerFactoryProductOrder.objects.filter(
+                player_factory__factory_id=prod.factory_id
+            )
+            .order_by("index")
+            .all()
         )
         before = ts_dump_factory(version=version, factory_id=prod.factory_id)
         print("[INIT]")
@@ -533,13 +617,66 @@ def test_factory_order_product(
         for order in order_list:
             order.refresh_from_db()
             factory_collect_product(version=version, order=order)
-            after1 = ts_dump_factory(version=version, factory_id=order.player_factory.factory_id)
+            after1 = ts_dump_factory(
+                version=version, factory_id=order.player_factory.factory_id
+            )
             print("[After Collect]")
             print("\n".join(after1))
 
             factory_order_product(version=version, product=prod)
-            after2 = ts_dump_factory(version=version, factory_id=order.player_factory.factory_id)
+            after2 = ts_dump_factory(
+                version=version, factory_id=order.player_factory.factory_id
+            )
             print("[After add]")
             print("\n".join(after2))
 
 
+@pytest.mark.django_db
+def test_create_player_job():
+    json_data = [
+        {
+            "JobLocationId": 200013,
+            "CurrentArticleAmount": 2300,
+            "Sequence": 0,
+            "JobLevel": 1,
+            "RequiredArticle": {"Amount": 2300, "Id": 200006},
+            "ExpiresAt": "2023-06-02T12:00:00Z",
+            "Duration": 3600,
+            "CompletableFrom": "2023-03-25T15:48:48Z",
+            "JobType": 49,
+            "Reward": {
+                "Items": [
+                    {"Amount": 850, "Id": 8, "Value": 100000},
+                    {"Id": 8, "Value": 100003, "Amount": 500},
+                ]
+            },
+            "FinishedAt": "2023-03-25T14:48:48Z",
+            "Id": "e75bbb80-5934-4c84-9d21-beb0bcc35171",
+            "Requirements": [
+                {"Value": 0, "Type": "relative_region"},
+                {"Type": "content_category", "Value": 3},
+                {"Value": 1, "Type": "era"},
+            ],
+        }
+    ]
+
+    a, b = PlayerJob.create_instance(data=json_data, version_id=1)
+
+    CompletableFrom = dt(2023, 3, 26, 0, 48, 48)
+    FinishedAt = dt(2023, 3, 25, 23, 48, 48)
+
+    assert a
+    assert a[0]
+    job: PlayerJob = a[0]
+
+    now = FinishedAt - timedelta(minutes=1)
+    assert not job.is_completed(now)
+    assert not job.is_collectable(now)
+
+    now = CompletableFrom - timedelta(minutes=1)
+    assert job.is_completed(now)
+    assert not job.is_collectable(now)
+
+    now = CompletableFrom + timedelta(minutes=1)
+    assert job.is_completed(now)
+    assert job.is_collectable(now)

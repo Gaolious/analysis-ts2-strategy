@@ -16,9 +16,10 @@ from core.utils import Logger, convert_datetime, hash10
 #######################################################
 class ImportHelperMixin:
     """
-        Bot Helper
+    Bot Helper
     """
-    NAME = 'helper'
+
+    NAME = "helper"
 
     HEADER_REQUEST_ID = 0x01 << 0
     HEADER_RETRY_NO = 0x01 << 1
@@ -39,30 +40,41 @@ class ImportHelperMixin:
         self.idx = -1
 
     def get_headers(self, *, mask) -> Dict[str, str]:
-
         client_info = json.dumps(
             {
                 "Store": str(settings.CLIENT_INFORMATION_STORE),
                 "Version": str(settings.CLIENT_INFORMATION_VERSION),
                 "Language": str(settings.CLIENT_INFORMATION_LANGUAGE),
             },
-            separators=(',', ':')
+            separators=(",", ":"),
         )
 
         headers = {
-            'PXFD-Sent-At': '0001-01-01T00:00:00.000',
-            'Content-Type': 'application/json',
-            'Accept-Encoding': 'gzip, deflate',
+            "PXFD-Sent-At": "0001-01-01T00:00:00.000",
+            "Content-Type": "application/json",
+            "Accept-Encoding": "gzip, deflate",
         }
         mapping = {
-            self.HEADER_REQUEST_ID: ('PXFD-Request-Id', str(uuid.uuid4())),
-            self.HEADER_RETRY_NO: ('PXFD-Retry-No', '0'),
-            self.HEADER_SENT_AT: ('PXFD-Sent-At', get_curr_server_str_datetime_ms(version=self.version)),
-            self.HEADER_CLIENT_INFORMATION: ('PXFD-Client-Information', client_info),
-            self.HEADER_CLIENT_VERSION: ('PXFD-Client-Version', str(settings.CLIENT_INFORMATION_VERSION)),
-            self.HEADER_DEVICE_TOKEN: ('PXFD-Device-Token', self.version.user.device_token),
-            self.HEADER_GAME_ACCESS_TOKEN: ('PXFD-Game-Access-Token', self.version.user.game_access_token),
-            self.HEADER_PLAYER_ID: ('PXFD-Player-Id', self.version.user.player_id),
+            self.HEADER_REQUEST_ID: ("PXFD-Request-Id", str(uuid.uuid4())),
+            self.HEADER_RETRY_NO: ("PXFD-Retry-No", "0"),
+            self.HEADER_SENT_AT: (
+                "PXFD-Sent-At",
+                get_curr_server_str_datetime_ms(version=self.version),
+            ),
+            self.HEADER_CLIENT_INFORMATION: ("PXFD-Client-Information", client_info),
+            self.HEADER_CLIENT_VERSION: (
+                "PXFD-Client-Version",
+                str(settings.CLIENT_INFORMATION_VERSION),
+            ),
+            self.HEADER_DEVICE_TOKEN: (
+                "PXFD-Device-Token",
+                self.version.user.device_token,
+            ),
+            self.HEADER_GAME_ACCESS_TOKEN: (
+                "PXFD-Game-Access-Token",
+                self.version.user.game_access_token,
+            ),
+            self.HEADER_PLAYER_ID: ("PXFD-Player-Id", self.version.user.player_id),
         }
 
         for key, (field, value) in mapping.items():
@@ -75,14 +87,14 @@ class ImportHelperMixin:
     def get(self, url, headers, params):
         assert url
         assert headers
-        name = f'{self.NAME}_get'
+        name = f"{self.NAME}_get"
 
         if self.use_cache:
             self.idx += 1
             return self.version.read_cache(name=name, idx=self.idx)
 
         self.version.add_log(
-            msg=f'[{self.__class__.__name__} ] Before GET',
+            msg=f"[{self.__class__.__name__} ] Before GET",
             url=url,
             headers=headers,
             payload={},
@@ -98,13 +110,13 @@ class ImportHelperMixin:
             params=params,
         )
         resp_status_code = resp.status_code
-        resp_body = resp.content.decode('utf-8')
+        resp_body = resp.content.decode("utf-8")
         resp_headers = {k: v for k, v in resp.headers.items()}
         resp_cookies = {k: v for k, v in resp.cookies.items()}
 
         self.version.save_cache(name=name, data=resp_body)
         self.version.add_log(
-            msg=f'[{self.__class__.__name__} ] After GET',
+            msg=f"[{self.__class__.__name__} ] After GET",
             status_code=str(resp_status_code),
             body=str(resp_body),
             headers=str(resp_headers),
@@ -115,14 +127,14 @@ class ImportHelperMixin:
     def post(self, url, headers, payload):
         assert url
         assert headers
-        name = f'{self.NAME}_post'
+        name = f"{self.NAME}_post"
 
         if self.use_cache:
             self.idx += 1
             return self.version.read_cache(name=name, idx=self.idx)
 
         self.version.add_log(
-            msg=f'[{self.__class__.__name__} ] Before POST',
+            msg=f"[{self.__class__.__name__} ] Before POST",
             url=url,
             headers=headers,
             payload=payload,
@@ -137,14 +149,14 @@ class ImportHelperMixin:
             params={},
         )
         resp_status_code = resp.status_code
-        resp_body = resp.content.decode('utf-8')
+        resp_body = resp.content.decode("utf-8")
         resp_headers = {k: v for k, v in resp.headers.items()}
         resp_cookies = {k: v for k, v in resp.cookies.items()}
 
         self.version.save_cache(name=name, data=resp_body)
 
         self.version.add_log(
-            msg=f'[{self.__class__.__name__} ] After POST',
+            msg=f"[{self.__class__.__name__} ] After POST",
             status_code=str(resp_status_code),
             body=str(resp_body),
             headers=str(resp_headers),

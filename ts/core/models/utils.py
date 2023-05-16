@@ -64,6 +64,7 @@ from core.models.exceptions import InvalidTaskStatus
 #     else:
 #         return False
 
+
 def get_model_differs(src, dest) -> Dict[str, tuple]:
     """
         src 기준 dest 모델과의 차이
@@ -74,6 +75,7 @@ def get_model_differs(src, dest) -> Dict[str, tuple]:
     Returns:
 
     """
+
     def convert_python_value(instance, field_name):
         """
         python variable type 으로 변환
@@ -96,12 +98,11 @@ def get_model_differs(src, dest) -> Dict[str, tuple]:
 
         return None
 
-
     ret = {}
 
     for field in src._meta.fields:
         field_name = field.attname
-        if field_name in ('id', 'pk', 'created', 'modified'):
+        if field_name in ("id", "pk", "created", "modified"):
             continue
 
         src_value = convert_python_value(instance=src, field_name=field_name)
@@ -123,13 +124,9 @@ def get_model_differs(src, dest) -> Dict[str, tuple]:
                 is_equal = True
 
             if not is_equal:
-                ret.update({
-                    field_name: (src_value, dest_value)
-                })
+                ret.update({field_name: (src_value, dest_value)})
         else:
-            ret.update({
-                field_name: (src_value, None)
-            })
+            ret.update({field_name: (src_value, None)})
 
     return ret
 
@@ -160,7 +157,7 @@ def chunk_list(data, chunk_size):
     if not isinstance(data, list):
         data = list(data)
     for i in range(0, len(data), chunk_size):
-        yield data[i:i + chunk_size]
+        yield data[i : i + chunk_size]
 
 
 # def truncate_model(MODEL):

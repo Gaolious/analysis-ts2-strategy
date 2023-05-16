@@ -6,27 +6,49 @@ from django.conf import settings
 from django.utils import timezone
 
 from app_root.mixins import ImportHelperMixin
-from app_root.players.models import PlayerBuilding, PlayerDestination, PlayerFactory, PlayerFactoryProductOrder, \
-    PlayerJob, \
-    PlayerTrain, PlayerWarehouse, PlayerWhistle, PlayerWhistleItem, PlayerGift, PlayerContractList, PlayerContract, \
-    PlayerAchievement, PlayerDailyReward, PlayerMap, PlayerQuest, PlayerVisitedRegion, PlayerShipOffer, \
-    PlayerLeaderBoard, PlayerLeaderBoardProgress, PlayerCompetition, PlayerUnlockedContent, PlayerDailyOfferContainer, \
-    PlayerDailyOffer, PlayerDailyOfferItem
+from app_root.players.models import (
+    PlayerBuilding,
+    PlayerDestination,
+    PlayerFactory,
+    PlayerFactoryProductOrder,
+    PlayerJob,
+    PlayerTrain,
+    PlayerWarehouse,
+    PlayerWhistle,
+    PlayerWhistleItem,
+    PlayerGift,
+    PlayerContractList,
+    PlayerContract,
+    PlayerAchievement,
+    PlayerDailyReward,
+    PlayerMap,
+    PlayerQuest,
+    PlayerVisitedRegion,
+    PlayerShipOffer,
+    PlayerLeaderBoard,
+    PlayerLeaderBoardProgress,
+    PlayerCompetition,
+    PlayerUnlockedContent,
+    PlayerDailyOfferContainer,
+    PlayerDailyOffer,
+    PlayerDailyOfferItem,
+    PlayerCityLoopTask,
+    PlayerCityLoopParcel,
+)
 from app_root.servers.models import EndPoint, RunVersion
 
-LOGGING_MENU = 'plyaers.import'
+LOGGING_MENU = "plyaers.import"
 
 
 class InitdataHelper(ImportHelperMixin):
-    BASE_PATH = settings.SITE_PATH / 'download' / 'init_data'
-    NAME = 'init_data'
+    BASE_PATH = settings.SITE_PATH / "download" / "init_data"
+    NAME = "init_data"
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
-
         idx = 1
 
         for url in EndPoint.get_urls(EndPoint.ENDPOINT_INIT_DATA_URLS):
-            yield url, f'init_sent_{idx}', f'init_server_{idx}', f'init_recv_{idx}'
+            yield url, f"init_sent_{idx}", f"init_server_{idx}", f"init_recv_{idx}"
             idx = 3 - idx
 
     def get_data(self, url, **kwargs) -> str:
@@ -45,22 +67,20 @@ class InitdataHelper(ImportHelperMixin):
         :return:
         """
 
-        mask = self.HEADER_REQUEST_ID \
-               | self.HEADER_RETRY_NO \
-               | self.HEADER_SENT_AT \
-               | self.HEADER_CLIENT_INFORMATION \
-               | self.HEADER_CLIENT_VERSION \
-               | self.HEADER_DEVICE_TOKEN \
-               | self.HEADER_GAME_ACCESS_TOKEN \
-               | self.HEADER_PLAYER_ID
+        mask = (
+            self.HEADER_REQUEST_ID
+            | self.HEADER_RETRY_NO
+            | self.HEADER_SENT_AT
+            | self.HEADER_CLIENT_INFORMATION
+            | self.HEADER_CLIENT_VERSION
+            | self.HEADER_DEVICE_TOKEN
+            | self.HEADER_GAME_ACCESS_TOKEN
+            | self.HEADER_PLAYER_ID
+        )
 
         headers = self.get_headers(mask=mask)
-        
-        return self.get(
-            url=url,
-            headers=headers,
-            params={}
-        )
+
+        return self.get(url=url, headers=headers, params={})
 
     def parse_data(self, data, **kwargs) -> str:
         """
@@ -71,84 +91,82 @@ class InitdataHelper(ImportHelperMixin):
         """
 
         mapping: Dict[str, Callable] = {
-            'competitions': self._parse_init_competitions,
-            'city_loop': self._parse_init_city_loop,
-            'event': self._parse_init_event,
-            'events': self._parse_init_events,
-            'destinations': self._parse_init_destinations,
-            'factories': self._parse_init_factories,
-            'jobs': self._parse_init_jobs,
-            'player': self._parse_init_player,
-            'regions': self._parse_init_regions,
-            'trains': self._parse_init_trains,
-            'warehouse': self._parse_init_warehouse,
-            'whistles': self._parse_init_whistles,
-            'ship_offers': self._parse_init_ship_offers,
-            'contracts': self._parse_init_contracts,
-            'dispatcher': self._parse_init_dispatcher,
-            'gifts': self._parse_init_gifts,
-            'locations': self._parse_init_locations,
-            'achievements': self._parse_init_achievements,
-            'daily_reward': self._parse_init_daily_reward,
-            'milestones': self._parse_init_milestones,
-            'task_lists': self._parse_init_task_lists,
-            'seasons': self._parse_init_seasons,
-            'commodities': self._parse_init_commodities,
-            'offer_wall': self._parse_init_offer_wall,
-            'containers': self._parse_init_containers,
-            'maps': self._parse_init_maps,
-            'unlocked_contents': self._parse_init_unlocked_contents,
-            'shop': self._parse_init_shop,
-
-            'ab_test': self._parse_init_not_yet_implemented,
-            'login_profile': self._parse_init_not_yet_implemented,
-            'game_features': self._parse_init_not_yet_implemented,
-            'reminders': self._parse_init_not_yet_implemented,
-            'markets': self._parse_init_not_yet_implemented,
-            'guild': self._parse_init_not_yet_implemented,
-            'game': self._parse_init_not_yet_implemented,
-            'placements': self._parse_init_not_yet_implemented,
-            'player_feature': self._parse_init_not_yet_implemented,
-            'prestige': self._parse_init_not_yet_implemented,
-            'ship_loop': self._parse_init_not_yet_implemented,
-            'tutorial': self._parse_init_not_yet_implemented,
-            'tickets': self._parse_init_not_yet_implemented,
-            'communities': self._parse_init_not_yet_implemented,
-            'city_building_shop': self._parse_init_not_yet_implemented,
-            'calendars': self._parse_init_not_yet_implemented,
-            'boosts': self._parse_init_not_yet_implemented,
-            'vouchers': self._parse_init_not_yet_implemented,
+            "competitions": self._parse_init_competitions,
+            "city_loop": self._parse_init_city_loop,
+            "event": self._parse_init_event,
+            "events": self._parse_init_events,
+            "destinations": self._parse_init_destinations,
+            "factories": self._parse_init_factories,
+            "jobs": self._parse_init_jobs,
+            "player": self._parse_init_player,
+            "regions": self._parse_init_regions,
+            "trains": self._parse_init_trains,
+            "warehouse": self._parse_init_warehouse,
+            "whistles": self._parse_init_whistles,
+            "ship_offers": self._parse_init_ship_offers,
+            "contracts": self._parse_init_contracts,
+            "dispatcher": self._parse_init_dispatcher,
+            "gifts": self._parse_init_gifts,
+            "locations": self._parse_init_locations,
+            "achievements": self._parse_init_achievements,
+            "daily_reward": self._parse_init_daily_reward,
+            "milestones": self._parse_init_milestones,
+            "task_lists": self._parse_init_task_lists,
+            "seasons": self._parse_init_seasons,
+            "commodities": self._parse_init_commodities,
+            "offer_wall": self._parse_init_offer_wall,
+            "containers": self._parse_init_containers,
+            "maps": self._parse_init_maps,
+            "unlocked_contents": self._parse_init_unlocked_contents,
+            "shop": self._parse_init_shop,
+            "ab_test": self._parse_init_not_yet_implemented,
+            "login_profile": self._parse_init_not_yet_implemented,
+            "game_features": self._parse_init_not_yet_implemented,
+            "reminders": self._parse_init_not_yet_implemented,
+            "markets": self._parse_init_not_yet_implemented,
+            "guild": self._parse_init_not_yet_implemented,
+            "game": self._parse_init_not_yet_implemented,
+            "placements": self._parse_init_not_yet_implemented,
+            "player_feature": self._parse_init_not_yet_implemented,
+            "prestige": self._parse_init_not_yet_implemented,
+            "ship_loop": self._parse_init_not_yet_implemented,
+            "tutorial": self._parse_init_not_yet_implemented,
+            "tickets": self._parse_init_not_yet_implemented,
+            "communities": self._parse_init_not_yet_implemented,
+            "city_building_shop": self._parse_init_not_yet_implemented,
+            "calendars": self._parse_init_not_yet_implemented,
+            "boosts": self._parse_init_not_yet_implemented,
+            "vouchers": self._parse_init_not_yet_implemented,
         }
         json_data = json.loads(data, strict=False)
 
         try:
             if "pytest" not in sys.modules:
-                account_path = self.BASE_PATH / f'{self.version.user.username}'
+                account_path = self.BASE_PATH / f"{self.version.user.username}"
                 account_path.mkdir(0o755, True, exist_ok=True)
 
                 for i in range(4):
-                    out_filepath = account_path / f'{self.version.id}_{i}.json'
+                    out_filepath = account_path / f"{self.version.id}_{i}.json"
                     if out_filepath.exists():
                         continue
 
                     out_filepath.write_text(
-                        data=json.dumps(json_data, indent=2),
-                        encoding='UTF-8'
+                        data=json.dumps(json_data, indent=2), encoding="UTF-8"
                     )
                     break
         except:
             pass
 
-        server_time = json_data.get('Time')
-        server_data = json_data.get('Data', [])
+        server_time = json_data.get("Time")
+        server_data = json_data.get("Data", [])
 
         for row in server_data:
-            row_type = row.get('Type')
-            row_data = row.get('Data')
+            row_type = row.get("Type")
+            row_data = row.get("Data")
             if row_type in mapping:
                 mapping[row_type](data=row_data)
             else:
-                print('unknown', row)
+                print("unknown", row)
 
         return server_time
 
@@ -157,41 +175,43 @@ class InitdataHelper(ImportHelperMixin):
 
     def _parse_init_gifts(self, data):
         """
-    {
-      "Type": "gifts",
-      "Data": {
-        "Gifts": [
-          {
-            "Id": "8295a2de-d048-4228-ac02-e3d36c2d3b4a",
-            "Reward": {
-              "Items": [
-                {
-                  "Id": 8,
-                  "Value": 100000,
-                  "Amount": 1326
+        {
+          "Type": "gifts",
+          "Data": {
+            "Gifts": [
+              {
+                "Id": "8295a2de-d048-4228-ac02-e3d36c2d3b4a",
+                "Reward": {
+                  "Items": [
+                    {
+                      "Id": 8,
+                      "Value": 100000,
+                      "Amount": 1326
+                    },
+                    {
+                      "Id": 8,
+                      "Value": 100003,
+                      "Amount": 792
+                    }
+                  ]
                 },
-                {
-                  "Id": 8,
-                  "Value": 100003,
-                  "Amount": 792
-                }
-              ]
-            },
-            "Type": 6
+                "Type": 6
+              }
+            ]
           }
-        ]
-      }
-    },
-        :param data:
-        :return:
+        },
+            :param data:
+            :return:
         """
-        gifts = data.pop('Gifts', [])
+        gifts = data.pop("Gifts", [])
         if gifts:
-            bulk_list, _ = PlayerGift.create_instance(data=gifts, version_id=self.version.id)
+            bulk_list, _ = PlayerGift.create_instance(
+                data=gifts, version_id=self.version.id
+            )
             if bulk_list:
                 PlayerGift.objects.bulk_create(bulk_list)
 
-        self.print_remain('_parse_init_gifts', data)
+        self.print_remain("_parse_init_gifts", data)
 
     def _parse_init_competitions(self, data):
         """
@@ -206,13 +226,15 @@ class InitdataHelper(ImportHelperMixin):
                  2 = {dict: 12} {'Type': 'prestige', 'LevelFrom': 899, 'MaxAttendees': 15, 'CompetitionId': 'e65a0ecf-7e72-462c-ae02-6c58ed2fceab', 'ContentCategory': 4, 'Rewards': [{'Items': [{'Id': 8, 'Value': 9, 'Amount': 11}]}, {'Items': [{'Id': 8, 'Value': 9, 'Amount': 7}]}, {'Items': [{'Id': 8, 'Value': 9, 'Amount': 5}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 20}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 18}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 16}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 14}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 12}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 10}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 9}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 8}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 7}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 5}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 3}]}, {'Items': [{'Id': 8, 'Value': 8, 'Amount': 1}]}], 'StartsAt': '2022-12-26T12:00:00Z', 'EnrolmentAvailableTo': '2023-01-01T12:00:00Z', 'FinishesAt': '2023-01-...
                  3 = {dict: 12} {'Type': 'default', 'LevelFrom': 12, 'MaxAttendees': 25, 'CompetitionId': '16b00d3f-e2b1-464b-8c9f-e218cfca0008', 'ContentCategory': 1, 'Rewards': [{'Items': [{'Id': 8, 'Value': 35001, 'Amount': 350}, {'Id': 6, 'Value': 100130}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 250}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 200}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 180}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 160}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 120}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 100}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 90}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 80}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 70}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 60}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 50}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 50}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 40}]}, {'Items': [{'Id': 8, 'Value': 35001, 'Amount': 40}]}, {'Items...
         """
-        competitions = data.pop('Competitions', [])
+        competitions = data.pop("Competitions", [])
         if competitions:
-            bulk_list, _ = PlayerCompetition.create_instance(data=competitions, version_id=self.version.id)
+            bulk_list, _ = PlayerCompetition.create_instance(
+                data=competitions, version_id=self.version.id
+            )
             if bulk_list:
                 PlayerCompetition.objects.bulk_create(bulk_list)
 
-        self.print_remain('_parse_init_competitions', data)
+        self.print_remain("_parse_init_competitions", data)
         pass
 
     def _parse_init_city_loop(self, data):
@@ -228,23 +250,35 @@ class InitdataHelper(ImportHelperMixin):
             => population upgrade task, 및 population 수량. 확인.
         """
         # Population
-        population = data.get('Population')
-        if population:
-            """
-                'LastCalculatedCount' = {int} 33066
-                'LastCalculatedAt' = {str} '2022-12-30T06:22:24Z'
-            """
-            self.version.population = population.get('LastCalculatedCount') or 0
-            self.version.save(update_fields=['population'])
-
-        # Buildings
-        buildings = data.get('Buildings')
-        if buildings:
-
-            bulk_list, _ = PlayerBuilding.create_instance(data=buildings, version_id=self.version.id)
-
+        if data:
+            bulk_list, _ = PlayerCityLoopTask.create_instance(
+                data=data, version_id=self.version.id
+            )
             if bulk_list:
-                PlayerBuilding.objects.bulk_create(bulk_list, 100)
+                PlayerCityLoopTask.objects.bulk_create(bulk_list, 100)
+
+            population = data.get("Population")
+
+            if population:
+                self.version.population = population.get("LastCalculatedCount") or 0
+                self.version.save(update_fields=["population"])
+
+            # Buildings
+            buildings = data.get("Buildings")
+            if buildings:
+                bulk_list, _ = PlayerBuilding.create_instance(
+                    data=buildings, version_id=self.version.id
+                )
+                if bulk_list:
+                    PlayerBuilding.objects.bulk_create(bulk_list, 100)
+
+            parcels = data.get("Parcels")
+            if parcels:
+                bulk_list, _ = PlayerCityLoopParcel.create_instance(
+                    data=parcels, version_id=self.version.id
+                )
+                if bulk_list:
+                    PlayerCityLoopParcel.objects.bulk_create(bulk_list, 100)
 
     def _parse_init_event(self, data):
         """
@@ -312,9 +346,11 @@ class InitdataHelper(ImportHelperMixin):
             2 = {dict: 6} {'LocationId': 329, 'DefinitionId': 304, 'TrainLimitCount': 0, 'TrainLimitRefreshTime': '2022-12-30T09:01:53Z', 'TrainLimitRefreshesAt': '2022-12-30T09:01:53Z', 'Multiplier': 0}
             3 = {dict: 6} {'LocationId': 406, 'DefinitionId': 406, 'TrainLimitCount': 0, 'TrainLimitRefreshTime': '2022-12-30T09:01:46Z', 'TrainLimitRefreshesAt': '2022-12-30T09:01:46Z', 'Multiplier': 0}        
         """
-        destination = data.get('Destinations')
+        destination = data.get("Destinations")
         if destination:
-            bulk_list, _ = PlayerDestination.create_instance(data=destination, version_id=self.version.id)
+            bulk_list, _ = PlayerDestination.create_instance(
+                data=destination, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerDestination.objects.bulk_create(bulk_list, 100)
@@ -354,11 +390,12 @@ class InitdataHelper(ImportHelperMixin):
         """
 
         if data:
-            video = data.pop('NextVideoSpeedUpAt', None)
-            factories = data.get('Factories', [])
+            video = data.pop("NextVideoSpeedUpAt", None)
+            factories = data.get("Factories", [])
 
-            factory_bulk_list, product_bulk_list = PlayerFactory.create_instance(data=factories,
-                                                                                 version_id=self.version.id)
+            factory_bulk_list, product_bulk_list = PlayerFactory.create_instance(
+                data=factories, version_id=self.version.id
+            )
 
             if factory_bulk_list:
                 PlayerFactory.objects.bulk_create(factory_bulk_list, 100)
@@ -366,7 +403,7 @@ class InitdataHelper(ImportHelperMixin):
             if product_bulk_list:
                 PlayerFactoryProductOrder.objects.bulk_create(product_bulk_list, 100)
 
-        self.print_remain('_parse_init_factories', data)
+        self.print_remain("_parse_init_factories", data)
 
     def _parse_init_jobs(self, data):
         """
@@ -449,16 +486,18 @@ class InitdataHelper(ImportHelperMixin):
           },         
         """
 
-        _ = data.pop('NextReplaceAt', None)
-        _ = data.pop('NextVideoReplaceAt', None)
-        jobs = data.get('Jobs')
+        _ = data.pop("NextReplaceAt", None)
+        _ = data.pop("NextVideoReplaceAt", None)
+        jobs = data.get("Jobs")
         if jobs:
-            bulk_list, _ = PlayerJob.create_instance(data=jobs, version_id=self.version.id)
+            bulk_list, _ = PlayerJob.create_instance(
+                data=jobs, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerJob.objects.bulk_create(bulk_list, 100)
 
-        self.print_remain('_parse_init_jobs', data)
+        self.print_remain("_parse_init_jobs", data)
 
     def _parse_init_player(self, data):
         """
@@ -481,23 +520,25 @@ class InitdataHelper(ImportHelperMixin):
                       2 = {dict: 2} {'Type': 'own_unique_trains', 'Progress': 500}
                       3 = {dict: 2} {'Type': 'population_max', 'Progress': 40}        
         """
-        player_level = data.pop('PlayerLevel', '')
-        player_id = data.pop('PlayerId', '')
-        player_name = data.pop('PlayerName', '')
-        avatar_id = data.pop('AvatarId', '')
-        guild_id = data.pop('GuildId', '')
+        player_level = data.pop("PlayerLevel", "")
+        player_id = data.pop("PlayerId", "")
+        player_name = data.pop("PlayerName", "")
+        avatar_id = data.pop("AvatarId", "")
+        guild_id = data.pop("GuildId", "")
 
-        self.version.player_id = player_id or ''
-        self.version.player_name = player_name or ''
+        self.version.player_id = player_id or ""
+        self.version.player_name = player_name or ""
         self.version.level_id = player_level or 0
-        self.version.guild_id = guild_id or ''
+        self.version.guild_id = guild_id or ""
 
-        self.version.save(update_fields=[
-            'player_id',
-            'player_name',
-            'level_id',
-            'guild_id',
-        ])
+        self.version.save(
+            update_fields=[
+                "player_id",
+                "player_name",
+                "level_id",
+                "guild_id",
+            ]
+        )
 
     def _parse_init_regions(self, data):
         """
@@ -517,19 +558,23 @@ class InitdataHelper(ImportHelperMixin):
             'VisitedRegions' = {list: 1} [101]        
         """
 
-        quests = data.get('Quests')
+        quests = data.get("Quests")
         if quests:
-            bulk_list, _ = PlayerQuest.create_instance(data=quests, version_id=self.version.id)
+            bulk_list, _ = PlayerQuest.create_instance(
+                data=quests, version_id=self.version.id
+            )
             if bulk_list:
                 PlayerQuest.objects.bulk_create(bulk_list, 100)
 
-        visited_regions = data.get('VisitedRegions')
+        visited_regions = data.get("VisitedRegions")
         if visited_regions:
-            bulk_list, _ = PlayerVisitedRegion.create_instance(data=visited_regions, version_id=self.version.id)
+            bulk_list, _ = PlayerVisitedRegion.create_instance(
+                data=visited_regions, version_id=self.version.id
+            )
             if bulk_list:
                 PlayerVisitedRegion.objects.bulk_create(bulk_list, 100)
 
-        self.print_remain('_parse_init_regions', data)
+        self.print_remain("_parse_init_regions", data)
 
     def _parse_init_trains(self, data):
         """
@@ -601,14 +646,16 @@ class InitdataHelper(ImportHelperMixin):
           }              
         """
 
-        trains = data.get('Trains')
+        trains = data.get("Trains")
         if trains:
-            bulk_list, _ = PlayerTrain.create_instance(data=trains, version_id=self.version.id)
+            bulk_list, _ = PlayerTrain.create_instance(
+                data=trains, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerTrain.objects.bulk_create(bulk_list, 100)
 
-        self.print_remain('_parse_init_trains', data)
+        self.print_remain("_parse_init_trains", data)
 
     def _parse_init_warehouse(self, data):
         """
@@ -630,16 +677,18 @@ class InitdataHelper(ImportHelperMixin):
                  8 = {dict: 2} {'Id': 104, 'Amount': 49}        
         """
         if data:
-            level = data.pop('Level', None)
+            level = data.pop("Level", None)
             # wl = TSWarehouseLevel.objects.filter(id=level).first()
             self.version.warehouse_level = level
             # self.version.warehouse = wl.capacity if wl else 0
-            self.version.save(update_fields=['warehouse_level'])
+            self.version.save(update_fields=["warehouse_level"])
 
-            articles = data.pop('Articles', None)
+            articles = data.pop("Articles", None)
             if articles:
-                bulk_list, _ = PlayerWarehouse.create_instance(data=articles, version_id=self.version.id)
-                self.print_remain('_parse_init_warehouse', articles)
+                bulk_list, _ = PlayerWarehouse.create_instance(
+                    data=articles, version_id=self.version.id
+                )
+                self.print_remain("_parse_init_warehouse", articles)
 
                 if bulk_list:
                     PlayerWarehouse.objects.bulk_create(bulk_list, 100)
@@ -657,9 +706,11 @@ class InitdataHelper(ImportHelperMixin):
                  2 = {dict: 6} {'Category': 1, 'Position': 1, 'SpawnTime': '2022-12-29T10:31:46Z', 'CollectableFrom': '2022-12-29T10:31:46Z', 'Reward': {'Items': [{'Id': 8, 'Value': 6, 'Amount': 1}]}, 'IsForVideoReward': False}
                  3 = {dict: 6} {'Category': 1, 'Position': 2, 'SpawnTime': '2022-12-29T10:32:06Z', 'CollectableFrom': '2022-12-29T10:32:06Z', 'Reward': {'Items': [{'Id': 8, 'Value': 104, 'Amount': 1}]}, 'IsForVideoReward': False}        
         """
-        whistles = data.get('Whistles')
+        whistles = data.get("Whistles")
         if whistles:
-            bulk_list, bulk_item_list = PlayerWhistle.create_instance(data=whistles, version_id=self.version.id)
+            bulk_list, bulk_item_list = PlayerWhistle.create_instance(
+                data=whistles, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerWhistle.objects.bulk_create(bulk_list, 100)
@@ -667,7 +718,7 @@ class InitdataHelper(ImportHelperMixin):
             if bulk_item_list:
                 PlayerWhistleItem.objects.bulk_create(bulk_item_list, 100)
 
-        self.print_remain('_parse_init_whistles', data)
+        self.print_remain("_parse_init_whistles", data)
 
     def _parse_init_ship_offers(self, data):
         """
@@ -677,12 +728,14 @@ class InitdataHelper(ImportHelperMixin):
         """
 
         if data:
-            bulk_list, _ = PlayerShipOffer.create_instance(data=data, version_id=self.version.id)
+            bulk_list, _ = PlayerShipOffer.create_instance(
+                data=data, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerShipOffer.objects.bulk_create(bulk_list, 100)
 
-        self.print_remain('_parse_init_ship_offers', data)
+        self.print_remain("_parse_init_ship_offers", data)
 
     def _parse_init_contracts(self, data):
         """
@@ -704,22 +757,28 @@ class InitdataHelper(ImportHelperMixin):
         :param data:
         :return:
         """
-        contracts = data.get('Contracts', [])
-        contract_list = data.get('ContractLists', [])
+        contracts = data.get("Contracts", [])
+        contract_list = data.get("ContractLists", [])
         now = timezone.now()
 
         if contract_list:
-            bulk_list, _ = PlayerContractList.create_instance(data=contract_list, version_id=self.version.id)
+            bulk_list, _ = PlayerContractList.create_instance(
+                data=contract_list, version_id=self.version.id
+            )
             if bulk_list:
                 PlayerContractList.objects.bulk_create(bulk_list)
 
         if contracts:
-            contract_list = list(PlayerContractList.objects.filter(version_id=self.version.id).all())
-            bulk_list, _ = PlayerContract.create_instance(data=contracts, version_id=self.version.id, contract_list=contract_list)
+            contract_list = list(
+                PlayerContractList.objects.filter(version_id=self.version.id).all()
+            )
+            bulk_list, _ = PlayerContract.create_instance(
+                data=contracts, version_id=self.version.id, contract_list=contract_list
+            )
             if bulk_list:
                 PlayerContract.objects.bulk_create(bulk_list)
 
-        self.print_remain('_parse_init_contracts', data)
+        self.print_remain("_parse_init_contracts", data)
 
     def _parse_init_dispatcher(self, data):
         """
@@ -752,17 +811,17 @@ class InitdataHelper(ImportHelperMixin):
         }
         :return:
         """
-        _ = data.pop('PermanentLevel', None)
-        _ = data.pop('TemporaryDispatchers', None)
-        _ = data.pop('VideoRewardAvailableAt', None)
-        dispatchers = data.pop('Dispatchers', [])
+        _ = data.pop("PermanentLevel", None)
+        _ = data.pop("TemporaryDispatchers", None)
+        _ = data.pop("VideoRewardAvailableAt", None)
+        dispatchers = data.pop("Dispatchers", [])
 
         for dispatcher in dispatchers:
-            dispatcher.pop('TemporaryDispatchers')
+            dispatcher.pop("TemporaryDispatchers")
 
-            content_category = dispatcher.pop('ContentCategory', None)
-            permanent_level = dispatcher.pop('PermanentLevel', None)
-            video = dispatcher.pop('VideoRewardAvailableAt', None)
+            content_category = dispatcher.pop("ContentCategory", None)
+            permanent_level = dispatcher.pop("PermanentLevel", None)
+            video = dispatcher.pop("VideoRewardAvailableAt", None)
             if content_category == 1:
                 self.version.dispatchers = permanent_level
             elif content_category == 3:
@@ -770,7 +829,7 @@ class InitdataHelper(ImportHelperMixin):
 
         self.version.save()
 
-        self.print_remain('_parse_init_dispatcher', data)
+        self.print_remain("_parse_init_dispatcher", data)
 
     def _parse_init_locations(self, data):
         pass
@@ -798,51 +857,55 @@ class InitdataHelper(ImportHelperMixin):
         :param data:
         :return:
         """
-        achievements = data.get('Achievements')
-        _ = data.pop('ReturnAsArray')
+        achievements = data.get("Achievements")
+        _ = data.pop("ReturnAsArray")
         if achievements:
-            bulk_list, _ = PlayerAchievement.create_instance(data=achievements, version_id=self.version.id)
+            bulk_list, _ = PlayerAchievement.create_instance(
+                data=achievements, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerAchievement.objects.bulk_create(bulk_list, 100)
 
-        self.print_remain('_parse_init_achievements', data)
+        self.print_remain("_parse_init_achievements", data)
 
     def _parse_init_daily_reward(self, data):
         """
 
-        "AvailableFrom": "2023-01-16T00:00:00Z",
-        "ExpireAt": "2023-01-16T23:59:59Z",
-        "Rewards": [
-          {
-            "Items": [ { "Id": 8, "Value": 3, "Amount": 450 } ]
-          },
-          {
-            "Items": [ { "Id": 8, "Value": 4, "Amount": 40 } ]
-          },
-          {
-            "Items": [ {"Id": 8,"Value": 8,"Amount": 9}]
-          },
-          {
-            "Items": [{"Id": 8,"Value": 2,"Amount": 10}]
-          },
-          {
-            "Items": [{"Id": 1,"Value": 3}]
-          }
-        ],
-        "PoolId": 3,
-        "Day": 0
-      }
+          "AvailableFrom": "2023-01-16T00:00:00Z",
+          "ExpireAt": "2023-01-16T23:59:59Z",
+          "Rewards": [
+            {
+              "Items": [ { "Id": 8, "Value": 3, "Amount": 450 } ]
+            },
+            {
+              "Items": [ { "Id": 8, "Value": 4, "Amount": 40 } ]
+            },
+            {
+              "Items": [ {"Id": 8,"Value": 8,"Amount": 9}]
+            },
+            {
+              "Items": [{"Id": 8,"Value": 2,"Amount": 10}]
+            },
+            {
+              "Items": [{"Id": 1,"Value": 3}]
+            }
+          ],
+          "PoolId": 3,
+          "Day": 0
+        }
 
-        :param data:
-        :return:
+          :param data:
+          :return:
         """
-        bulk_list, _ = PlayerDailyReward.create_instance(data=data, version_id=self.version.id)
+        bulk_list, _ = PlayerDailyReward.create_instance(
+            data=data, version_id=self.version.id
+        )
 
         if bulk_list:
             PlayerDailyReward.objects.bulk_create(bulk_list, 100)
 
-        self.print_remain('_parse_init_daily_reward', data)
+        self.print_remain("_parse_init_daily_reward", data)
 
     def _parse_init_milestones(self, data):
         pass
@@ -863,43 +926,51 @@ class InitdataHelper(ImportHelperMixin):
         pass
 
     def _parse_init_unlocked_contents(self, data):
-        maps = data.get('UnlockedContents')
+        maps = data.get("UnlockedContents")
         if maps:
-            bulk_list, _ = PlayerUnlockedContent.create_instance(data=maps, version_id=self.version.id)
+            bulk_list, _ = PlayerUnlockedContent.create_instance(
+                data=maps, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerUnlockedContent.objects.bulk_create(bulk_list, 100)
 
-        self.print_remain('_parse_init_unlocked_contents', data)
+        self.print_remain("_parse_init_unlocked_contents", data)
 
     def _parse_init_shop(self, data):
-        containers = data.get('OfferContainers')
+        containers = data.get("OfferContainers")
         if containers:
-            bulk_list, _ = PlayerDailyOfferContainer.create_instance(data=containers, version_id=self.version.id)
+            bulk_list, _ = PlayerDailyOfferContainer.create_instance(
+                data=containers, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerDailyOfferContainer.objects.bulk_create(bulk_list, 100)
 
-        daily_offer = data.get('DailyOffer')
+        daily_offer = data.get("DailyOffer")
         if daily_offer:
-            bulk_list, sub_bulk_list = PlayerDailyOffer.create_instance(data=daily_offer, version_id=self.version.id)
+            bulk_list, sub_bulk_list = PlayerDailyOffer.create_instance(
+                data=daily_offer, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerDailyOffer.objects.bulk_create(bulk_list, 100)
             if sub_bulk_list:
                 PlayerDailyOfferItem.objects.bulk_create(sub_bulk_list, 100)
 
-        self.print_remain('_parse_init_shop', data)
+        self.print_remain("_parse_init_shop", data)
 
     def _parse_init_maps(self, data):
-        maps = data.get('Maps')
+        maps = data.get("Maps")
         if maps:
-            bulk_list, _ = PlayerMap.create_instance(data=maps, version_id=self.version.id)
+            bulk_list, _ = PlayerMap.create_instance(
+                data=maps, version_id=self.version.id
+            )
 
             if bulk_list:
                 PlayerMap.objects.bulk_create(bulk_list, 100)
 
-        self.print_remain('_parse_init_maps', data)
+        self.print_remain("_parse_init_maps", data)
 
     def reduce(self, data):
         if isinstance(data, list):
@@ -921,50 +992,51 @@ class InitdataHelper(ImportHelperMixin):
     def print_remain(self, msg, data):
         data = self.reduce(data=data)
         if data:
-            print('[REMAIN]', msg, data)
+            print("[REMAIN]", msg, data)
 
 
 class LeaderboardHelper(ImportHelperMixin):
-
     player_job_id: int
-    NAME = 'leaderboard'
+    NAME = "leaderboard"
 
     def __init__(self, player_job_id: int, **kwargs):
         super(LeaderboardHelper, self).__init__(**kwargs)
         self.player_job_id = player_job_id
 
     def get_urls(self) -> Iterator[Tuple[str, str, str, str]]:
-
         for url in EndPoint.get_urls(EndPoint.ENDPOINT_LEADER_BOARD):
             yield url, None, None, None
 
     def get_data(self, url, **kwargs) -> str:
-        mask = self.HEADER_REQUEST_ID \
-               | self.HEADER_RETRY_NO \
-               | self.HEADER_SENT_AT \
-               | self.HEADER_CLIENT_INFORMATION \
-               | self.HEADER_CLIENT_VERSION \
-               | self.HEADER_DEVICE_TOKEN \
-               | self.HEADER_GAME_ACCESS_TOKEN \
-               | self.HEADER_PLAYER_ID
+        mask = (
+            self.HEADER_REQUEST_ID
+            | self.HEADER_RETRY_NO
+            | self.HEADER_SENT_AT
+            | self.HEADER_CLIENT_INFORMATION
+            | self.HEADER_CLIENT_VERSION
+            | self.HEADER_DEVICE_TOKEN
+            | self.HEADER_GAME_ACCESS_TOKEN
+            | self.HEADER_PLAYER_ID
+        )
 
         headers = self.get_headers(mask=mask)
 
         job = PlayerJob.objects.filter(id=self.player_job_id).first()
-        self.NAME = f'leaderboard_{job.job_id}'
+        self.NAME = f"leaderboard_{job.job_id}"
 
         assert job
 
         param = {
-            'LeaderBoardId': job.job_id,
-            'Type': 'guild-job-contribution',
-            'Bracket': '1'
+            # "LeaderBoardId": job.job_id,
+            # "Type": "guild-job-contribution",
+            # "Bracket": "1",
         }
-        return self.get(
-            url=url,
-            headers=headers,
-            params=param
-        )
+        url = url.replace(":id:", job.job_id)
+        url = url.replace(":category:", "guild-job-contribution")
+        url = url.replace(":bracket:", "1")
+        # :id:&Type=:category:&Bracket=:bracket:
+
+        return self.get(url=url, headers=headers, params=param)
 
     def parse_data(self, data, **kwargs) -> str:
         """
@@ -975,13 +1047,13 @@ class LeaderboardHelper(ImportHelperMixin):
         """
         json_data = json.loads(data, strict=False)
 
-        server_time = json_data.get('Time')
-        server_data = json_data.get('Data', {})
+        server_time = json_data.get("Time")
+        server_data = json_data.get("Data", {})
 
         if server_data:
             """
-                'LeaderboardId' = {str} '015bf3d8-d688-4cd0-b2c3-57b61f4e3373'
-                'LeaderboardGroupId' = {str} '3a3dfa63-2e0f-4a40-b36c-08d252db9c2b'
+            'LeaderboardId' = {str} '015bf3d8-d688-4cd0-b2c3-57b61f4e3373'
+            'LeaderboardGroupId' = {str} '3a3dfa63-2e0f-4a40-b36c-08d252db9c2b'
             """
             PlayerLeaderBoard.objects.filter(
                 version_id=self.version.id,
@@ -992,7 +1064,10 @@ class LeaderboardHelper(ImportHelperMixin):
                 leader_board__player_job_id=self.player_job_id,
             ).delete()
 
-            bulk_leader_board_list, bulk_leader_board_progress_list = PlayerLeaderBoard.create_instance(
+            (
+                bulk_leader_board_list,
+                bulk_leader_board_progress_list,
+            ) = PlayerLeaderBoard.create_instance(
                 data=server_data,
                 version_id=self.version.id,
                 player_job_id=self.player_job_id,
@@ -1002,6 +1077,8 @@ class LeaderboardHelper(ImportHelperMixin):
                 PlayerLeaderBoard.objects.bulk_create(bulk_leader_board_list, 100)
 
             if bulk_leader_board_list:
-                PlayerLeaderBoardProgress.objects.bulk_create(bulk_leader_board_progress_list, 100)
+                PlayerLeaderBoardProgress.objects.bulk_create(
+                    bulk_leader_board_progress_list, 100
+                )
 
         return server_time

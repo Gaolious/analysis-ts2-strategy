@@ -9,10 +9,10 @@ from pathlib import Path
 # 개발용으로만 DEBUG = True
 #############################################################
 DEBUG = True
-SECRET_KEY = 'django-insecure-5o)oh8%m&z3*q91b9m&#4r!hzxd0a3_q#_vm8hrsx(n3mtq35e'
+SECRET_KEY = "django-insecure-5o)oh8%m&z3*q91b9m&#4r!hzxd0a3_q#_vm8hrsx(n3mtq35e"
 
 ALLOWED_HOSTS = [
-    'ts2-bot.gaolious.com',
+    "ts2-bot.gaolious.com",
 ]
 
 
@@ -20,4 +20,4 @@ ALLOWED_HOSTS = [
 
 INSTALLED_APPS = list(set(INSTALLED_APPS + DJANGO_APPS + DATA_APPS + ADMIN_APPS))
 
-ROOT_URLCONF = 'conf.urls.local'
+ROOT_URLCONF = "conf.urls.local"
